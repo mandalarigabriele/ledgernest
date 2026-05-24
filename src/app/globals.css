@@ -1,0 +1,3341 @@
+/* ============================================================
+   LEDGERNEST — Design System CSS
+   Ported from saldo.css (design bundle)
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* ============================================================
+   CSS RESET & ROOT
+   ============================================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+img, svg { display: block; }
+button { cursor: pointer; font: inherit; border: none; background: none; }
+input, select, textarea { font: inherit; }
+a { text-decoration: none; color: inherit; }
+ul, ol { list-style: none; }
+
+/* ============================================================
+   DESIGN TOKENS — DARK THEME (default)
+   ============================================================ */
+.ledgernest-theme-dark {
+  /* Backgrounds */
+  --bg-base:        #0d0f11;
+  --bg-surface:     #161a1e;
+  --bg-elevated:    #1e2328;
+  --bg-hover:       #232930;
+  --bg-active:      #2a3038;
+  --bg-overlay:     rgba(0,0,0,0.6);
+
+  /* Borders */
+  --border-subtle:  rgba(255,255,255,0.06);
+  --border-default: rgba(255,255,255,0.10);
+  --border-strong:  rgba(255,255,255,0.16);
+
+  /* Text */
+  --text-primary:   #f0f2f4;
+  --text-secondary: #8b949e;
+  --text-tertiary:  #586069;
+  --text-inverse:   #0d0f11;
+  --text-on-accent: #0d1a1e;
+
+  /* Accent — cyan oklch(0.85 0.15 195) */
+  --accent:         #5bc8d0;
+  --accent-dim:     rgba(91,200,208,0.15);
+  --accent-hover:   #6ed4db;
+  --accent-strong:  #3ab5be;
+
+  /* Semantic */
+  --success:        #3fb950;
+  --success-dim:    rgba(63,185,80,0.15);
+  --danger:         #f85149;
+  --danger-dim:     rgba(248,81,73,0.15);
+  --warning:        #d29922;
+  --warning-dim:    rgba(210,153,34,0.15);
+  --info:           #58a6ff;
+  --info-dim:       rgba(88,166,255,0.15);
+
+  /* Charts palette */
+  --chart-1: #5bc8d0;
+  --chart-2: #7c6df7;
+  --chart-3: #f77c3a;
+  --chart-4: #3fb950;
+  --chart-5: #f85149;
+  --chart-6: #d29922;
+  --chart-7: #58a6ff;
+  --chart-8: #e879a8;
+
+  /* Shadows */
+  --shadow-sm:   0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md:   0 4px 12px rgba(0,0,0,0.5);
+  --shadow-lg:   0 8px 32px rgba(0,0,0,0.6);
+  --shadow-xl:   0 16px 48px rgba(0,0,0,0.7);
+
+  /* Sidebar */
+  --sidebar-bg:     #111418;
+  --sidebar-width:  244px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  color-scheme: dark;
+}
+
+/* ============================================================
+   DESIGN TOKENS — LIGHT THEME
+   ============================================================ */
+.ledgernest-theme-light {
+  --bg-base:        #f0f2f5;
+  --bg-surface:     #ffffff;
+  --bg-elevated:    #f8f9fa;
+  --bg-hover:       #f0f2f5;
+  --bg-active:      #e8eaed;
+  --bg-overlay:     rgba(0,0,0,0.4);
+
+  --border-subtle:  rgba(0,0,0,0.05);
+  --border-default: rgba(0,0,0,0.10);
+  --border-strong:  rgba(0,0,0,0.16);
+
+  --text-primary:   #1a1d21;
+  --text-secondary: #5c6370;
+  --text-tertiary:  #9ba3af;
+  --text-inverse:   #ffffff;
+  --text-on-accent: #ffffff;
+
+  --accent:         #0891b2;
+  --accent-dim:     rgba(8,145,178,0.12);
+  --accent-hover:   #0e7490;
+  --accent-strong:  #06b6d4;
+
+  --success:        #16a34a;
+  --success-dim:    rgba(22,163,74,0.12);
+  --danger:         #dc2626;
+  --danger-dim:     rgba(220,38,38,0.12);
+  --warning:        #d97706;
+  --warning-dim:    rgba(217,119,6,0.12);
+  --info:           #2563eb;
+  --info-dim:       rgba(37,99,235,0.12);
+
+  --chart-1: #0891b2;
+  --chart-2: #7c3aed;
+  --chart-3: #ea580c;
+  --chart-4: #16a34a;
+  --chart-5: #dc2626;
+  --chart-6: #d97706;
+  --chart-7: #2563eb;
+  --chart-8: #db2777;
+
+  --shadow-sm:   0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md:   0 4px 12px rgba(0,0,0,0.10);
+  --shadow-lg:   0 8px 32px rgba(0,0,0,0.12);
+  --shadow-xl:   0 16px 48px rgba(0,0,0,0.16);
+
+  --sidebar-bg:     #ffffff;
+  --sidebar-width:  244px;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  color-scheme: light;
+}
+
+/* ============================================================
+   APPEARANCE UTILITY CLASSES
+   ============================================================ */
+
+.no-animations *, .no-animations *::before, .no-animations *::after {
+  transition: none !important;
+  animation: none !important;
+}
+
+.large-numbers .ledgernest-kpi-value,
+.large-numbers .ledgernest-kpi-cell .ledgernest-kpi-value {
+  font-size: 28px !important;
+  font-weight: 800 !important;
+}
+
+.hide-amounts .ledgernest-kpi-value,
+.hide-amounts .ledgernest-kpi-cell .ledgernest-kpi-value,
+.hide-amounts .ledgernest-kpi-delta {
+  filter: blur(10px);
+  user-select: none;
+  pointer-events: none;
+  transition: filter .2s;
+}
+.hide-amounts .ledgernest-kpi-value:hover,
+.hide-amounts .ledgernest-kpi-cell .ledgernest-kpi-value:hover,
+.hide-amounts .ledgernest-kpi-delta:hover {
+  filter: blur(0);
+}
+
+/* ============================================================
+   APP SHELL
+   ============================================================ */
+.ledgernest-app {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-rows: 1fr;
+  height: 100vh;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-feature-settings: 'cv11', 'ss01', 'tnum';
+  letter-spacing: -0.005em;
+  -webkit-font-smoothing: antialiased;
+}
+
+.ledgernest-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.ledgernest-page {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
+.ledgernest-side {
+  width: var(--sidebar-width);
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sb-border, var(--border-subtle));
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px 14px 14px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 40;
+}
+
+/* Brand */
+.ledgernest-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 6px;
+  flex-shrink: 0;
+}
+
+.ledgernest-logo {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: #0b0f12;
+  background: var(--accent);
+  box-shadow: 0 6px 18px -8px var(--accent);
+  flex-shrink: 0;
+}
+
+.ledgernest-brand-text { flex: 1; min-width: 0; }
+.ledgernest-brand-name {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--sb-text, var(--text-primary));
+  letter-spacing: -0.01em;
+}
+.ledgernest-brand-sub {
+  font-size: 11.5px;
+  color: var(--sb-text-muted, var(--text-secondary));
+}
+
+/* CTA */
+.ledgernest-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--accent);
+  color: #0b0f12;
+  border: 0;
+  font-weight: 600;
+  font-size: 13.5px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 6px 16px -8px var(--accent);
+  transition: transform 0.12s, filter 0.12s;
+  flex-shrink: 0;
+}
+.ledgernest-cta:hover { filter: brightness(1.05); transform: translateY(-1px); }
+
+/* Nav */
+.ledgernest-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+  overflow: auto;
+}
+
+.ledgernest-nav-grp {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ledgernest-nav-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--sb-text-muted, var(--text-secondary));
+  padding: 4px 10px 6px;
+}
+
+.ledgernest-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  border: 0;
+  background: transparent;
+  color: var(--sb-text-muted, var(--text-secondary));
+  font-size: 13.5px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ledgernest-nav-item:hover {
+  background: var(--sb-hover, var(--bg-hover));
+  color: var(--sb-text, var(--text-primary));
+}
+.ledgernest-nav-item.is-active {
+  background: var(--sb-active, var(--accent-dim));
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Icon button (shared: sidebar + topbar) */
+.ledgernest-icon-btn {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  flex-shrink: 0;
+}
+.ledgernest-icon-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+.ledgernest-icon-btn--sm {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+
+/* Sidebar footer */
+.ledgernest-side-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-top: 1px solid var(--sb-border, var(--border-subtle));
+  padding-top: 12px;
+  flex-shrink: 0;
+}
+
+.ledgernest-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  background: var(--chart-2);
+  color: #0b0f12;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.ledgernest-side-foot-text { flex: 1; min-width: 0; }
+.ledgernest-foot-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sb-text, var(--text-primary));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ledgernest-foot-sub {
+  font-size: 11px;
+  color: var(--sb-text-muted, var(--text-secondary));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+/* ============================================================
+   TOPBAR
+   ============================================================ */
+.ledgernest-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 24px;
+  height: 56px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-base);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  flex-shrink: 0;
+}
+
+.ledgernest-topbar-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ledgernest-topbar-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-tertiary);
+  font-size: 13px;
+  transition: border-color 0.15s;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ledgernest-topbar-search:hover {
+  border-color: var(--border-default);
+  color: var(--text-secondary);
+}
+
+.ledgernest-topbar-search-kbd {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.ledgernest-topbar-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: background 0.15s, color 0.15s;
+  position: relative;
+}
+
+.ledgernest-topbar-icon-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.ledgernest-topbar-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  border: 2px solid var(--bg-base);
+}
+
+/* ============================================================
+   CARDS
+   ============================================================ */
+.ledgernest-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.03), 0 10px 30px -14px rgba(0,0,0,0.55);
+  min-width: 0;
+}
+.ledgernest-theme-light .ledgernest-card {
+  box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 8px 24px -16px rgba(0,0,0,0.14);
+}
+
+/* Legacy header/body (backward compat for non-dashboard pages) */
+.ledgernest-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: -18px -18px 0;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: 18px 18px 0 0;
+  flex-shrink: 0;
+}
+
+.ledgernest-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+}
+
+.ledgernest-card-body {
+  padding: 4px 0 0;
+}
+
+/* ── Design card head (dashboard + new pages) ── */
+.ledgernest-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.ledgernest-card-head-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.ledgernest-card-head .ledgernest-card-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.ledgernest-card-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.ledgernest-card-content {
+  padding: 0;
+}
+
+/* ============================================================
+   TOPBAR — DESIGN STYLE
+   ============================================================ */
+.ledgernest-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 28px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-base);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  flex-shrink: 0;
+}
+
+.ledgernest-top-titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.ledgernest-page-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.ledgernest-page-sub {
+  margin-top: 3px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.ledgernest-top-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* Search button (topbar) */
+.ledgernest-search-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  min-width: 240px;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+.ledgernest-search-btn:hover {
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+.ledgernest-search-btn-text {
+  flex: 1;
+  text-align: left;
+  font-size: 13px;
+}
+.ledgernest-search-btn kbd {
+  font: 600 10.5px ui-monospace, 'SF Mono', monospace;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+/* Notification dot */
+.ledgernest-dot {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--bg-surface);
+}
+
+/* ============================================================
+   KPI STRIP — DESIGN STYLE
+   ============================================================ */
+.ledgernest-kpis {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+.ledgernest-kpis--4 { grid-template-columns: repeat(4, 1fr); }
+.ledgernest-kpis--3 { grid-template-columns: repeat(3, 1fr); }
+
+.ledgernest-kpi {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.03), 0 10px 30px -14px rgba(0,0,0,0.55);
+}
+.ledgernest-theme-light .ledgernest-kpi {
+  box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 8px 24px -16px rgba(0,0,0,0.14);
+}
+.ledgernest-kpi.is-hl {
+  background: linear-gradient(180deg, var(--accent-dim), var(--bg-surface) 70%);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border-subtle));
+}
+
+.ledgernest-kpi-label { font-size: 11.5px; color: var(--text-secondary); }
+.ledgernest-kpi-value {
+  font-size: 20px;
+  font-weight: 650;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.ledgernest-kpi-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ledgernest-kpi-delta {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--danger);
+}
+.ledgernest-kpi-delta.is-up { color: var(--success); }
+.ledgernest-kpi-sub { font-size: 11px; color: var(--text-secondary); }
+
+/* ============================================================
+   CANVAS & GRIDS — DESIGN STYLE
+   ============================================================ */
+.ledgernest-canvas {
+  margin: -24px;
+  padding: 22px 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: auto;
+  flex: 1;
+}
+
+.ledgernest-grid { display: grid; gap: 16px; }
+.ledgernest-grid--row     { grid-template-columns: 1fr 1fr; }
+.ledgernest-grid--7-5     { grid-template-columns: 1.4fr 1fr; }
+.ledgernest-grid--main    { grid-template-columns: 1.7fr 1fr; }
+.ledgernest-grid--3col    { grid-template-columns: 1fr 1fr 1fr; }
+
+/* ============================================================
+   TABS & SEGMENTED CONTROLS — DESIGN STYLE
+   ============================================================ */
+.ledgernest-tabbed {
+  display: flex;
+  align-items: flex-end;
+  gap: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 0;
+}
+.ledgernest-tab-design {
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 12px 14px 10px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+  margin-bottom: -1px;
+}
+.ledgernest-tab-design:hover { color: var(--text-primary); }
+.ledgernest-tab-design.is-active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.ledgernest-seg {
+  display: inline-flex;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+}
+.ledgernest-seg--ghost {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  gap: 4px;
+}
+.ledgernest-seg-btn {
+  border: 0;
+  background: transparent;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.ledgernest-seg-btn:hover { color: var(--text-primary); }
+.ledgernest-seg-btn.is-active {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
+.ledgernest-theme-dark .ledgernest-seg-btn.is-active { background: var(--sidebar-bg); }
+.ledgernest-seg--ghost .ledgernest-seg-btn { border-radius: 8px; padding: 5px 9px; }
+.ledgernest-seg--ghost .ledgernest-seg-btn.is-active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  box-shadow: none;
+}
+
+/* ============================================================
+   BIG VALUE DISPLAY
+   ============================================================ */
+.ledgernest-bigval {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  padding-top: 4px;
+}
+.ledgernest-bigval-num {
+  font-size: 36px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  line-height: 1.05;
+}
+.ledgernest-bigval-delta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 6px;
+}
+.ledgernest-bigval-cap { font-size: 12px; color: var(--text-secondary); }
+
+/* Tags (colored delta badges) */
+.ledgernest-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ledgernest-tag--up {
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  color: var(--success);
+}
+.ledgernest-tag--down {
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
+  color: var(--danger);
+}
+
+/* Pill  */
+.ledgernest-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.ledgernest-pill:hover { background: var(--bg-hover); }
+.ledgernest-pill.is-active {
+  background: var(--text-primary);
+  color: var(--bg-base);
+  border-color: var(--text-primary);
+}
+.ledgernest-pill--soft {
+  background: var(--accent-dim);
+  border-color: transparent;
+  color: var(--accent);
+}
+.ledgernest-pillbar { display: flex; gap: 4px; }
+
+/* ============================================================
+   DESIGN TABLE (positions, stocks, etc.)
+   ============================================================ */
+.ledgernest-thead, .ledgernest-trow {
+  display: grid;
+  grid-template-columns: 2.2fr 0.9fr 1fr 1fr 1.1fr 0.9fr;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+}
+.ledgernest-thead {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.ledgernest-trow {
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 13px;
+  transition: background 0.12s;
+}
+.ledgernest-trow:last-child { border-bottom: 0; }
+.ledgernest-trow:hover { background: var(--bg-elevated); border-radius: 8px; }
+
+.ta-r { text-align: right; font-variant-numeric: tabular-nums; }
+.ta-c { text-align: center; }
+
+.ledgernest-ticker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.ledgernest-ticker-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+.ledgernest-ticker-sym {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 13.5px;
+}
+.ledgernest-ticker-name {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+.ledgernest-cell-mute { color: var(--text-secondary); }
+
+.ledgernest-pct {
+  font-weight: 600;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.ledgernest-pct.is-up { color: var(--success); }
+.ledgernest-pct.is-down { color: var(--danger); }
+
+/* ============================================================
+   MOVEMENT LIST — DESIGN STYLE
+   ============================================================ */
+.ledgernest-mov-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ledgernest-mov {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 8px;
+  border-radius: 10px;
+  transition: background 0.12s;
+}
+.ledgernest-mov:hover { background: var(--bg-elevated); }
+
+.ledgernest-mov-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  display: grid;
+  place-items: center;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.ledgernest-mov-icon.is-in {
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  border-color: transparent;
+  color: var(--success);
+}
+.ledgernest-mov-icon.is-out {
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+.ledgernest-mov-text { min-width: 0; }
+.ledgernest-mov-merch {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ledgernest-mov-cat { font-size: 11.5px; color: var(--text-secondary); }
+.ledgernest-mov-amt {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ledgernest-mov-amt.is-up { color: var(--success); }
+
+/* ============================================================
+   ALLOCATION CHART
+   ============================================================ */
+.ledgernest-alloc {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 18px;
+  align-items: center;
+}
+.ledgernest-alloc-chart {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.ledgernest-donut-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  text-align: center;
+}
+.ledgernest-donut-num {
+  font-size: 20px;
+  font-weight: 650;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.ledgernest-donut-cap { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+.ledgernest-alloc-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ledgernest-alloc-legend li {
+  display: grid;
+  grid-template-columns: 10px 1fr auto auto;
+  align-items: center;
+  column-gap: 10px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.ledgernest-alloc-legend li:hover { background: var(--bg-elevated); }
+.ledgernest-swatch { width: 10px; height: 10px; border-radius: 4px; flex-shrink: 0; }
+.ledgernest-legend-name { color: var(--text-secondary); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ledgernest-legend-val {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ledgernest-legend-pct {
+  color: var(--text-secondary);
+  font-size: 12px;
+  min-width: 40px;
+  text-align: right;
+}
+
+.ledgernest-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+.ledgernest-legend-row span { display: inline-flex; align-items: center; gap: 6px; }
+.ledgernest-legend-row i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+/* Button styles (design) */
+.ledgernest-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.ledgernest-btn-ghost:hover {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+
+.ledgernest-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 0;
+  background: var(--accent);
+  color: #0b0f12;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.12s, transform 0.12s;
+}
+.ledgernest-btn:hover { filter: brightness(1.05); }
+
+.ledgernest-card-footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* ============================================================
+   KPI STRIP
+   ============================================================ */
+.ledgernest-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.ledgernest-kpi-cell {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: background 0.15s;
+}
+
+.ledgernest-kpi-cell:hover {
+  background: var(--bg-elevated);
+}
+
+.ledgernest-kpi-cell.is-accent {
+  background: linear-gradient(180deg, var(--accent-dim), var(--bg-surface) 70%);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border-subtle));
+}
+
+.ledgernest-kpi-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ledgernest-kpi-value {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ledgernest-kpi-sub {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ledgernest-kpi-delta {
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.ledgernest-kpi-delta.pos { color: var(--success); }
+.ledgernest-kpi-delta.neg { color: var(--danger); }
+
+/* ============================================================
+   TABLES
+   ============================================================ */
+.ledgernest-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ledgernest-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.ledgernest-table th {
+  text-align: left;
+  padding: 10px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+
+.ledgernest-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  vertical-align: middle;
+}
+
+.ledgernest-table tr:last-child td {
+  border-bottom: none;
+}
+
+.ledgernest-table tr:hover td {
+  background: var(--bg-elevated);
+}
+
+.ledgernest-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 12.5px;
+}
+
+.ledgernest-table .pos { color: var(--success); }
+.ledgernest-table .neg { color: var(--danger); }
+
+.ledgernest-table-ticker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ledgernest-table-ticker-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  flex-shrink: 0;
+  border: 1px solid var(--border-subtle);
+}
+
+.ledgernest-table-ticker-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ledgernest-table-ticker-sub {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+/* ============================================================
+   BADGE / CHIP
+   ============================================================ */
+.ledgernest-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.ledgernest-badge.success { background: var(--success-dim); color: var(--success); }
+.ledgernest-badge.danger  { background: var(--danger-dim);  color: var(--danger); }
+.ledgernest-badge.warning { background: var(--warning-dim); color: var(--warning); }
+.ledgernest-badge.info    { background: var(--info-dim);    color: var(--info); }
+.ledgernest-badge.accent  { background: var(--accent-dim);  color: var(--accent); }
+.ledgernest-badge.neutral { background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border-default); }
+
+.ledgernest-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.ledgernest-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.ledgernest-chip.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.ledgernest-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.ledgernest-btn-primary {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+.ledgernest-btn-primary:hover { background: var(--accent-hover); }
+
+.ledgernest-btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
+}
+.ledgernest-btn-ghost:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.ledgernest-btn-danger {
+  background: var(--danger-dim);
+  color: var(--danger);
+  border: 1px solid transparent;
+}
+.ledgernest-btn-danger:hover { background: var(--danger); color: white; }
+
+.ledgernest-btn-sm {
+  padding: 5px 10px;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+}
+
+.ledgernest-btn-icon {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: var(--radius-md);
+}
+
+/* ============================================================
+   TABS
+   ============================================================ */
+.ledgernest-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  padding: 3px;
+}
+
+.ledgernest-tab {
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.ledgernest-tab:hover {
+  color: var(--text-primary);
+}
+
+.ledgernest-tab.active {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ============================================================
+   MOVEMENTS LIST
+   ============================================================ */
+.ledgernest-mov-group-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 12px 20px 6px;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.ledgernest-mov-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 0.12s;
+}
+
+.ledgernest-mov-row:hover {
+  background: var(--bg-elevated);
+}
+
+.ledgernest-mov-row:last-child {
+  border-bottom: none;
+}
+
+.ledgernest-mov-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: var(--bg-elevated);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid var(--border-subtle);
+  font-size: 16px;
+}
+
+.ledgernest-mov-info { flex: 1; min-width: 0; }
+.ledgernest-mov-desc {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ledgernest-mov-meta {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.ledgernest-mov-amount {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.ledgernest-mov-amount.income { color: var(--success); }
+.ledgernest-mov-amount.expense { color: var(--danger); }
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+.ledgernest-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-overlay);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(4px);
+  animation: ledgernest-overlay-in 0.2s ease;
+}
+
+@media (min-width: 640px) {
+  .ledgernest-modal-overlay {
+    align-items: center;
+  }
+}
+
+@keyframes ledgernest-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.ledgernest-modal {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: ledgernest-modal-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: var(--shadow-xl);
+}
+
+@media (min-width: 640px) {
+  .ledgernest-modal {
+    border-radius: var(--radius-xl);
+    max-height: 80vh;
+  }
+}
+
+@keyframes ledgernest-modal-in {
+  from { opacity: 0; transform: translateY(24px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.ledgernest-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 20px 0;
+}
+
+.ledgernest-modal-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.ledgernest-modal-close {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  transition: background 0.15s, color 0.15s;
+}
+
+.ledgernest-modal-close:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.ledgernest-modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ledgernest-modal-footer {
+  padding: 0 20px 20px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* ============================================================
+   FORM CONTROLS
+   ============================================================ */
+.ledgernest-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ledgernest-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ledgernest-input {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  font-size: 14px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  outline: none;
+}
+
+.ledgernest-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.ledgernest-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.ledgernest-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
+.ledgernest-toggle-group {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  padding: 3px;
+}
+
+.ledgernest-toggle-btn {
+  flex: 1;
+  padding: 7px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-align: center;
+  transition: all 0.15s;
+}
+
+.ledgernest-toggle-btn.active {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ============================================================
+   COMMAND PALETTE (SEARCH)
+   ============================================================ */
+.ledgernest-cmd-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-overlay);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 80px;
+  z-index: 200;
+  backdrop-filter: blur(4px);
+  animation: ledgernest-overlay-in 0.15s ease;
+}
+
+.ledgernest-cmd-panel {
+  width: 100%;
+  max-width: 600px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+  animation: ledgernest-modal-in 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.ledgernest-cmd-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.ledgernest-cmd-search-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.ledgernest-cmd-search-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.ledgernest-cmd-list {
+  max-height: 440px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.ledgernest-cmd-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 8px 10px 4px;
+}
+
+.ledgernest-cmd-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  color: var(--text-primary);
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: background 0.1s;
+  width: 100%;
+  border: none;
+  text-align: left;
+  background: none;
+}
+
+.ledgernest-cmd-item:hover,
+.ledgernest-cmd-item.focused {
+  background: var(--bg-hover);
+}
+
+.ledgernest-cmd-item.is-primary,
+.ledgernest-cmd-item.is-primary.focused {
+  background: var(--accent-dim);
+}
+
+.ledgernest-cmd-item-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.ledgernest-cmd-item-icon.is-primary {
+  background: var(--accent);
+  color: #0b0f12;
+}
+
+.ledgernest-cmd-item-label { flex: 1; }
+.ledgernest-cmd-item-meta {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.ledgernest-cmd-empty {
+  padding: 32px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+/* ============================================================
+   BUDGET PAGE
+   ============================================================ */
+.ledgernest-budget-hero {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.ledgernest-budget-hero-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+
+.ledgernest-budget-hero-amount {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin-bottom: 16px;
+}
+
+.ledgernest-budget-hero-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.ledgernest-budget-hero-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  transition: width 0.6s ease;
+}
+
+.ledgernest-budget-hero-fill.over {
+  background: var(--danger);
+}
+
+.ledgernest-budget-hero-stats {
+  display: flex;
+  gap: 20px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.ledgernest-allocator {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.ledgernest-allocator-row {
+  display: grid;
+  grid-template-columns: 180px 1fr 100px 80px;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.ledgernest-allocator-row:last-child {
+  border-bottom: none;
+}
+
+.ledgernest-allocator-cat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ledgernest-allocator-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.ledgernest-allocator-name {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.ledgernest-allocator-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--bg-elevated);
+  outline: none;
+  cursor: pointer;
+}
+
+.ledgernest-allocator-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.ledgernest-allocator-input {
+  width: 100%;
+  text-align: right;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.ledgernest-allocator-pct {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-align: right;
+}
+
+/* ============================================================
+   ACCOUNTS PAGE
+   ============================================================ */
+.ledgernest-acct-group {
+  margin-bottom: 20px;
+}
+
+.ledgernest-acct-group-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 8px;
+}
+
+.ledgernest-acct-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  margin-bottom: 8px;
+  transition: border-color 0.15s;
+}
+
+.ledgernest-acct-card:hover {
+  border-color: var(--border-default);
+}
+
+.ledgernest-acct-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.ledgernest-acct-info { flex: 1; min-width: 0; }
+.ledgernest-acct-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.ledgernest-acct-meta {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.ledgernest-acct-balance {
+  text-align: right;
+}
+
+.ledgernest-acct-amount {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.ledgernest-acct-delta {
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+.ledgernest-acct-delta.pos { color: var(--success); }
+.ledgernest-acct-delta.neg { color: var(--danger); }
+
+/* ============================================================
+   GOALS PAGE
+   ============================================================ */
+.ledgernest-goal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.ledgernest-goal-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.ledgernest-goal-card:hover {
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-md);
+}
+
+.ledgernest-goal-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ledgernest-goal-amount {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.ledgernest-goal-sub {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+/* ============================================================
+   RECURRING PAGE
+   ============================================================ */
+.ledgernest-rec-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 0.12s;
+}
+
+.ledgernest-rec-row:hover {
+  background: var(--bg-elevated);
+}
+
+.ledgernest-rec-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.ledgernest-rec-info { flex: 1; min-width: 0; }
+.ledgernest-rec-name {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.ledgernest-rec-meta {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+.ledgernest-rec-amount {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+/* Monthly Calendar */
+.ledgernest-monthcal {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.ledgernest-monthcal th {
+  text-align: center;
+  padding: 8px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+}
+
+.ledgernest-monthcal td {
+  padding: 4px;
+  vertical-align: top;
+  border-radius: var(--radius-sm);
+}
+
+.ledgernest-monthcal-day {
+  min-height: 64px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  padding: 6px;
+  border: 1px solid var(--border-subtle);
+}
+
+.ledgernest-monthcal-day.today {
+  border-color: var(--accent);
+}
+
+.ledgernest-monthcal-day.other-month {
+  opacity: 0.4;
+}
+
+.ledgernest-monthcal-day-num {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  margin-bottom: 4px;
+}
+
+.ledgernest-monthcal-event {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 500;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============================================================
+   LIVE TAPE / QUOTES
+   ============================================================ */
+.ledgernest-tape {
+  overflow: hidden;
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  position: relative;
+}
+
+.ledgernest-tape-track {
+  display: flex;
+  animation: ledgernest-tape-scroll 40s linear infinite;
+  white-space: nowrap;
+}
+
+.ledgernest-tape-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes ledgernest-tape-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+.ledgernest-tape-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  border-right: 1px solid var(--border-subtle);
+  font-size: 12px;
+}
+
+.ledgernest-tape-sym {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ledgernest-tape-price {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.ledgernest-tape-chg.pos { color: var(--success); }
+.ledgernest-tape-chg.neg { color: var(--danger); }
+
+.ledgernest-quote-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.ledgernest-quote-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  transition: border-color 0.15s;
+}
+
+.ledgernest-quote-card:hover {
+  border-color: var(--border-default);
+}
+
+.ledgernest-quote-sym {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.ledgernest-quote-name {
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+  margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ledgernest-quote-price {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.ledgernest-quote-chg {
+  font-size: 11.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.ledgernest-quote-chg.pos { color: var(--success); }
+.ledgernest-quote-chg.neg { color: var(--danger); }
+
+/* ============================================================
+   SETTINGS PAGE
+   ============================================================ */
+.ledgernest-settings-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.ledgernest-settings-section-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.ledgernest-settings-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ledgernest-settings-section-desc {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+.ledgernest-settings-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.ledgernest-settings-row:last-child {
+  border-bottom: none;
+}
+
+.ledgernest-settings-row-info { flex: 1; min-width: 0; }
+.ledgernest-settings-row-label {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.ledgernest-settings-row-desc {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+/* Switch */
+.ledgernest-switch {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.ledgernest-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.ledgernest-switch-track {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.ledgernest-switch input:checked + .ledgernest-switch-track {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.ledgernest-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-full);
+  background: white;
+  transition: transform 0.2s;
+  pointer-events: none;
+  box-shadow: var(--shadow-sm);
+}
+
+.ledgernest-switch input:checked ~ .ledgernest-switch-thumb {
+  transform: translateX(16px);
+}
+
+/* Theme cards */
+.ledgernest-theme-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.ledgernest-theme-card {
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.ledgernest-theme-card.active,
+.ledgernest-theme-card:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Accent swatches */
+.ledgernest-accent-swatches {
+  display: flex;
+  gap: 8px;
+}
+
+.ledgernest-accent-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.ledgernest-accent-swatch:hover,
+.ledgernest-accent-swatch.active {
+  border-color: var(--text-primary);
+  transform: scale(1.1);
+}
+
+/* ============================================================
+   CANDLESTICK CHART
+   ============================================================ */
+.ledgernest-candle-wrap {
+  position: relative;
+  overflow: hidden;
+}
+
+.ledgernest-candle-crosshair {
+  position: absolute;
+  pointer-events: none;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border-default);
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.ledgernest-candle-wrap:hover .ledgernest-candle-crosshair {
+  opacity: 1;
+}
+
+.ledgernest-candle-tooltip {
+  position: absolute;
+  top: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  font-size: 12px;
+  pointer-events: none;
+  box-shadow: var(--shadow-md);
+  white-space: nowrap;
+}
+
+/* ============================================================
+   HEATMAP
+   ============================================================ */
+.ledgernest-heatmap-grid {
+  display: grid;
+  gap: 3px;
+}
+
+.ledgernest-heatmap-cell {
+  border-radius: 3px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.ledgernest-heatmap-cell:hover {
+  opacity: 0.8;
+}
+
+/* ============================================================
+   TREEMAP
+   ============================================================ */
+.ledgernest-treemap {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+}
+
+.ledgernest-treemap-cell {
+  position: absolute;
+  border: 2px solid var(--bg-surface);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 8px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: filter 0.15s;
+}
+
+.ledgernest-treemap-cell:hover {
+  filter: brightness(1.1);
+}
+
+.ledgernest-treemap-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  opacity: 0.9;
+}
+
+.ledgernest-treemap-val {
+  font-size: 10px;
+  color: white;
+  opacity: 0.7;
+}
+
+/* ============================================================
+   ADD MENU
+   ============================================================ */
+.ledgernest-add-menu {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.ledgernest-add-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  padding: 10px 16px;
+  box-shadow: var(--shadow-md);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s;
+  animation: ledgernest-add-item-in 0.2s ease;
+}
+
+.ledgernest-add-menu-item:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+@keyframes ledgernest-add-item-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.ledgernest-fab {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-md);
+  transition: background 0.15s, transform 0.15s;
+  cursor: pointer;
+}
+
+.ledgernest-fab:hover {
+  background: var(--accent-hover);
+  transform: scale(1.05);
+}
+
+.ledgernest-fab.open {
+  transform: rotate(45deg);
+}
+
+/* ============================================================
+   SPARKLINES & MINI-CHARTS
+   ============================================================ */
+.ledgernest-spark {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* ============================================================
+   PAGE GRIDS / LAYOUTS
+   ============================================================ */
+.ledgernest-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.ledgernest-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+}
+
+.ledgernest-grid-2-1 {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+}
+
+.ledgernest-grid-1-2 {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 16px;
+}
+
+.ledgernest-gap-4 { display: flex; flex-direction: column; gap: 16px; }
+.ledgernest-gap-5 { display: flex; flex-direction: column; gap: 20px; }
+.ledgernest-gap-6 { display: flex; flex-direction: column; gap: 24px; }
+
+/* ============================================================
+   SCROLLBAR CUSTOMIZATION
+   ============================================================ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+/* ============================================================
+   UTILITIES
+   ============================================================ */
+.ledgernest-mono {
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.ledgernest-pos { color: var(--success); }
+.ledgernest-neg { color: var(--danger); }
+.ledgernest-muted { color: var(--text-secondary); }
+.ledgernest-dim { color: var(--text-tertiary); }
+
+.ledgernest-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 12px;
+}
+
+.ledgernest-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 16px 0;
+}
+
+.ledgernest-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  text-align: center;
+  gap: 8px;
+}
+
+.ledgernest-empty-icon {
+  font-size: 32px;
+  margin-bottom: 4px;
+}
+
+/* ============================================================
+   SECTOR BARS (horizontal progress)
+   ============================================================ */
+.ledgernest-sector-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.ledgernest-sector-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  width: 100px;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ledgernest-sector-bar-wrap {
+  flex: 1;
+  height: 6px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.ledgernest-sector-bar-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.6s ease;
+}
+
+.ledgernest-sector-pct {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  width: 40px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+   PROGRESS (circular)
+   ============================================================ */
+.ledgernest-circular {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ledgernest-circular-label {
+  position: absolute;
+  text-align: center;
+}
+
+.ledgernest-circular-value {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.ledgernest-circular-sub {
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+/* ============================================================
+   DIVIDEND CALENDAR
+   ============================================================ */
+.ledgernest-divcal-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 4px;
+}
+
+.ledgernest-divcal-month {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ledgernest-divcal-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.ledgernest-divcal-bar {
+  border-radius: 3px;
+  min-height: 4px;
+  transition: opacity 0.15s;
+}
+
+.ledgernest-divcal-bar:hover {
+  opacity: 0.8;
+}
+
+/* ============================================================
+   MOBILE RESPONSIVE
+   ============================================================ */
+
+/* Hamburger button — hidden on desktop */
+.ledgernest-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 36px;
+  height: 36px;
+  padding: 8px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+.ledgernest-hamburger:hover { background: var(--bg-hover); }
+.ledgernest-hamburger span {
+  display: block;
+  width: 100%;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--text-primary);
+}
+
+/* Sidebar backdrop — mobile only */
+.ledgernest-sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 49;
+  backdrop-filter: blur(2px);
+}
+
+/* ── Mid-breakpoint: narrow desktop (~1200px) ──────────────── */
+@media (max-width: 1200px) {
+  /* Dashboard 6-col KPI → 3-col (2 rows) */
+  .ledgernest-kpis {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+
+/* ── Mid-breakpoint: tablet / narrow desktop ───────────────── */
+@media (max-width: 1100px) {
+  /* Charts: side-by-side → stacked */
+  .ledgernest-port-charts,
+  .ledgernest-fin-charts {
+    grid-template-columns: 1fr !important;
+  }
+  /* Dashboard compound grids → 1 col */
+  .ledgernest-grid--7-5,
+  .ledgernest-grid--main {
+    grid-template-columns: 1fr !important;
+  }
+  /* Budget sidebar unsticks early */
+  .ledgernest-budget-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .ledgernest-budget-sidebar {
+    position: static !important;
+    max-height: none !important;
+  }
+  /* Settings: collapse sidebar nav early */
+  .ledgernest-settings-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .ledgernest-settings-layout > div:first-child {
+    position: static !important;
+    display: flex !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    padding: 4px 4px !important;
+    gap: 2px !important;
+    scrollbar-width: none !important;
+  }
+  .ledgernest-settings-layout > div:first-child button {
+    flex-shrink: 0 !important;
+    width: auto !important;
+    font-size: 12px !important;
+    padding: 7px 12px !important;
+    border-radius: var(--radius-md) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  /* KPI 4-col → 2-col before the hard mobile jump */
+  .ledgernest-port-kpis,
+  .ledgernest-fin-kpis,
+  .ledgernest-kpis--4,
+  .ledgernest-kpi-grid-4 {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  /* 6-col KPI → 2-col */
+  .ledgernest-kpis {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  /* Portfolio table: enforce min-width so it scrolls instead of compressing */
+  .ledgernest-port-table-card {
+    overflow: visible !important;
+  }
+  .ledgernest-port-table-card .ledgernest-table {
+    min-width: 600px;
+  }
+  /* Dashboard 3-col → 1-col */
+  .ledgernest-grid--3col {
+    grid-template-columns: 1fr !important;
+  }
+  /* Allocation + cashflow → stacked */
+  .ledgernest-grid--row {
+    grid-template-columns: 1fr !important;
+  }
+  /* Allocation chart: stack vertically */
+  .ledgernest-alloc {
+    grid-template-columns: 1fr !important;
+  }
+  .ledgernest-alloc-chart {
+    justify-self: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .ledgernest-app {
+    grid-template-columns: 1fr;
+  }
+
+  /* Show hamburger on mobile */
+  .ledgernest-hamburger { display: flex; }
+
+  /* Show backdrop on mobile when active */
+  .ledgernest-sidebar-backdrop { display: block; }
+
+  .ledgernest-side {
+    position: fixed;
+    left: -100%;
+    top: 0;
+    bottom: 0;
+    z-index: 50;
+    transition: left 0.25s ease;
+    box-shadow: var(--shadow-xl);
+  }
+
+  .ledgernest-side.open {
+    left: 0;
+  }
+
+  /* Topbar: compact + no subtitle wrapping */
+  .ledgernest-top {
+    padding: 12px 16px;
+    gap: 8px;
+  }
+  .ledgernest-page-title {
+    font-size: 17px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ledgernest-page-sub { display: none; }
+
+  /* Search: icon only on mobile */
+  .ledgernest-search-btn-text,
+  .ledgernest-search-btn kbd { display: none; }
+  .ledgernest-search-btn { min-width: unset; padding: 8px 10px; }
+
+  .ledgernest-page {
+    padding: 12px;
+    padding-bottom: 80px; /* space for bottom nav */
+  }
+  /* Reduce card padding on mobile so content has more breathing room */
+  .ledgernest-card {
+    padding: 14px;
+    border-radius: 14px;
+    gap: 12px;
+  }
+
+  /* KPI strips → 2-col */
+  .ledgernest-kpi-strip,
+  .ledgernest-kpis,
+  .ledgernest-kpis--4,
+  .ledgernest-kpis--3 {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* Report KPI 4-col → 2-col */
+  .ledgernest-kpi-grid-4 {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Dashboard + generic grids → 1-col */
+  .ledgernest-grid-2,
+  .ledgernest-grid-3,
+  .ledgernest-grid-2-1,
+  .ledgernest-grid-1-2,
+  .ledgernest-grid--row,
+  .ledgernest-grid--7-5,
+  .ledgernest-grid--main,
+  .ledgernest-grid--3col {
+    grid-template-columns: 1fr;
+  }
+
+  /* Positions/movements table: horizontal scroll */
+  .ledgernest-thead,
+  .ledgernest-trow {
+    grid-template-columns: 2fr 0.7fr 0 0 1fr 0.9fr;
+    font-size: 11px;
+    gap: 4px;
+  }
+  /* Hide Prezzo (col 3) and sparkline (col 4) on mobile */
+  .ledgernest-thead > *:nth-child(3),
+  .ledgernest-trow  > *:nth-child(3),
+  .ledgernest-thead > *:nth-child(4),
+  .ledgernest-trow  > *:nth-child(4) {
+    display: none;
+  }
+
+  .ledgernest-allocator-row {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .ledgernest-quote-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .ledgernest-cmd-overlay {
+    padding-top: 20px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  /* Budget: force single column layout */
+  .ledgernest-budget-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .ledgernest-budget-sidebar {
+    position: static !important;
+    max-height: none !important;
+  }
+  /* Budget table: horizontal scroll for table content only */
+  .ledgernest-budget-table-card {
+    overflow-x: auto !important;
+  }
+  .ledgernest-budget-table-card > * {
+    min-width: 600px;
+  }
+  /* Toolbar and tab strip stay full-width, don't participate in scroll */
+  .ledgernest-budget-toolbar,
+  .ledgernest-budget-tab-strip {
+    min-width: 0 !important;
+  }
+  /* Prevent category names from wrapping */
+  .ledgernest-budget-cat-name {
+    white-space: nowrap;
+  }
+
+  /* Portfolio pages: responsive grid overrides */
+  .ledgernest-port-kpis {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .ledgernest-port-charts {
+    grid-template-columns: 1fr !important;
+  }
+  .ledgernest-port-table-card {
+    overflow: visible !important;
+  }
+  .ledgernest-port-table-card .ledgernest-table {
+    min-width: 600px;
+  }
+
+  /* Finance pages: KPI strip 2-col */
+  .ledgernest-fin-kpis {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Finance: chart+breakdown → stacked */
+  .ledgernest-fin-charts {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Ricorrenti: calendar + upcoming stacked */
+  .ledgernest-rec-calendar {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Settings: sidebar → horizontal scroll tabs above content */
+  .ledgernest-settings-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .ledgernest-settings-layout > div:first-child {
+    position: static !important;
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 4px 4px !important;
+    gap: 2px;
+    scrollbar-width: none;
+  }
+  .ledgernest-settings-layout > div:first-child button {
+    flex-shrink: 0;
+    width: auto !important;
+    font-size: 12px !important;
+    padding: 7px 12px !important;
+    border-radius: var(--radius-md) !important;
+  }
+  /* Settings content: reduce padding */
+  .ledgernest-settings-layout > div:last-child {
+    padding: 16px !important;
+  }
+  /* Aspetto: color themes 4-col on mobile */
+  .ledgernest-settings-color-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+
+  /* Obiettivi: featured card stacked, donut below */
+  .ledgernest-obj-featured {
+    grid-template-columns: 1fr !important;
+    padding: 20px !important;
+    gap: 20px !important;
+  }
+  .ledgernest-obj-featured > div:last-child {
+    display: flex;
+    justify-content: center;
+  }
+  .ledgernest-obj-stats {
+    gap: 20px !important;
+    flex-wrap: wrap !important;
+  }
+
+  /* Obiettivi: goals grid single column */
+  .ledgernest-obj-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Compact buttons on mobile */
+  .ledgernest-btn-sm {
+    font-size: 11px !important;
+    padding: 5px 10px !important;
+    gap: 4px !important;
+  }
+  /* Card head in standard cards: tighter padding */
+  .ledgernest-card-head {
+    gap: 8px;
+  }
+
+  /* Dashboard chart tab row: compact tabs, hide period selector if needed */
+  .ledgernest-chart-tabrow {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+  .ledgernest-chart-tabs {
+    padding: 0 12px !important;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .ledgernest-chart-tabrow .ledgernest-seg {
+    padding: 6px 12px !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+  }
+  .ledgernest-chart-tabrow .ledgernest-seg::-webkit-scrollbar {
+    display: none !important;
+  }
+  .ledgernest-tab-design {
+    font-size: 12px !important;
+    padding: 10px 8px !important;
+  }
+
+  /* Dashboard big value: stack number + delta vertically */
+  .ledgernest-bigval {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+  }
+  .ledgernest-bigval-num {
+    font-size: 28px !important;
+  }
+  .ledgernest-bigval-delta {
+    flex-wrap: wrap;
+  }
+
+  /* Dashboard allocation: donut on top, legend below */
+  .ledgernest-alloc {
+    grid-template-columns: 1fr !important;
+  }
+  .ledgernest-alloc-chart {
+    justify-self: center;
+  }
+  .ledgernest-legend-name {
+    max-width: none !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+  }
+
+  /* Conti: filter tabs + button row wraps on mobile */
+  .ledgernest-conti-actions {
+    width: 100% !important;
+  }
+  .ledgernest-conti-actions > div:first-child {
+    flex: 1 !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+  }
+  .ledgernest-conti-actions > div:first-child button {
+    padding: 5px 9px !important;
+    font-size: 11px !important;
+  }
+
+  /* Budget: summary cards stack vertically */
+  .ledgernest-budget-summary {
+    grid-template-columns: 1fr !important;
+  }
+  /* Budget: shrink the big spending number */
+  .ledgernest-budget-bignum {
+    font-size: 26px !important;
+  }
+  /* Budget toolbar: stack title and buttons vertically */
+  .ledgernest-budget-toolbar {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+  /* Budget toolbar buttons: wrap to multiple lines */
+  .ledgernest-budget-toolbar-btns {
+    flex-wrap: wrap !important;
+    flex-shrink: unset !important;
+  }
+}
+
+/* ── Chart tab strip: hide scrollbar globally ────────────── */
+.ledgernest-chart-tabs {
+  scrollbar-width: none;
+}
+.ledgernest-chart-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Bottom nav bar (mobile) ──────────────────────────────── */
+.ledgernest-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .ledgernest-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 40;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border-subtle);
+    padding: 8px 4px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    gap: 0;
+  }
+  .ledgernest-bottom-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 6px 4px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--text-tertiary);
+    font-size: 10px;
+    font-weight: 500;
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .ledgernest-bottom-nav-item.active {
+    color: var(--accent);
+  }
+  .ledgernest-bottom-nav-item svg {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+@media (max-width: 480px) {
+  .ledgernest-kpi-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .ledgernest-topbar-search {
+    display: none;
+  }
+}
+
+/* ── Modal mobile fixes ───────────────────────────────────── */
+@media (max-width: 640px) {
+  .ledgernest-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    max-height: 92vh;
+  }
+  .ledgernest-modal-2col {
+    grid-template-columns: 1fr !important;
+  }
+  .ledgernest-modal-summary {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+/* ============================================================
+   PRINT
+   ============================================================ */
+@media print {
+  .ledgernest-side,
+  .ledgernest-topbar,
+  .ledgernest-fab,
+  .ledgernest-add-menu {
+    display: none !important;
+  }
+
+  .ledgernest-app {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================
+   FOCUS VISIBLE
+   ============================================================ */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+@keyframes ledgernest-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes ledgernest-slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ledgernest-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.ledgernest-animate-in {
+  animation: ledgernest-slide-up 0.3s ease;
+}
+
+.ledgernest-spinner {
+  animation: ledgernest-spin 0.8s linear infinite;
+}
+
+/* ── Range input — cross-platform normalization ──────────────
+   Replaces accentColor (OS-dependent) with a controlled CSS
+   variable --range-accent so the thumb color is always correct
+   regardless of the Windows system accent palette.           */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--range-accent, var(--accent)) 0%,
+    var(--range-accent, var(--accent)) var(--range-fill, 0%),
+    var(--bg-elevated) var(--range-fill, 0%),
+    var(--bg-elevated) 100%
+  );
+  outline: none;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--range-accent, var(--accent));
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--range-accent, var(--accent));
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+}
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-elevated);
+}

@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Next.js build
+.next/
+out/
+dist/
+
+# Build info
+tsconfig.tsbuildinfo
+
+# Environment — NEVER commit, contains secrets
+.env
+.env.local
+.env.*.local
+.env.production
+
+# Database — contains user data
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Logs
+dev.log
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
