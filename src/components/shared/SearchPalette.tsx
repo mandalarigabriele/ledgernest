@@ -7,7 +7,7 @@ import { useUIStore } from '@/stores/uiStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useFinanceStore } from '@/stores/financeStore'
 import { usePricesStore } from '@/stores/pricesStore'
-import { fmtEur } from '@/lib/utils/format'
+import { useFormatters } from '@/hooks/useFormatters'
 import Icon from './Icon'
 
 // ── static data (hrefs and icons only — labels come from translations) ────
@@ -46,6 +46,7 @@ export default function SearchPalette() {
   const { positions } = usePortfolioStore()
   const { transactions } = useFinanceStore()
   const { quotes, eurUsd } = usePricesStore()
+  const { fmt } = useFormatters()
 
   const [query, setQuery] = useState('')
   const [focused, setFocused] = useState(0)
@@ -107,7 +108,7 @@ export default function SearchPalette() {
         kind: 'position',
         id: p.id,
         label: `${p.ticker} · ${p.name ?? p.ticker}`,
-        sub: `${typeLabel} · ${fmtEur(price)} · ${fmtPct(pct)}`,
+        sub: `${typeLabel} · ${fmt(price)} · ${fmtPct(pct)}`,
         icon: p.type === 'crypto' ? 'crypto' : p.type === 'etf' ? 'etf' : 'azioni',
         href: `/portfolio/${p.type === 'stock' ? 'stocks' : p.type}`,
         group: ts('positions'),
@@ -229,7 +230,7 @@ export default function SearchPalette() {
                       {/* Value for positions / transactions */}
                       {item.kind === 'position' && (item as { value?: number; pct?: number }).value !== undefined && (
                         <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmtEur((item as { value?: number }).value ?? 0)}</div>
+                          <div style={{ fontSize: 13, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmt((item as { value?: number }).value ?? 0)}</div>
                           <div style={{ fontSize: 11, color: ((item as { pct?: number }).pct ?? 0) >= 0 ? 'var(--success)' : 'var(--danger)' }}>
                             {fmtPct((item as { pct?: number }).pct ?? 0)}
                           </div>
@@ -237,7 +238,7 @@ export default function SearchPalette() {
                       )}
                       {item.kind === 'transaction' && (
                         <div style={{ fontSize: 13, fontWeight: 600, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-                          {fmtEur((item as { value?: number }).value ?? 0)}
+                          {fmt((item as { value?: number }).value ?? 0)}
                         </div>
                       )}
                       <div style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>

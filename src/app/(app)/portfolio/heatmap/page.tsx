@@ -4,7 +4,8 @@ import { useMemo } from 'react'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { usePricesStore } from '@/stores/pricesStore'
 import { usePrices } from '@/hooks/usePrices'
-import { fmtEur, fmtPct, deltaClass } from '@/lib/utils/format'
+import { fmtPct, deltaClass } from '@/lib/utils/format'
+import { useFormatters } from '@/hooks/useFormatters'
 import { useTranslations } from 'next-intl'
 
 function getHeatColor(pct: number): string {
@@ -19,6 +20,7 @@ function getHeatColor(pct: number): string {
 
 export default function HeatmapPage() {
   const tl = useTranslations('heatmap')
+  const { fmt } = useFormatters()
   usePrices()
   const { positions } = usePortfolioStore()
   const { quotes } = usePricesStore()
@@ -44,7 +46,7 @@ export default function HeatmapPage() {
         </div>
         <div className="ledgernest-kpi-cell">
           <div className="ledgernest-kpi-label">{tl('kpiValue')}</div>
-          <div className="ledgernest-kpi-value">{fmtEur(totalValue)}</div>
+          <div className="ledgernest-kpi-value">{fmt(totalValue)}</div>
         </div>
       </div>
 
@@ -96,7 +98,7 @@ export default function HeatmapPage() {
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(1.15)')}
                 onMouseLeave={(e) => (e.currentTarget.style.filter = '')}
-                title={`${c.ticker}: ${fmtEur(c.value)} (${fmtPct(c.changePct)})`}
+                title={`${c.ticker}: ${fmt(c.value)} (${fmtPct(c.changePct)})`}
               >
                 <div style={{ fontSize: '12px', fontWeight: 800, color: 'white', opacity: 0.95 }}>{c.ticker}</div>
                 <div style={{ fontSize: '10px', color: 'white', opacity: 0.75 }}>{fmtPct(c.changePct)}</div>

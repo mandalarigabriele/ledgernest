@@ -5,7 +5,8 @@ import { useTranslations } from 'next-intl'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { usePricesStore } from '@/stores/pricesStore'
 import { usePrices } from '@/hooks/usePrices'
-import { fmtEur, fmtPct, fmtNum, deltaClass, fmtDelta } from '@/lib/utils/format'
+import { fmtPct, fmtNum, deltaClass } from '@/lib/utils/format'
+import { useFormatters } from '@/hooks/useFormatters'
 import Sparkline from '@/components/charts/Sparkline'
 import Icon from '@/components/shared/Icon'
 import { useUIStore } from '@/stores/uiStore'
@@ -280,7 +281,7 @@ function PortfolioChart({
             <circle cx={hx} cy={hy} r="5" fill="var(--bg-surface)" stroke="#5bc8d0" strokeWidth="2" />
             <rect x={tx} y={ty} width={tw} height={th} rx="7" fill="#1a2332" stroke="rgba(91,200,208,0.3)" strokeWidth="1" />
             <text x={tx + tw / 2} y={ty + 13} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.5)" fontFamily="inherit">{dateLabel}</text>
-            <text x={tx + tw / 2} y={ty + 28} textAnchor="middle" fontSize="12" fontWeight="700" fill="#5bc8d0" fontFamily="inherit">{fmtEur(values[hoverIdx])}</text>
+            <text x={tx + tw / 2} y={ty + 28} textAnchor="middle" fontSize="12" fontWeight="700" fill="#5bc8d0" fontFamily="inherit">{fmt(values[hoverIdx])}</text>
           </g>
         )
       })()}
@@ -299,6 +300,7 @@ function useAgo(ts: number | null, tl: ReturnType<typeof useTranslations<'azioni
 
 export default function AzioniPage() {
   const tl = useTranslations('azioni')
+  const { fmt, fmtDlt } = useFormatters()
   const { refetch } = usePrices()
   const { positions, updatePosition, deletePosition } = usePortfolioStore()
   const { quotes, eurUsd, lastUpdated, loading } = usePricesStore()
@@ -404,7 +406,7 @@ export default function AzioniPage() {
             <div key={r.ticker} style={{ display: 'flex', alignItems: 'center', gap: '7px', flexShrink: 0 }}>
               {r.q?.exchange && <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.05em' }}>{r.q.exchange}</span>}
               <span style={{ fontWeight: 700, fontSize: '13px' }}>{r.ticker}</span>
-              <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: '13px' }}>{fmtEur(r.price)}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: '13px' }}>{fmt(r.price)}</span>
               {r.q && (
                 <span style={{ fontSize: '12px', fontWeight: 600, color: r.dayChangePct >= 0 ? 'var(--success)' : 'var(--danger)' }}>
                   {r.dayChangePct >= 0 ? '▲' : '▼'} {r.dayChangePct >= 0 ? '+' : ''}{r.dayChangePct.toFixed(2)}%
@@ -419,14 +421,14 @@ export default function AzioniPage() {
       <div className="ledgernest-port-kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px' }}>
         <div className="ledgernest-kpi is-hl" style={{ padding: '18px 20px', gap: '6px' }}>
           <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiTotal')}</div>
-          <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmtEur(totalValue)}</div>
+          <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmt(totalValue)}</div>
           <div style={{ fontSize: '12px', fontWeight: 500, color: totalDayChg >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-            {totalDayChg >= 0 ? '+' : ''}{fmtEur(totalDayChg)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{tl('kpiTodayPositions', { n: stocks.length })}</span>
+            {totalDayChg >= 0 ? '+' : ''}{fmt(totalDayChg)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{tl('kpiTodayPositions', { n: stocks.length })}</span>
           </div>
         </div>
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: '6px' }}>
           <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiPnl')}</div>
-          <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', color: totalPnl >= 0 ? 'var(--success)' : 'var(--danger)' }}>{fmtDelta(totalPnl)}</div>
+          <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', color: totalPnl >= 0 ? 'var(--success)' : 'var(--danger)' }}>{fmtDlt(totalPnl)}</div>
           <div style={{ fontSize: '12px', fontWeight: 500, color: totalPnl >= 0 ? 'var(--success)' : 'var(--danger)' }}>
             {fmtPct(totalPnlPct)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{tl('kpiAvgPrice')}</span>
           </div>
@@ -438,7 +440,7 @@ export default function AzioniPage() {
         </div>
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: '6px' }}>
           <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiCost')}</div>
-          <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmtEur(totalCost)}</div>
+          <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmt(totalCost)}</div>
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{tl('kpiCapital')}</div>
         </div>
       </div>
@@ -528,7 +530,7 @@ export default function AzioniPage() {
                         <div style={{ fontSize: '11px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: '13px' }}>{fmtEur(r.value)}</div>
+                        <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: '13px' }}>{fmt(r.value)}</div>
                         <div style={{ fontSize: '12px', fontWeight: 600, color: isGainer ? 'var(--success)' : 'var(--danger)' }}>
                           {r.q!.changePct >= 0 ? '+' : ''}{r.q!.changePct.toFixed(2)}%
                         </div>
@@ -644,12 +646,12 @@ export default function AzioniPage() {
                 </td>
                 <td style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{r.broker || '—'}</td>
                 <td className="num ledgernest-mono" style={{ fontSize: '13px' }}>{fmtNum(r.quantity)}</td>
-                <td className="num ledgernest-mono" style={{ fontSize: '13px' }}>{fmtEur(r.avgPriceEur)}</td>
-                <td className="num ledgernest-mono" style={{ fontSize: '13px', fontWeight: 600 }}>{fmtEur(r.price)}</td>
+                <td className="num ledgernest-mono" style={{ fontSize: '13px' }}>{fmt(r.avgPriceEur)}</td>
+                <td className="num ledgernest-mono" style={{ fontSize: '13px', fontWeight: 600 }}>{fmt(r.price)}</td>
                 <td className="num">
                   {r.extPrice ? (
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
-                      <span className="ledgernest-mono" style={{ fontSize: '13px' }}>{fmtEur(r.extPrice)}</span>
+                      <span className="ledgernest-mono" style={{ fontSize: '13px' }}>{fmt(r.extPrice)}</span>
                       <span style={{
                         fontSize: '10px', fontWeight: 600, letterSpacing: '0.04em',
                         padding: '1px 5px', borderRadius: '4px',
@@ -673,10 +675,10 @@ export default function AzioniPage() {
                 <td style={{ width: '100px', padding: '6px 12px' }}>
                   <Sparkline data={r.spark} height={32} positive={r.dayChangePct >= 0} responsive />
                 </td>
-                <td className="num ledgernest-mono" style={{ fontWeight: 600 }}>{fmtEur(r.value)}</td>
+                <td className="num ledgernest-mono" style={{ fontWeight: 600 }}>{fmt(r.value)}</td>
                 <td className="num">
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1px' }}>
-                    <span className={`ledgernest-mono ${deltaClass(r.pnl)}`} style={{ fontWeight: 600 }}>{fmtDelta(r.pnl)}</span>
+                    <span className={`ledgernest-mono ${deltaClass(r.pnl)}`} style={{ fontWeight: 600 }}>{fmtDlt(r.pnl)}</span>
                     <span className={deltaClass(r.pnlPct)} style={{ fontSize: '11px' }}>{fmtPct(r.pnlPct)}</span>
                   </div>
                 </td>

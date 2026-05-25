@@ -201,6 +201,7 @@ ul, ol { list-style: none; }
   grid-template-columns: var(--sidebar-width) 1fr;
   grid-template-rows: 1fr;
   height: 100vh;
+  height: 100dvh; /* iOS Safari: tracks actual visible viewport */
   background: var(--bg-base);
   color: var(--text-primary);
   font-feature-settings: 'cv11', 'ss01', 'tnum';
@@ -212,6 +213,7 @@ ul, ol { list-style: none; }
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
 }
 
@@ -2834,9 +2836,9 @@ ul, ol { list-style: none; }
   .ledgernest-kpis {
     grid-template-columns: 1fr 1fr !important;
   }
-  /* Portfolio table: enforce min-width so it scrolls instead of compressing */
+  /* Portfolio table: horizontal scroll instead of page overflow */
   .ledgernest-port-table-card {
-    overflow: visible !important;
+    overflow-x: auto !important;
   }
   .ledgernest-port-table-card .ledgernest-table {
     min-width: 600px;
@@ -2937,14 +2939,15 @@ ul, ol { list-style: none; }
     grid-template-columns: 1fr;
   }
 
-  /* Positions/movements table: horizontal scroll */
+  /* Positions table: drop price+sparkline cols, keep ticker/qty/value/pct */
   .ledgernest-thead,
   .ledgernest-trow {
-    grid-template-columns: 2fr 0.7fr 0 0 1fr 0.9fr;
+    grid-template-columns: 2fr 0.7fr 1fr 0.9fr;
     font-size: 11px;
     gap: 4px;
   }
-  /* Hide Prezzo (col 3) and sparkline (col 4) on mobile */
+  /* Hide Prezzo (col 3) and sparkline (col 4) on mobile — display:none removes
+     them from grid flow, so items 5+6 auto-place into the new cols 3+4 */
   .ledgernest-thead > *:nth-child(3),
   .ledgernest-trow  > *:nth-child(3),
   .ledgernest-thead > *:nth-child(4),
@@ -3000,7 +3003,7 @@ ul, ol { list-style: none; }
     grid-template-columns: 1fr !important;
   }
   .ledgernest-port-table-card {
-    overflow: visible !important;
+    overflow-x: auto !important;
   }
   .ledgernest-port-table-card .ledgernest-table {
     min-width: 600px;
@@ -3167,6 +3170,18 @@ ul, ol { list-style: none; }
   }
 }
 
+/* ── Net-worth accounts + composition 2-col grid ─────────── */
+.ledgernest-nw-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 768px) {
+  .ledgernest-nw-grid-2col {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ── Chart tab strip: hide scrollbar globally ────────────── */
 .ledgernest-chart-tabs {
   scrollbar-width: none;
@@ -3236,7 +3251,19 @@ ul, ol { list-style: none; }
     width: 100% !important;
     max-width: 100% !important;
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    max-height: 92vh;
+    max-height: 92dvh;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  /* Drag handle above modal content */
+  .ledgernest-modal::before {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: var(--border-strong);
+    border-radius: 2px;
+    margin: 10px auto 0;
+    flex-shrink: 0;
   }
   .ledgernest-modal-2col {
     grid-template-columns: 1fr !important;

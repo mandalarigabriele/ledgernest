@@ -8,7 +8,7 @@ import {
   type ParsedRow, type ParsedTransaction, type ParsedTrade, type DetectedFormat,
 } from '@/lib/utils/csvImport'
 import { useSettingsStore } from '@/stores/settingsStore'
-import { fmtEur } from '@/lib/utils/format'
+import { useFormatters } from '@/hooks/useFormatters'
 import { CG_ID_MAP } from '@/lib/services/coinGecko'
 import { CategoryPicker } from '@/components/shared/CategoryPicker'
 import MerchantInput from '@/components/shared/MerchantInput'
@@ -42,6 +42,7 @@ interface Props {
 // ── component ─────────────────────────────────────────────────
 
 export default function CSVImportWizard({ onClose }: Props) {
+  const { fmt } = useFormatters()
   const { accounts, transactions, addAccount, addTransaction, updateAccount } = useFinanceStore()
   const { positions, addPosition } = usePortfolioStore()
   const { settings, updateSettings } = useSettingsStore()
@@ -554,7 +555,7 @@ export default function CSVImportWizard({ onClose }: Props) {
                         <input type="radio" name="account" value={a.id} checked={accountId === a.id} onChange={() => setAccountId(a.id)} style={{ accentColor: 'var(--accent)' }} />
                         <span style={{ fontWeight: 600, fontSize: 13 }}>{a.name}</span>
                         <span style={{ fontSize: 11, color: 'var(--text-tertiary)', padding: '2px 6px', borderRadius: 4, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', textTransform: 'capitalize' }}>{a.type}</span>
-                        <span style={{ marginLeft: 'auto', fontWeight: 600, fontSize: 13 }}>{fmtEur(a.balance)}</span>
+                        <span style={{ marginLeft: 'auto', fontWeight: 600, fontSize: 13 }}>{fmt(a.balance)}</span>
                       </label>
                     ))}
                     <button
@@ -671,10 +672,10 @@ export default function CSVImportWizard({ onClose }: Props) {
                                 {trade.price > 0 ? trade.price.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '—'}
                               </td>
                               <td style={{ padding: '8px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontSize: 11.5, color: 'var(--text-secondary)' }}>
-                                {trade.commission > 0 ? fmtEur(trade.commission) : '—'}
+                                {trade.commission > 0 ? fmt(trade.commission) : '—'}
                               </td>
                               <td style={{ padding: '8px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontSize: 11.5, fontWeight: 600 }}>
-                                {trade.amount > 0 ? fmtEur(trade.amount) : '—'}
+                                {trade.amount > 0 ? fmt(trade.amount) : '—'}
                               </td>
                               <td style={{ padding: '8px 12px' }}>
                                 {isLoading ? (
@@ -784,7 +785,7 @@ export default function CSVImportWizard({ onClose }: Props) {
                                 />
                               </td>
                               <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: tx.type === 'income' ? 'var(--success, #3fb950)' : 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                                {tx.type === 'income' ? '+' : tx.type === 'expense' ? '-' : ''}{fmtEur(tx.amount)}
+                                {tx.type === 'income' ? '+' : tx.type === 'expense' ? '-' : ''}{fmt(tx.amount)}
                               </td>
                               <td style={{ padding: '6px 10px', textAlign: 'right' }}>
                                 <select
@@ -885,7 +886,7 @@ export default function CSVImportWizard({ onClose }: Props) {
                                   <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>€</span>
                                 </div>
                               </td>
-                              <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{trade.amount > 0 ? fmtEur(trade.amount) : '—'}</td>
+                              <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{trade.amount > 0 ? fmt(trade.amount) : '—'}</td>
                             </tr>
                           )
                         })}

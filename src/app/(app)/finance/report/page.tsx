@@ -5,7 +5,8 @@ import { useTranslations } from 'next-intl'
 import { useFinanceStore } from '@/stores/financeStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { usePricesStore } from '@/stores/pricesStore'
-import { fmtEur, deltaClass } from '@/lib/utils/format'
+import { deltaClass } from '@/lib/utils/format'
+import { useFormatters } from '@/hooks/useFormatters'
 import BarChart from '@/components/charts/BarChart'
 import LineChart from '@/components/charts/LineChart'
 import Donut from '@/components/charts/Donut'
@@ -84,6 +85,7 @@ function YoYBadge({ curr, prev }: { curr: number; prev: number }) {
 
 export default function ReportPage() {
   const tl = useTranslations('report')
+  const { fmt } = useFormatters()
   const { transactions } = useFinanceStore()
   const { positions } = usePortfolioStore()
   const { quotes, eurUsd } = usePricesStore()
@@ -248,7 +250,7 @@ export default function ReportPage() {
               {kpi.label}
             </div>
             <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', color: kpi.hl ? undefined : kpi.color }}>
-              {fmtEur(kpi.value)}
+              {fmt(kpi.value)}
             </div>
             <div style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               {kpi.count !== null
@@ -276,7 +278,7 @@ export default function ReportPage() {
             </div>
           </div>
           <div className="ledgernest-card-body">
-            <BarChart data={monthlyBars} paired formatValue={fmtEur} height={180} />
+            <BarChart data={monthlyBars} paired formatValue={fmt} height={180} />
           </div>
         </div>
 
@@ -346,7 +348,7 @@ export default function ReportPage() {
                           <td className="num" style={{ width: 60 }}>
                             <Sparkline data={m.byMonth} width={56} height={24} color="var(--danger)" positive={false} />
                           </td>
-                          <td className="num ledgernest-mono" style={{ fontWeight: 600 }}>{fmtEur(m.total)}</td>
+                          <td className="num ledgernest-mono" style={{ fontWeight: 600 }}>{fmt(m.total)}</td>
                         </tr>
                       )
                     })
@@ -372,7 +374,7 @@ export default function ReportPage() {
                 <Donut
                   data={byCategory}
                   size={140}
-                  label={fmtEur(byCategory.reduce((s, c) => s + c.value, 0))}
+                  label={fmt(byCategory.reduce((s, c) => s + c.value, 0))}
                   sublabel={tl('expensesByCatSpent')}
                 />
               </div>
@@ -388,7 +390,7 @@ export default function ReportPage() {
                           </div>
                         </td>
                         <td className="num" style={{ color: 'var(--text-tertiary)' }}>{c.pct.toFixed(0)}%</td>
-                        <td className="num ledgernest-mono" style={{ fontWeight: 600 }}>{fmtEur(c.value)}</td>
+                        <td className="num ledgernest-mono" style={{ fontWeight: 600 }}>{fmt(c.value)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -433,7 +435,7 @@ export default function ReportPage() {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
                           <span style={{ fontWeight: 700, fontSize: 12, fontFamily: 'monospace' }}>{r.ticker}</span>
-                          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{fmtEur(r.value)}</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{fmt(r.value)}</span>
                         </div>
                         <div style={{ height: 4, background: 'var(--bg-elevated)', borderRadius: 99, overflow: 'hidden', marginBottom: 2 }}>
                           <div style={{ height: '100%', width: `${barPct}%`, background: positive ? 'var(--success)' : 'var(--danger)', borderRadius: 99, transition: 'width 0.4s' }} />

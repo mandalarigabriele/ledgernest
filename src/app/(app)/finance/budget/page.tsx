@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { useFinanceStore } from '@/stores/financeStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { usePricesStore } from '@/stores/pricesStore'
-import { fmtEur } from '@/lib/utils/format'
+import { useFormatters } from '@/hooks/useFormatters'
 import Icon from '@/components/shared/Icon'
 import { useTranslations } from 'next-intl'
 import type { BudgetCategory } from '@/types'
@@ -42,6 +42,7 @@ const colLabelStyle: React.CSSProperties = {
 // ── shared components ─────────────────────────────────────────
 
 function RemPill({ v }: { v: number }) {
+  const { fmt } = useFormatters()
   const isNeg = v < 0
   return (
     <div style={{
@@ -50,12 +51,13 @@ function RemPill({ v }: { v: number }) {
       background: isNeg ? 'var(--danger)' : 'color-mix(in oklch, var(--success) 18%, transparent)',
       color: isNeg ? '#fff' : 'var(--success)',
     }}>
-      {isNeg ? '−' : ''}{fmtEur(Math.abs(v))}
+      {isNeg ? '−' : ''}{fmt(Math.abs(v))}
     </div>
   )
 }
 
 function AttesoPill({ planned, received }: { planned: number; received: number }) {
+  const { fmt } = useFormatters()
   const atteso = Math.max(0, planned - received)
   const isZero = atteso === 0
   return (
@@ -65,7 +67,7 @@ function AttesoPill({ planned, received }: { planned: number; received: number }
       background: isZero ? 'color-mix(in oklch, var(--success) 18%, transparent)' : 'color-mix(in oklch, var(--warning) 22%, transparent)',
       color: isZero ? 'var(--success)' : 'var(--warning)',
     }}>
-      {fmtEur(atteso)}
+      {fmt(atteso)}
     </div>
   )
 }
@@ -77,6 +79,7 @@ function LeafCategoryRow({ cat, budget, spent, onBudgetChange, income = 0 }: {
   onBudgetChange: (v: number) => void
   income?: number
 }) {
+  const { fmt } = useFormatters()
   const rem     = budget - spent
   const isOver  = budget > 0 && spent > budget
   const incPct  = income > 0 && budget > 0 ? Math.round((budget / income) * 100) : null
@@ -107,7 +110,7 @@ function LeafCategoryRow({ cat, budget, spent, onBudgetChange, income = 0 }: {
           {incPct !== null && <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{incPct}%</span>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <span style={{ fontSize: 13, color: isOver ? 'var(--danger)' : 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fmtEur(spent)}</span>
+          <span style={{ fontSize: 13, color: isOver ? 'var(--danger)' : 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(spent)}</span>
           {spentPct !== null && <span style={{ fontSize: 10, color: isOver ? 'var(--danger)' : 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{spentPct}%</span>}
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -125,6 +128,7 @@ function LeafCategoryRow({ cat, budget, spent, onBudgetChange, income = 0 }: {
 
 export default function BudgetPage() {
   const tl = useTranslations('budget')
+  const { fmt } = useFormatters()
   const now = new Date()
   const currentMonthKey = now.toISOString().slice(0, 7)
 
@@ -382,7 +386,7 @@ export default function BudgetPage() {
     if (needsPct > 50)     diagnostica.push({ type: 'warning', msg: tl('diagNeeds', { pct: needsPct.toFixed(0) }) })
     if (lifestylePct > 30) diagnostica.push({ type: 'warning', msg: tl('diagLifestyle', { pct: lifestylePct.toFixed(0) }) })
     if (savingsPct < 10)   diagnostica.push({ type: 'warning', msg: tl('diagSavings', { pct: savingsPct.toFixed(0) }) })
-    if (available < 0)     diagnostica.push({ type: 'warning', msg: tl('diagOver', { amt: fmtEur(Math.abs(available)) }) })
+    if (available < 0)     diagnostica.push({ type: 'warning', msg: tl('diagOver', { amt: fmt(Math.abs(available)) }) })
   }
   if (totalBudget === 0 && income > 0) diagnostica.push({ type: 'info', msg: tl('diagNoBudget') })
 
@@ -446,8 +450,8 @@ export default function BudgetPage() {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
-            <div className="ledgernest-budget-bignum" style={{ fontSize: 42, fontWeight: 900, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.03em' }}>{fmtEur(totalSpent)}</div>
-            <div style={{ fontSize: 16, color: 'var(--text-secondary)', fontWeight: 600 }}>{tl('summaryOf', { total: fmtEur(totalBudget) })}</div>
+            <div className="ledgernest-budget-bignum" style={{ fontSize: 42, fontWeight: 900, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.03em' }}>{fmt(totalSpent)}</div>
+            <div style={{ fontSize: 16, color: 'var(--text-secondary)', fontWeight: 600 }}>{tl('summaryOf', { total: fmt(totalBudget) })}</div>
           </div>
           {totalBudget > 0 && (
             <div style={{ position: 'relative', height: 7, background: 'var(--bg-elevated)', borderRadius: 99, marginBottom: 8, overflow: 'visible' }}>
@@ -462,7 +466,7 @@ export default function BudgetPage() {
           )}
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: totalBudget - totalSpent >= 0 ? 'var(--text-secondary)' : 'var(--danger)', fontVariantNumeric: 'tabular-nums' }}>
-              {tl('summaryRemaining', { rem: fmtEur(Math.abs(totalBudget - totalSpent)) })}
+              {tl('summaryRemaining', { rem: fmt(Math.abs(totalBudget - totalSpent)) })}
             </span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
@@ -478,7 +482,7 @@ export default function BudgetPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, background: projection > totalBudget ? 'color-mix(in oklch, var(--danger) 10%, transparent)' : 'color-mix(in oklch, var(--success) 10%, transparent)', border: `1px solid ${projection > totalBudget ? 'color-mix(in oklch, var(--danger) 25%, transparent)' : 'color-mix(in oklch, var(--success) 25%, transparent)'}` }}>
                 <span style={{ fontSize: 13, color: projection > totalBudget ? 'var(--danger)' : 'var(--success)' }}>↗</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: projection > totalBudget ? 'var(--danger)' : 'var(--success)', fontVariantNumeric: 'tabular-nums' }}>
-                  {tl('projectionLabel', { amt: fmtEur(projection) })}
+                  {tl('projectionLabel', { amt: fmt(projection) })}
                 </span>
               </div>
             )}
@@ -486,7 +490,7 @@ export default function BudgetPage() {
               <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, background: 'color-mix(in oklch, var(--warning) 10%, transparent)', border: '1px solid color-mix(in oklch, var(--warning) 25%, transparent)' }}>
                 <span style={{ fontSize: 13 }}>🔔</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--warning)', fontVariantNumeric: 'tabular-nums' }}>
-                  {tl('overrunMessage', { category: c.name, amt: fmtEur((spentByCategory[c.id] ?? 0) - getCatBudget(c.id)) })}
+                  {tl('overrunMessage', { category: c.name, amt: fmt((spentByCategory[c.id] ?? 0) - getCatBudget(c.id)) })}
                 </span>
               </div>
             ))}
@@ -497,7 +501,7 @@ export default function BudgetPage() {
         <div className="ledgernest-card" style={{ padding: '20px 22px' }}>
           <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3 }}>{tl('whereMoneyGoes')}</div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>
-            {tl('whereMoneyDesc', { income: fmtEur(income), pct: allocPct })}
+            {tl('whereMoneyDesc', { income: fmt(income), pct: allocPct })}
           </div>
           {income > 0 && (
             <>
@@ -510,7 +514,7 @@ export default function BudgetPage() {
                 })}
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', marginBottom: 18 }}>
-                {[0, 0.25, 0.5, 0.75, 1].map((f) => <span key={f}>{f === 0 ? '€0' : fmtEur(income * f).replace(',00', '')}</span>)}
+                {[0, 0.25, 0.5, 0.75, 1].map((f) => <span key={f}>{f === 0 ? '€0' : fmt(income * f).replace(',00', '')}</span>)}
               </div>
             </>
           )}
@@ -529,7 +533,7 @@ export default function BudgetPage() {
                     <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{g.desc}</div>
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontWeight: 800, fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>{fmtEur(total)}</div>
+                    <div style={{ fontWeight: 800, fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>{fmt(total)}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'flex-end' }}>
                       <span>{pct.toFixed(0)}%</span>
                       <span style={{ fontWeight: 700, fontSize: 10, padding: '1px 7px', borderRadius: 20, background: onTarget ? 'color-mix(in oklch, var(--success) 15%, transparent)' : 'var(--bg-elevated)', color: onTarget ? 'var(--success)' : 'var(--text-tertiary)', border: `1px solid ${onTarget ? 'color-mix(in oklch, var(--success) 30%, transparent)' : 'transparent'}` }}>
@@ -595,7 +599,7 @@ export default function BudgetPage() {
                   >
                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: tab.color, flexShrink: 0, display: 'inline-block' }} />
                     {tab.label}
-                    <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 800 }}>{fmtEur(tab.amount)}</span>
+                    <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 800 }}>{fmt(tab.amount)}</span>
                   </button>
                 ))}
               </div>
@@ -629,8 +633,8 @@ export default function BudgetPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 140px 110px 90px', padding: '9px 20px', background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-subtle)', alignItems: 'center' }}>
               <div />
               <div style={{ fontWeight: 700, fontSize: 13, paddingLeft: 8 }}>{tl('totalIncome')}</div>
-              <div style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmtEur(income)}</div>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fmtEur(actualIncome)}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(income)}</div>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(actualIncome)}</div>
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}><AttesoPill planned={income} received={actualIncome} /></div>
             </div>
 
@@ -647,8 +651,8 @@ export default function BudgetPage() {
                       <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 140px 110px 90px', padding: '8px 20px', background: 'color-mix(in oklch, var(--bg-elevated) 60%, transparent)', borderBottom: '1px solid var(--border-subtle)', alignItems: 'center' }}>
                         <div style={{ width: 28, height: 28, borderRadius: 8, background: `${midCat.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>{midCat.emoji}</div>
                         <span style={{ fontWeight: 700, fontSize: 13, paddingLeft: 8 }}>{midCat.name}</span>
-                        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>{fmtEur(midPlanned)}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fmtEur(midReceived)}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(midPlanned)}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(midReceived)}</div>
                         <div />
                       </div>
                       {/* Leaf rows */}
@@ -685,7 +689,7 @@ export default function BudgetPage() {
                                 </div>
                                 {sharePct !== null && <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>{sharePct}%</span>}
                               </div>
-                              <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fmtEur(received)}</div>
+                              <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(received)}</div>
                               <div style={{ display: 'flex', justifyContent: 'flex-end' }}><AttesoPill planned={planned} received={received} /></div>
                             </div>
                           </div>
@@ -728,7 +732,7 @@ export default function BudgetPage() {
                           </div>
                           {sharePct !== null && <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>{sharePct}%</span>}
                         </div>
-                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fmtEur(received)}</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(received)}</div>
                         <div style={{ display: 'flex', justifyContent: 'flex-end' }}><AttesoPill planned={planned} received={received} /></div>
                       </div>
                     </div>
@@ -779,10 +783,10 @@ export default function BudgetPage() {
                   <div />
                   <div style={{ fontWeight: 700, fontSize: 13, paddingLeft: 8 }}>{tl('totalExpenseGroup', { group: group.label.toLowerCase() })}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmtEur(catTotal)}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(catTotal)}</span>
                     {income > 0 && catTotal > 0 && <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{Math.round(catTotal / income * 100)}%</span>}
                   </div>
-                  <div style={{ fontSize: 13, color: catSpent > catTotal && catTotal > 0 ? 'var(--danger)' : 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fmtEur(catSpent)}</div>
+                  <div style={{ fontSize: 13, color: catSpent > catTotal && catTotal > 0 ? 'var(--danger)' : 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(catSpent)}</div>
                   <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                     {catTotal > 0 ? <RemPill v={catRem} /> : <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>—</span>}
                   </div>
@@ -830,7 +834,7 @@ export default function BudgetPage() {
                   <span style={{ fontWeight: 800, fontSize: 15 }}>{tl('goalsSection')}</span>
                   <span style={{ fontSize: 12, color: 'var(--text-secondary)', marginLeft: 10 }}>{tl('goalsSectionDesc')}</span>
                 </div>
-                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', fontVariantNumeric: 'tabular-nums', marginRight: 12 }}>{fmtEur(totalGoalContrib)}{tl('perMonth')}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', fontVariantNumeric: 'tabular-nums', marginRight: 12 }}>{fmt(totalGoalContrib)}{tl('perMonth')}</span>
                 <span style={{ fontSize: 12, color: 'var(--text-tertiary)', transition: 'transform .2s', transform: collapsed.has('goals') ? 'rotate(-90deg)' : 'rotate(0deg)', display: 'inline-block' }}>▾</span>
               </div>
               {!collapsed.has('goals') && (<>
@@ -854,7 +858,7 @@ export default function BudgetPage() {
                       <div style={{ width: 28, height: 28, borderRadius: 7, background: `${goal.color}28`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>{goal.icon}</div>
                       <div style={{ paddingLeft: 8 }}>
                         <div style={{ fontWeight: 600, fontSize: 13 }}>{goal.name}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 1 }}>{progress.toFixed(0)}% · {fmtEur(goal.currentAmount)} di {fmtEur(goal.targetAmount)}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 1 }}>{progress.toFixed(0)}% · {fmt(goal.currentAmount)} di {fmt(goal.targetAmount)}</div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg-elevated)', borderRadius: 8, padding: '3px 8px', border: '1px solid var(--border-subtle)', width: 'fit-content' }}>
                         <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>€</span>
@@ -896,7 +900,7 @@ export default function BudgetPage() {
                 {available >= 0 ? tl('sidebarAssign') : tl('sidebarOver')}
               </div>
               <div style={{ fontSize: 34, fontWeight: 900, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', color: available >= 0 ? '#4ade80' : 'var(--danger)', lineHeight: 1 }}>
-                {available < 0 ? '−' : ''}{fmtEur(Math.abs(available))}
+                {available < 0 ? '−' : ''}{fmt(Math.abs(available))}
               </div>
               {income > 0 && <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 5 }}>{tl('sidebarPctAllocated', { pct: allocPct })}</div>}
             </div>
@@ -931,20 +935,20 @@ export default function BudgetPage() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 7 }}>
                         <span style={{ fontSize: 13, fontWeight: 700 }}>{s.label}</span>
                         <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
-                          {s.planned > 0 ? fmtEur(s.planned) : '—'}
+                          {s.planned > 0 ? fmt(s.planned) : '—'}
                         </span>
                       </div>
                       <div style={{ height: 5, background: 'var(--bg-elevated)', borderRadius: 99, overflow: 'hidden', marginBottom: 7 }}>
                         <div style={{ height: '100%', width: `${pct}%`, background: over ? 'var(--danger)' : s.color, borderRadius: 99, transition: 'width .3s' }} />
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: over ? 'var(--danger)' : 'var(--text-primary)' }}>{fmtEur(s.actual)}</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: over ? 'var(--danger)' : 'var(--text-primary)' }}>{fmt(s.actual)}</span>
                         <div style={{
                           fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 20, fontVariantNumeric: 'tabular-nums',
                           background: s.rem < 0 ? 'var(--danger)' : `color-mix(in oklch, ${s.color} 18%, transparent)`,
                           color: s.rem < 0 ? '#fff' : s.color,
                         }}>
-                          {s.rem < 0 ? '−' : ''}{fmtEur(Math.abs(s.rem))} {s.remLabel}
+                          {s.rem < 0 ? '−' : ''}{fmt(Math.abs(s.rem))} {s.remLabel}
                         </div>
                       </div>
                     </div>
@@ -1008,7 +1012,7 @@ export default function BudgetPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                           <div style={{ width: 8, height: 8, borderRadius: '50%', background: group.color, flexShrink: 0 }} />
                           <span style={{ fontSize: 14, fontWeight: 700, flex: 1 }}>{group.label}</span>
-                          <span style={{ fontSize: 14, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{fmtEur(curAmt)}</span>
+                          <span style={{ fontSize: 14, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{fmt(curAmt)}</span>
                           {delta !== null && (
                             <span style={{ fontSize: 12, fontWeight: 700, color: delta <= 0 ? 'var(--success)' : 'var(--danger)', minWidth: 40, textAlign: 'right' }}>
                               {delta > 0 ? '+' : ''}{delta.toFixed(0)}%
@@ -1051,7 +1055,7 @@ export default function BudgetPage() {
               <div style={{ padding: '18px 22px' }}>
                 <div style={{ marginBottom: 18 }}>
                   <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 3 }}>{tl('moneyFlowTitle')}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{tl('moneyFlowDesc', { income: income > 0 ? fmtEur(income) : '—' })}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{tl('moneyFlowDesc', { income: income > 0 ? fmt(income) : '—' })}</div>
                 </div>
                 {income > 0 ? (<>
                   <div style={{ height: 22, background: 'var(--bg-elevated)', borderRadius: 8, overflow: 'hidden', display: 'flex', marginBottom: 18 }}>
@@ -1080,7 +1084,7 @@ export default function BudgetPage() {
                         <div key={g.key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div style={{ width: 10, height: 10, borderRadius: '50%', background: g.color, flexShrink: 0 }} />
                           <div style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{g.label}</div>
-                          <div style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>{fmtEur(amt)}</div>
+                          <div style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>{fmt(amt)}</div>
                           <div style={{ fontSize: 11, color: 'var(--text-tertiary)', width: 32, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{pct.toFixed(0)}%</div>
                         </div>
                       )
@@ -1089,7 +1093,7 @@ export default function BudgetPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#a78bfa', flexShrink: 0 }} />
                         <div style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{tl('flowGoals')}</div>
-                        <div style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>{fmtEur(totalGoalContrib)}</div>
+                        <div style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>{fmt(totalGoalContrib)}</div>
                         <div style={{ fontSize: 11, color: 'var(--text-tertiary)', width: 32, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{(totalGoalContrib / income * 100).toFixed(0)}%</div>
                       </div>
                     )}
@@ -1097,7 +1101,7 @@ export default function BudgetPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 6, borderTop: '1px solid var(--border-subtle)' }}>
                         <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--border)', flexShrink: 0 }} />
                         <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: 'var(--text-tertiary)' }}>{tl('flowUnallocated')}</div>
-                        <div style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: 'var(--text-tertiary)' }}>{fmtEur(available)}</div>
+                        <div style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: 'var(--text-tertiary)' }}>{fmt(available)}</div>
                         <div style={{ fontSize: 11, color: 'var(--text-tertiary)', width: 32, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{(available / income * 100).toFixed(0)}%</div>
                       </div>
                     )}

@@ -759,8 +759,8 @@ export default function ImpostazioniPage() {
                 className="ledgernest-input"
                 placeholder={t('selfNamePlaceholder')}
                 value={settings.selfName ?? ''}
-                onChange={(e) => updateSettings({ selfName: e.target.value.toUpperCase() })}
-                style={{ width: 240, textTransform: 'uppercase' }}
+                onChange={(e) => updateSettings({ selfName: e.target.value })}
+                style={{ width: 240 }}
               />
             </SettingRow>
             <SettingRow

@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { usePricesStore } from '@/stores/pricesStore'
 import { usePrices } from '@/hooks/usePrices'
-import { fmtEur, fmtUsd, fmtPct, deltaClass } from '@/lib/utils/format'
+import { fmtUsd, fmtPct, deltaClass } from '@/lib/utils/format'
+import { useFormatters } from '@/hooks/useFormatters'
 import Donut from '@/components/charts/Donut'
 import Sparkline from '@/components/charts/Sparkline'
 import Icon from '@/components/shared/Icon'
@@ -214,7 +215,7 @@ function CryptoChart({
             <circle cx={hx} cy={hy} r="5" fill="var(--bg-surface)" stroke="#5bc8d0" strokeWidth="2" />
             <rect x={tx} y={ty} width={tw} height={th} rx="7" fill="#1a2332" stroke="rgba(91,200,208,0.3)" strokeWidth="1" />
             <text x={tx + tw / 2} y={ty + 13} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.5)" fontFamily="inherit">{dateLabel}</text>
-            <text x={tx + tw / 2} y={ty + 28} textAnchor="middle" fontSize="12" fontWeight="700" fill="#5bc8d0" fontFamily="inherit">{fmtEur(values[hoverIdx])}</text>
+            <text x={tx + tw / 2} y={ty + 28} textAnchor="middle" fontSize="12" fontWeight="700" fill="#5bc8d0" fontFamily="inherit">{fmt(values[hoverIdx])}</text>
           </g>
         )
       })()}
@@ -299,6 +300,7 @@ function PositionRowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: (
 
 export default function CryptoPage() {
   const tl = useTranslations('crypto')
+  const { fmt, fmtDlt } = useFormatters()
   const { refetch } = usePrices()
   const { positions, deletePosition, updatePosition } = usePortfolioStore()
   const { quotes, eurUsd, loading: quotesLoading } = usePricesStore()
@@ -370,7 +372,7 @@ export default function CryptoPage() {
       <div className="ledgernest-port-kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
         <div className="ledgernest-kpi is-hl" style={{ padding: '18px 20px', gap: 5 }}>
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiTotal')}</div>
-          <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{fmtEur(totalValue)}</div>
+          <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{fmt(totalValue)}</div>
           <div style={{ fontSize: 12, fontWeight: 600, color: totalDayPct >= 0 ? '#3fb950' : 'var(--danger)' }}>
             {totalDayPct >= 0 ? '+' : ''}{totalDayPct.toFixed(2)}% <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{tl('kpiToday')}</span>
           </div>
@@ -379,7 +381,7 @@ export default function CryptoPage() {
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: 5 }}>
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiPnl')}</div>
           <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', color: totalPnl >= 0 ? '#3fb950' : 'var(--danger)' }}>
-            {totalPnl >= 0 ? '+' : ''}{fmtEur(totalPnl)}
+            {totalPnl >= 0 ? '+' : ''}{fmt(totalPnl)}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
             <span style={{ fontWeight: 700, color: totalPnl >= 0 ? '#3fb950' : 'var(--danger)' }}>
@@ -403,7 +405,7 @@ export default function CryptoPage() {
           <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em' }}>{biggest?.ticker ?? '—'}</div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
             {biggest && totalValue > 0
-              ? <><span style={{ fontWeight: 700 }}>{((biggest.value / totalValue) * 100).toFixed(0)}% {tl('kpiOfPortfolio')}</span> {fmtEur(biggest.value)}</>
+              ? <><span style={{ fontWeight: 700 }}>{((biggest.value / totalValue) * 100).toFixed(0)}% {tl('kpiOfPortfolio')}</span> {fmt(biggest.value)}</>
               : '—'}
           </div>
         </div>
@@ -463,7 +465,7 @@ export default function CryptoPage() {
               <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ width: 10, height: 10, borderRadius: '50%', background: r.color, flexShrink: 0 }} />
                 <span style={{ fontSize: 13, fontWeight: 600, width: 50 }}>{r.ticker.replace(/-USD$|-EUR$|\..*/, '')}</span>
-                <span style={{ flex: 1, fontSize: 12, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fmtEur(r.value)}</span>
+                <span style={{ flex: 1, fontSize: 12, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(r.value)}</span>
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)' }}>
                   {totalValue > 0 ? ((r.value / totalValue) * 100).toFixed(1) : '0'}%
                 </span>
@@ -547,9 +549,9 @@ export default function CryptoPage() {
                     {r.quantity.toLocaleString('it-IT', { maximumFractionDigits: 6 })}
                   </td>
                   <td className="num ledgernest-mono" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                    {fmtEur(r.avgPriceEur)}
+                    {fmt(r.avgPriceEur)}
                   </td>
-                  <td className="num ledgernest-mono" style={{ fontSize: 13, fontWeight: 600 }}>{fmtEur(r.price)}</td>
+                  <td className="num ledgernest-mono" style={{ fontSize: 13, fontWeight: 600 }}>{fmt(r.price)}</td>
                   <td className={`num ${deltaClass(r.dayChangePct)}`} style={{ fontWeight: 700, fontSize: 13 }}>
                     {r.q ? `${r.dayChangePct >= 0 ? '+' : ''}${r.dayChangePct.toFixed(2)}%` : '—'}
                   </td>
@@ -557,12 +559,12 @@ export default function CryptoPage() {
                     <Sparkline data={r.spark} height={28} positive={r.dayChangePct >= 0} responsive />
                   </td>
                   <td className="num ledgernest-mono" style={{ fontSize: 13, fontWeight: 600 }}>
-                    {fmtEur(r.value)}
+                    {fmt(r.value)}
                   </td>
                   <td className="num">
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
                       <span className={`ledgernest-mono ${deltaClass(r.pnl)}`} style={{ fontSize: 13, fontWeight: 600 }}>
-                        {r.pnl >= 0 ? '+' : ''}{fmtEur(r.pnl)}
+                        {r.pnl >= 0 ? '+' : ''}{fmt(r.pnl)}
                       </span>
                       <span className={deltaClass(r.pnlPct)} style={{ fontSize: 11 }}>
                         {r.pnlPct >= 0 ? '+' : ''}{r.pnlPct.toFixed(2)}%

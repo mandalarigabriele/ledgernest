@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useFinanceStore } from '@/stores/financeStore'
 import { useUIStore } from '@/stores/uiStore'
-import { fmtEur } from '@/lib/utils/format'
+import { useFormatters } from '@/hooks/useFormatters'
 import CircularProgress from '@/components/charts/CircularProgress'
 import Icon from '@/components/shared/Icon'
 import { useTranslations } from 'next-intl'
@@ -152,6 +152,7 @@ function GoalCard({
 }) {
   const tl = useTranslations('obiettivi')
   const [hovered, setHovered] = useState(false)
+  const { fmt } = useFormatters()
   const pct = g.targetAmount > 0 ? Math.min(100, (g.currentAmount / g.targetAmount) * 100) : 0
   const remaining = Math.max(0, g.targetAmount - g.currentAmount)
   const months = monthsToCompletion(g)
@@ -245,9 +246,9 @@ function GoalCard({
       {/* Stats grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
         {[
-          { label: tl('statsActual'),   value: fmtEur(g.currentAmount) },
-          { label: tl('statsTarget'),   value: fmtEur(g.targetAmount) },
-          { label: tl('statsMonthly'),  value: g.monthlyContribution > 0 ? fmtEur(g.monthlyContribution) : '—' },
+          { label: tl('statsActual'),   value: fmt(g.currentAmount) },
+          { label: tl('statsTarget'),   value: fmt(g.targetAmount) },
+          { label: tl('statsMonthly'),  value: g.monthlyContribution > 0 ? fmt(g.monthlyContribution) : '—' },
           { label: tl('statsDeadline'), value: fmtScadenza(g, tl('statsMonths')) },
         ].map(({ label, value }) => (
           <div key={label}>
@@ -264,7 +265,7 @@ function GoalCard({
         </div>
         {!completed && (
           <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-tertiary)' }}>
-            {tl('statsRemaining', { rem: fmtEur(remaining), months: months ?? 0 })}
+            {tl('statsRemaining', { rem: fmt(remaining), months: months ?? 0 })}
           </div>
         )}
       </div>
@@ -301,6 +302,7 @@ function DeleteConfirm({ goal, onConfirm, onCancel }: { goal: Goal; onConfirm: (
 
 export default function ObiettiviPage() {
   const tl = useTranslations('obiettivi')
+  const { fmt } = useFormatters()
   const { goals, featuredGoalId, deleteGoal, setFeaturedGoal } = useFinanceStore()
   const { openModal } = useUIStore()
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
@@ -362,12 +364,12 @@ export default function ObiettiviPage() {
       <div className="ledgernest-kpi-strip">
         <div className="ledgernest-kpi-cell is-accent">
           <div className="ledgernest-kpi-label">{tl('kpiSaved')}</div>
-          <div className="ledgernest-kpi-value">{fmtEur(totalSaved)}</div>
+          <div className="ledgernest-kpi-value">{fmt(totalSaved)}</div>
           <div className="ledgernest-kpi-sub">
             <span style={{ color: 'var(--accent)', fontWeight: 700 }}>
               {totalTarget > 0 ? ((totalSaved / totalTarget) * 100).toFixed(1) : '0'}% {tl('kpiOfTarget')}
             </span>
-            <span>{tl('kpiOfTargetAmount', { target: fmtEur(totalTarget) })}</span>
+            <span>{tl('kpiOfTargetAmount', { target: fmt(totalTarget) })}</span>
           </div>
         </div>
         <div className="ledgernest-kpi-cell">
@@ -381,7 +383,7 @@ export default function ObiettiviPage() {
         </div>
         <div className="ledgernest-kpi-cell">
           <div className="ledgernest-kpi-label">{tl('kpiMonthly')}</div>
-          <div className="ledgernest-kpi-value">{fmtEur(totalMonthly)}</div>
+          <div className="ledgernest-kpi-value">{fmt(totalMonthly)}</div>
           <div className="ledgernest-kpi-sub">
             <span style={{ color: 'var(--success)', fontWeight: 700 }}>{tl('kpiAutomatic')}</span>
             <span>{tl('kpiAllGoals')}</span>
@@ -428,12 +430,12 @@ export default function ObiettiviPage() {
             </div>
             <div className="ledgernest-obj-stats" style={{ display: 'flex', gap: 40 }}>
               <div>
-                <div style={{ fontSize: 22, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{fmtEur(featured.currentAmount)}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 3 }}>{tl('featuredOf', { target: fmtEur(featured.targetAmount) })}</div>
+                <div style={{ fontSize: 22, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{fmt(featured.currentAmount)}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 3 }}>{tl('featuredOf', { target: fmt(featured.targetAmount) })}</div>
               </div>
               {featured.monthlyContribution > 0 && (
                 <div>
-                  <div style={{ fontSize: 22, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{fmtEur(featured.monthlyContribution)}</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{fmt(featured.monthlyContribution)}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 3 }}>{tl('featuredMonthly')}</div>
                 </div>
               )}

@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { usePricesStore } from '@/stores/pricesStore'
-import { fmtEur, fmtDateShort } from '@/lib/utils/format'
+import { fmtDateShort } from '@/lib/utils/format'
 import { useTranslations } from 'next-intl'
+import { useFormatters } from '@/hooks/useFormatters'
 import type { Dividend, PortfolioPosition } from '@/types'
 
 // ── constants ────────────────────────────────────────────────
@@ -314,6 +315,7 @@ export default function DividendiPage() {
   const tl = useTranslations('dividendi')
   const { dividends, positions } = usePortfolioStore()
   const { eurUsd } = usePricesStore()
+  const { fmt } = useFormatters()
   const importState = useAutoImport()
 
   const now = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d }, [])
@@ -470,7 +472,7 @@ export default function DividendiPage() {
           background: 'color-mix(in oklch, var(--accent) 12%, var(--bg-surface))',
           border: '1px solid color-mix(in oklch, var(--accent) 35%, transparent)' }}>
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpi12m')}</div>
-          <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{fmtEur(annual12m)}</div>
+          <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{fmt(annual12m)}</div>
           <div style={{ fontSize: 12, display: 'flex', gap: 6, alignItems: 'center' }}>
             <span style={{ fontWeight: 700, color: yoyPct >= 0 ? '#3fb950' : 'var(--danger)' }}>{yoyLabel}</span>
             <span style={{ color: 'var(--text-secondary)' }}>{tl('kpi12mSub')}</span>
@@ -479,7 +481,7 @@ export default function DividendiPage() {
 
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: 5 }}>
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiYtd')}</div>
-          <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{fmtEur(ytdData.total)}</div>
+          <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{fmt(ytdData.total)}</div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
             <span style={{ fontWeight: 700, color: 'var(--accent)' }}>{tl('kpiYtdSub', { n: ytdData.months })}</span>
           </div>
@@ -487,7 +489,7 @@ export default function DividendiPage() {
 
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: 5 }}>
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiNext30')}</div>
-          <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{fmtEur(next30Data.total)}</div>
+          <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{fmt(next30Data.total)}</div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
             <span style={{ fontWeight: 700, color: next30Data.count > 0 ? '#e6a200' : 'var(--text-secondary)' }}>{tl('kpiNext30Sub', { n: next30Data.count })}</span>
           </div>
@@ -563,7 +565,7 @@ export default function DividendiPage() {
                   </td>
                   <td className="num ledgernest-mono" style={{ fontSize: 13 }}>{r.pos.quantity}</td>
                   <td className="num ledgernest-mono" style={{ fontSize: 13 }}>
-                    {r.perShareAnnual > 0 ? fmtEur(r.perShareAnnual) : <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
+                    {r.perShareAnnual > 0 ? fmt(r.perShareAnnual) : <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
                   </td>
                   <td className="num" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                     {r.freq === 'acc' ? tl('freqAcc') : r.freq === 'ann' ? tl('freqAnn') : r.freq === 'mens' ? tl('freqMens') : r.freq === 'trim' ? tl('freqTrim') : tl('freqSem')}
@@ -579,7 +581,7 @@ export default function DividendiPage() {
                       : <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
                   </td>
                   <td className="num ledgernest-mono" style={{ fontSize: 13, fontWeight: 600 }}>
-                    {r.annualIncome > 0 ? fmtEur(r.annualIncome) : <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
+                    {r.annualIncome > 0 ? fmt(r.annualIncome) : <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
                   </td>
                   <td><StatusBadge status={r.status} /></td>
                 </tr>
@@ -614,7 +616,7 @@ export default function DividendiPage() {
                   </div>
                   {/* Amount */}
                   <div style={{ fontWeight: 700, fontSize: 13, color: '#3fb950', whiteSpace: 'nowrap' }}>
-                    {r.payAmt > 0 ? `+${fmtEur(r.payAmt)}` : '—'}
+                    {r.payAmt > 0 ? `+${fmt(r.payAmt)}` : '—'}
                   </div>
                 </div>
               ))}

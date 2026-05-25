@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl'
 import { useFinanceStore } from '@/stores/financeStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useUIStore } from '@/stores/uiStore'
-import { fmtEur } from '@/lib/utils/format'
+import { useFormatters } from '@/hooks/useFormatters'
 import Icon from '@/components/shared/Icon'
 import Sparkline from '@/components/charts/Sparkline'
 import type { Account } from '@/types'
@@ -166,6 +166,7 @@ function EditAccountModal({ account, onClose }: { account: Account; onClose: () 
 
 function AccountCard({ account, onEdit, onDelete }: { account: Account; onEdit: () => void; onDelete: () => void }) {
   const t = useTranslations('conti')
+  const { fmt } = useFormatters()
   const TYPE_CONFIG: Record<Account['type'], {
     label: string; icon: string; color: string; bg: string
   }> = {
@@ -253,14 +254,14 @@ function AccountCard({ account, onEdit, onDelete }: { account: Account; onEdit: 
       {/* Row 2: balance + trend */}
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px' }}>
         <div style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
-          {fmtEur(account.balance)}
+          {fmt(account.balance)}
         </div>
         <div style={{
           fontSize: '12px', fontWeight: 600,
           color: fakeChange >= 0 ? 'var(--success)' : 'var(--danger)',
           whiteSpace: 'nowrap',
         }}>
-          {fakeChange >= 0 ? '+' : ''}{fmtEur(fakeChange)} · 30g
+          {fakeChange >= 0 ? '+' : ''}{fmt(fakeChange)} · 30g
         </div>
       </div>
 
@@ -332,6 +333,7 @@ function PatrimonioChart({ totalAssets }: { totalAssets: number }) {
 
 export default function ContiPage() {
   const t = useTranslations('conti')
+  const { fmt } = useFormatters()
   const { accounts, deleteAccount } = useFinanceStore()
   const { positions } = usePortfolioStore()
   const { openModal } = useUIStore()
@@ -387,19 +389,19 @@ export default function ContiPage() {
       <div className="ledgernest-fin-kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px' }}>
         <div className="ledgernest-kpi is-hl" style={{ padding: '18px 20px', gap: '6px' }}>
           <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>{t('kpiNetWorth')}</div>
-          <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmtEur(totalAssets)}</div>
+          <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmt(totalAssets)}</div>
           <div style={{ fontSize: '12px', color: 'var(--success)', fontWeight: 500 }}>+2.34% <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{t('kpiLast30Days')}</span></div>
         </div>
 
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: '6px' }}>
           <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>{t('kpiLiquidity')}</div>
-          <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmtEur(totalCash)}</div>
+          <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmt(totalCash)}</div>
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{bankAccounts.length} {bankAccounts.length === 1 ? t('kpiAccount') : t('kpiAccounts')}</div>
         </div>
 
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: '6px' }}>
           <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>{t('kpiInvested')}</div>
-          <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmtEur(totalBroker + totalCrypto)}</div>
+          <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmt(totalBroker + totalCrypto)}</div>
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
             {brokerAccounts.length} {t('kpiBroker')} · {cryptoAccounts.length} {t('kpiWallet')}
           </div>
@@ -489,7 +491,7 @@ export default function ContiPage() {
                   {group}
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                  {items.length} {items.length === 1 ? t('groupItem') : t('groupItems')} · {fmtEur(groupTotal)}
+                  {items.length} {items.length === 1 ? t('groupItem') : t('groupItems')} · {fmt(groupTotal)}
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px' }}>

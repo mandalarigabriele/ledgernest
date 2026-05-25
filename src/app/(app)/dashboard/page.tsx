@@ -1,12 +1,12 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useFinanceStore } from '@/stores/financeStore'
 import { usePricesStore } from '@/stores/pricesStore'
 import { usePrices } from '@/hooks/usePrices'
-import { fmtEur, fmtDate } from '@/lib/utils/format'
+import { fmtDate } from '@/lib/utils/format'
 import { useFormatters } from '@/hooks/useFormatters'
 import LineChart from '@/components/charts/LineChart'
 import Donut from '@/components/charts/Donut'
@@ -21,8 +21,7 @@ import Icon from '@/components/shared/Icon'
 const PALETTE = ['#5bc8d0', '#7c6df7', '#f77c3a', '#3fb950', '#f85149', '#d29922']
 const RANGES  = ['1S', '1M', '3M', '6M', '1A', 'MAX'] as const
 
-const HEATMAP_ROWS = ['Stocks', 'ETF', 'Crypto', 'Bonds', 'Cash']
-const HEATMAP_COLS = ['Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May']
+const HEATMAP_ROWS = ['Stocks', 'ETF', 'Crypto']
 
 const RANGE_CFG: Record<string, { days: number; pts: number; startPct: number; noise: number }> = {
   '1S':  { days: 7,   pts: 7,   startPct: 0.997, noise: 0.002 },
@@ -60,21 +59,11 @@ function syntheticSeries(
   return result
 }
 
-function syntheticHeatmap(): number[][] {
-  const seed = [
-    [+3.5, +2.1, -1.2, +4.8, -0.8, +3.1, -2.5, +5.2, +1.8, +3.4, +2.7, +1.5],
-    [+3.5, +3.8, -0.7, +5.5, +2.1, +3.8, -1.8, +4.3, +2.4, +3.1, +2.3, +2.0],
-    [+5.5, -4.5, +4.5, -1.2, +2.0, +0.0, +1.5, +5.5, +4.5, -3.5, +3.0, -1.5],
-    [-0.8, -1.2, +0.5, -2.5, +0.4, -1.5, +0.2, -0.8, +0.4, -1.1, +0.6, -0.3],
-    [-1.5, -2.5, +0.5, +4.5, +0.5, -4.8, +0.5, -1.5, +2.5, -2.5, -1.5, +2.5],
-  ]
-  return seed.map(row => row.map(v => Math.round((v + (Math.random() - 0.5) * 0.8) * 10) / 10))
-}
 
 export default function DashboardPage() {
   usePrices()
   const t = useTranslations('dashboard')
-  const { fmt0, fmtCpt } = useFormatters()
+  const { fmt, fmt0, fmtCpt } = useFormatters()
 
   const [range, setRange] = useState<string>('6M')
   const [tab, setTab]     = useState<'totale' | 'inv' | 'cash' | 'spese'>('totale')
@@ -179,8 +168,21 @@ export default function DashboardPage() {
     })),
   [sortedPositions])
 
-  /* ─── Heatmap (synthetic) ─── */
-  const heatmapData = useMemo(() => syntheticHeatmap(), [])
+  /* ─── Heatmap (real data from API) ─── */
+  const [heatmapData, setHeatmapData]   = useState<number[][]>([[], [], []])
+  const [heatmapMonths, setHeatmapMonths] = useState<string[]>([])
+
+  useEffect(() => {
+    if (positions.length === 0) return
+    const body = { positions: positions.map((p) => ({ ticker: p.ticker, type: p.type, quantity: p.quantity, currency: p.currency })) }
+    fetch('/api/portfolio/heatmap', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then((r) => r.json())
+      .then(({ data, months }: { data: number[][]; months: string[] }) => {
+        setHeatmapData(data)
+        setHeatmapMonths(months)
+      })
+      .catch(() => {})
+  }, [positions])
 
   /* ─── Dividend calendar (synthetic from dividends/positions) ─── */
   const divEvents = useMemo(() => {
@@ -289,7 +291,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="ledgernest-bigval" style={{ padding: '14px 18px 0' }}>
-          <div className="ledgernest-bigval-num">{fmtEur(tabValue)}</div>
+          <div className="ledgernest-bigval-num">{fmt(tabValue)}</div>
           <div className="ledgernest-bigval-delta">
             <span className={`ledgernest-tag ${tabDelta >= 0 ? 'ledgernest-tag--up' : 'ledgernest-tag--down'}`}>
               <Icon name={tabDelta >= 0 ? 'arrow_up' : 'arrow_down'} size={12} />
@@ -300,7 +302,7 @@ export default function DashboardPage() {
         </div>
 
         <div style={{ padding: '4px 0 0' }}>
-          <LineChart data={activeData} height={240} formatValue={fmtEur} />
+          <LineChart data={activeData} height={240} formatValue={fmt} />
         </div>
       </div>
 
@@ -349,7 +351,7 @@ export default function DashboardPage() {
               <span><i style={{ background: 'var(--danger)' }} /></span>
             </div>
           </div>
-          <BarChart data={cashflowBars} paired formatValue={fmtEur} height={200} />
+          <BarChart data={cashflowBars} paired formatValue={fmt} height={200} />
         </div>
       </div>
 
@@ -388,7 +390,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <div className="ledgernest-cell-mute">{p.quantity.toLocaleString('it-IT')}</div>
-                  <div className="ta-r">{fmtEur(p.price)}</div>
+                  <div className="ta-r">{fmt(p.price)}</div>
                   <div className="ta-c">
                     <Sparkline
                       data={Array.from({ length: 10 }, (_, i) => p.price * (1 + Math.sin(i * 0.8 + p.id.charCodeAt(0)) * 0.015))}
@@ -441,7 +443,7 @@ export default function DashboardPage() {
                     <div className="ledgernest-mov-cat">{tx.category} · {fmtDate(tx.date)}</div>
                   </div>
                   <div className={`ledgernest-mov-amt${tx.type === 'income' ? ' is-up' : ''}`}>
-                    {tx.type === 'income' ? '+' : '−'}{fmtEur(tx.amount)}
+                    {tx.type === 'income' ? '+' : '−'}{fmt(tx.amount)}
                   </div>
                 </li>
                 )
@@ -460,7 +462,7 @@ export default function DashboardPage() {
               <div className="ledgernest-card-sub">{t('monthly12Months')}</div>
             </div>
           </div>
-          <Heatmap rows={HEATMAP_ROWS} cols={HEATMAP_COLS} data={heatmapData} height={210} />
+          <Heatmap rows={HEATMAP_ROWS} cols={heatmapMonths} data={heatmapData} height={210} />
         </div>
 
         <div className="ledgernest-card">

@@ -3,7 +3,7 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { useFinanceStore } from '@/stores/financeStore'
-import { fmtEur } from '@/lib/utils/format'
+import { useFormatters } from '@/hooks/useFormatters'
 import Icon from '@/components/shared/Icon'
 import { CategoryPicker } from '@/components/shared/CategoryPicker'
 import type { RecurringItem } from '@/types'
@@ -476,6 +476,7 @@ function MonthCalendar({ items, year, month }: { items: RecurringItem[]; year: n
 
 function UpcomingPanel({ items }: { items: RecurringItem[] }) {
   const tl = useTranslations('ricorrenti')
+  const { fmt } = useFormatters()
   const { budgetCategories, accounts } = useFinanceStore()
 
   const upcoming = useMemo(() => {
@@ -528,7 +529,7 @@ function UpcomingPanel({ items }: { items: RecurringItem[] }) {
             </div>
           </div>
           <div style={{ fontWeight: 700, fontSize: 13, color: item.type === 'expense' ? 'var(--danger)' : 'var(--success)', whiteSpace: 'nowrap' }}>
-            {item.type === 'expense' ? '-' : '+'}{fmtEur(item.amount)}
+            {item.type === 'expense' ? '-' : '+'}{fmt(item.amount)}
           </div>
         </div>
       ))}
@@ -621,6 +622,7 @@ function RecurringTable({
   onDelete: (item: RecurringItem) => void
 }) {
   const tl = useTranslations('ricorrenti')
+  const { fmt } = useFormatters()
   const { budgetCategories, accounts } = useFinanceStore()
   const today = toYMD(new Date())
 
@@ -704,7 +706,7 @@ function RecurringTable({
                 {freqLabel(freq, tl).toUpperCase()} · {gItems.length} {gItems.length === 1 ? tl('sectionItem') : tl('sectionItems')}
               </div>
               <div style={{ fontSize: 12, fontWeight: 700, color: groupTotal >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-                {groupTotal >= 0 ? '+' : '−'}{fmtEur(Math.abs(groupTotal))}
+                {groupTotal >= 0 ? '+' : '−'}{fmt(Math.abs(groupTotal))}
               </div>
             </div>
 
@@ -784,7 +786,7 @@ function RecurringTable({
 
                   {/* Amount */}
                   <div style={{ fontWeight: 700, fontSize: 13, color: r.type === 'expense' ? 'var(--danger)' : 'var(--success)', whiteSpace: 'nowrap', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                    {r.type === 'expense' ? '−' : '+'}{fmtEur(r.amount)}
+                    {r.type === 'expense' ? '−' : '+'}{fmt(r.amount)}
                   </div>
 
                   {/* Actions kebab */}
@@ -803,6 +805,7 @@ function RecurringTable({
 
 export default function RicorrentiPage() {
   const tl = useTranslations('ricorrenti')
+  const { fmt } = useFormatters()
   const { recurringItems, deleteRecurring } = useFinanceStore()
   const [showModal, setShowModal] = useState(false)
   const [freqFilter, setFreqFilter] = useState('all')
@@ -852,7 +855,7 @@ export default function RicorrentiPage() {
       <div className="ledgernest-kpi-strip">
         <div className="ledgernest-kpi-cell is-accent">
           <div className="ledgernest-kpi-label">{tl('kpiExpenses')}</div>
-          <div className="ledgernest-kpi-value" style={{ color: 'var(--danger)' }}>{fmtEur(monthlyExpenses)}</div>
+          <div className="ledgernest-kpi-value" style={{ color: 'var(--danger)' }}>{fmt(monthlyExpenses)}</div>
           <div className="ledgernest-kpi-sub">
             <span style={{ color: 'var(--danger)', fontWeight: 700 }}>{tl('kpiCharges', { n: expenseCount })}</span>
             <span>{tl('kpiFixed')}</span>
@@ -860,7 +863,7 @@ export default function RicorrentiPage() {
         </div>
         <div className="ledgernest-kpi-cell">
           <div className="ledgernest-kpi-label">{tl('kpiIncome')}</div>
-          <div className="ledgernest-kpi-value" style={{ color: 'var(--success)' }}>{fmtEur(monthlyIncome)}</div>
+          <div className="ledgernest-kpi-value" style={{ color: 'var(--success)' }}>{fmt(monthlyIncome)}</div>
           <div className="ledgernest-kpi-sub">
             <span style={{ color: 'var(--success)', fontWeight: 700 }}>{tl('kpiSources', { n: incomeCount })}</span>
             <span>{tl('kpiSalary')}</span>
@@ -869,7 +872,7 @@ export default function RicorrentiPage() {
         <div className="ledgernest-kpi-cell">
           <div className="ledgernest-kpi-label">{tl('kpiBalance')}</div>
           <div className="ledgernest-kpi-value" style={{ color: netMonthly >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-            {netMonthly >= 0 ? '+' : ''}{fmtEur(netMonthly)}
+            {netMonthly >= 0 ? '+' : ''}{fmt(netMonthly)}
           </div>
           <div className="ledgernest-kpi-sub">
             <span style={{ color: netMonthly >= 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 700 }}>
@@ -879,7 +882,7 @@ export default function RicorrentiPage() {
         </div>
         <div className="ledgernest-kpi-cell">
           <div className="ledgernest-kpi-label">{tl('kpiYearly')}</div>
-          <div className="ledgernest-kpi-value">{fmtEur(yearlyTotal)}</div>
+          <div className="ledgernest-kpi-value">{fmt(yearlyTotal)}</div>
           <div className="ledgernest-kpi-sub">
             <span style={{ color: 'var(--text-secondary)', fontWeight: 700 }}>{tl('kpiItems', { n: yearlyCount })}</span>
             <span>{tl('kpiAnnual')}</span>

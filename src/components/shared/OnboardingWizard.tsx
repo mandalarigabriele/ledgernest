@@ -106,9 +106,8 @@ function StepSelfName({ current, suggested, onChange, onBack, onNext }: {
   const [value, setValue] = useState(current || suggested)
 
   function handleChange(raw: string) {
-    const upper = raw.toUpperCase()
-    setValue(upper)
-    onChange(upper)
+    setValue(raw)
+    onChange(raw)
   }
 
   return (
@@ -118,18 +117,18 @@ function StepSelfName({ current, suggested, onChange, onBack, onNext }: {
           Come sei intestatario del conto?
         </div>
         <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-          Scrivi il tuo nome come appare nei CSV bancari (di solito COGNOME NOME in maiuscolo).
+          Scrivi il tuo nome come appare nei CSV bancari (di solito Cognome Nome).
           Serve a riconoscere automaticamente i giroconti tra i tuoi conti.
         </div>
       </div>
 
       <input
         className="ledgernest-input"
-        placeholder="Es. ROSSI MARIO"
+        placeholder="Es. Rossi Mario"
         value={value}
         onChange={(e) => handleChange(e.target.value)}
         autoFocus
-        style={{ height: 46, width: '100%', boxSizing: 'border-box', fontSize: 16, textTransform: 'uppercase', marginBottom: 8 }}
+        style={{ height: 46, width: '100%', boxSizing: 'border-box', fontSize: 16, marginBottom: 8 }}
       />
       {suggested && !current && (
         <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 4 }}>
@@ -142,7 +141,7 @@ function StepSelfName({ current, suggested, onChange, onBack, onNext }: {
 
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
         <NavBtn onClick={onBack}>← Indietro</NavBtn>
-        <NavBtn primary onClick={onNext}>Continua →</NavBtn>
+        <NavBtn primary onClick={() => { onChange(value); onNext() }}>Continua →</NavBtn>
       </div>
     </div>
   )
@@ -341,9 +340,9 @@ export default function OnboardingWizard() {
   const [step, setStep] = useState(1)
   const TOTAL = 4
 
-  // Derive selfName suggestion from Google: "Gabriele Mandalari" → "MANDALARI GABRIELE"
+  // Derive selfName suggestion from Google: "Gabriele Mandalari" → "Mandalari Gabriele"
   const suggestedSelfName = session?.user?.name
-    ? session.user.name.trim().split(/\s+/).reverse().join(' ').toUpperCase()
+    ? session.user.name.trim().split(/\s+/).reverse().join(' ')
     : ''
 
   function finish(acct: Omit<Account, 'id' | 'createdAt' | 'updatedAt'>) {

@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { usePricesStore } from '@/stores/pricesStore'
 import { usePrices } from '@/hooks/usePrices'
-import { fmtEur, fmtUsd, fmtPct, fmtNum, deltaClass, fmtDelta } from '@/lib/utils/format'
+import { fmtUsd, fmtPct, fmtNum, deltaClass } from '@/lib/utils/format'
+import { useFormatters } from '@/hooks/useFormatters'
 import Sparkline from '@/components/charts/Sparkline'
 import Icon from '@/components/shared/Icon'
 import { useUIStore } from '@/stores/uiStore'
@@ -240,7 +241,7 @@ function EtfChart({
             <circle cx={hx} cy={hy} r="5" fill="var(--bg-surface)" stroke="#5bc8d0" strokeWidth="2" />
             <rect x={tx} y={ty} width={tw} height={th} rx="7" fill="#1a2332" stroke="rgba(91,200,208,0.3)" strokeWidth="1" />
             <text x={tx + tw / 2} y={ty + 13} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.5)" fontFamily="inherit">{dateLabel}</text>
-            <text x={tx + tw / 2} y={ty + 28} textAnchor="middle" fontSize="12" fontWeight="700" fill="#5bc8d0" fontFamily="inherit">{fmtEur(values[hoverIdx])}</text>
+            <text x={tx + tw / 2} y={ty + 28} textAnchor="middle" fontSize="12" fontWeight="700" fill="#5bc8d0" fontFamily="inherit">{fmt(values[hoverIdx])}</text>
           </g>
         )
       })()}
@@ -312,6 +313,7 @@ const ETF_FILTERS: EtfFilter[] = ['Tutti', 'Azionari', 'Bond', 'REIT']
 
 export default function EtfPage() {
   const tl = useTranslations('etf')
+  const { fmt, fmtDlt } = useFormatters()
   const { refetch } = usePrices()
   const { positions, deletePosition, updatePosition } = usePortfolioStore()
   const { quotes, eurUsd, loading } = usePricesStore()
@@ -388,7 +390,7 @@ export default function EtfPage() {
       <div className="ledgernest-port-kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
         <div className="ledgernest-kpi is-hl" style={{ padding: '18px 20px', gap: 5 }}>
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiTotal')}</div>
-          <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{fmtEur(totalValue)}</div>
+          <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{fmt(totalValue)}</div>
           <div style={{ fontSize: 12, fontWeight: 600, color: totalPnlPct >= 0 ? 'var(--success)' : 'var(--danger)' }}>
             {totalPnlPct >= 0 ? '+' : ''}{fmtPct(totalPnlPct)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{tl('kpiFunds', { n: etfs.length })}</span>
           </div>
@@ -397,10 +399,10 @@ export default function EtfPage() {
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: 5 }}>
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiPnl')}</div>
           <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', color: totalPnl >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-            {fmtDelta(totalPnl)}
+            {fmtDlt(totalPnl)}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-            {tl('kpiCost', { cost: fmtEur(totalCost) })}
+            {tl('kpiCost', { cost: fmt(totalCost) })}
           </div>
         </div>
 
@@ -408,7 +410,7 @@ export default function EtfPage() {
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiTer')}</div>
           <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em' }}>{(weightedTer * 100).toFixed(2)}%</div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-            {tl('kpiWeightedTer', { annualCost: `${fmtEur(annualCost)}` })}
+            {tl('kpiWeightedTer', { annualCost: `${fmt(annualCost)}` })}
           </div>
         </div>
 
@@ -557,10 +559,10 @@ export default function EtfPage() {
                   ) : <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
                 </td>
                 <td className="num ledgernest-mono" style={{ fontSize: 13 }}>{fmtNum(r.quantity)}</td>
-                <td className="num ledgernest-mono" style={{ fontSize: 13 }}>{fmtEur(r.avgPriceEur)}</td>
+                <td className="num ledgernest-mono" style={{ fontSize: 13 }}>{fmt(r.avgPriceEur)}</td>
                 <td className="num ledgernest-mono" style={{ fontSize: 13, fontWeight: 600 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
-                    <span>{fmtEur(r.price)}</span>
+                    <span>{fmt(r.price)}</span>
                     {r.q && (
                       <span style={{ fontSize: 11, fontWeight: 600, color: r.dayChangePct >= 0 ? 'var(--success)' : 'var(--danger)' }}>
                         {r.dayChangePct >= 0 ? '+' : ''}{r.dayChangePct.toFixed(2)}%
@@ -574,10 +576,10 @@ export default function EtfPage() {
                 <td className="num" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                   {r.ter != null ? `${(r.ter * 100).toFixed(2)}%` : '—'}
                 </td>
-                <td className="num ledgernest-mono" style={{ fontWeight: 600 }}>{fmtEur(r.value)}</td>
+                <td className="num ledgernest-mono" style={{ fontWeight: 600 }}>{fmt(r.value)}</td>
                 <td className="num">
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
-                    <span className={`ledgernest-mono ${deltaClass(r.pnl)}`} style={{ fontWeight: 600 }}>{fmtDelta(r.pnl)}</span>
+                    <span className={`ledgernest-mono ${deltaClass(r.pnl)}`} style={{ fontWeight: 600 }}>{fmtDlt(r.pnl)}</span>
                     <span className={deltaClass(r.pnlPct)} style={{ fontSize: 11 }}>{fmtPct(r.pnlPct)}</span>
                   </div>
                 </td>
@@ -623,7 +625,7 @@ export default function EtfPage() {
         <span style={{ opacity: 0.5 }}>●</span>
         {tl('footerDayChange')}{' '}
         <span style={{ fontWeight: 600, color: totalDayChg >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-          {totalDayChg >= 0 ? '+' : ''}{fmtEur(totalDayChg)}
+          {totalDayChg >= 0 ? '+' : ''}{fmt(totalDayChg)}
         </span>
         · {tl('footerSource')}
       </div>

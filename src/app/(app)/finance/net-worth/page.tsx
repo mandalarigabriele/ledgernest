@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from 'react'
 import { useFinanceStore } from '@/stores/financeStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { usePricesStore } from '@/stores/pricesStore'
-import { fmtEur } from '@/lib/utils/format'
+import { useFormatters } from '@/hooks/useFormatters'
 import Icon from '@/components/shared/Icon'
 import { useTranslations } from 'next-intl'
 import type { Liability } from '@/types'
@@ -183,6 +183,7 @@ function AddLiabilityModal({ onClose, onAdd }: { onClose: () => void; onAdd: (l:
 // ── Composition bar ─────────────────────────────────────────────────────────
 
 function CompositionBar({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
+  const { fmt } = useFormatters()
   const pct = total > 0 ? (value / total) * 100 : 0
   return (
     <div style={{ marginBottom: 14 }}>
@@ -192,7 +193,7 @@ function CompositionBar({ label, value, total, color }: { label: string; value: 
           <span style={{ fontSize: 13, fontWeight: 600 }}>{label}</span>
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'baseline' }}>
-          <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fmtEur(value)}</span>
+          <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(value)}</span>
           <span style={{ fontSize: 11, color: 'var(--text-tertiary)', minWidth: 36, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{pct.toFixed(1)}%</span>
         </div>
       </div>
@@ -207,6 +208,7 @@ function CompositionBar({ label, value, total, color }: { label: string; value: 
 
 export default function PatrimonioPage() {
   const tl = useTranslations('patrimonio')
+  const { fmt } = useFormatters()
   const { accounts, transactions, liabilities, netWorthSnapshots, addLiability, deleteLiability, takeNetWorthSnapshot } = useFinanceStore()
   const { positions } = usePortfolioStore()
   const { quotes } = usePricesStore()
@@ -296,7 +298,7 @@ export default function PatrimonioPage() {
       <div className="ledgernest-kpi-strip">
         <div className="ledgernest-kpi-cell is-accent">
           <div className="ledgernest-kpi-label">{tl('kpiNetWorth')}</div>
-          <div className="ledgernest-kpi-value" style={{ color: netWorth < 0 ? 'var(--danger)' : undefined }}>{fmtEur(netWorth)}</div>
+          <div className="ledgernest-kpi-value" style={{ color: netWorth < 0 ? 'var(--danger)' : undefined }}>{fmt(netWorth)}</div>
           <div className="ledgernest-kpi-sub">
             {nwDelta30d !== null && (
               <span style={{ color: nwDelta30d >= 0 ? 'var(--success)' : 'var(--danger)' }}>
@@ -308,17 +310,17 @@ export default function PatrimonioPage() {
         </div>
         <div className="ledgernest-kpi-cell">
           <div className="ledgernest-kpi-label">{tl('kpiAssets')}</div>
-          <div className="ledgernest-kpi-value">{fmtEur(totalAssets)}</div>
+          <div className="ledgernest-kpi-value">{fmt(totalAssets)}</div>
           <div className="ledgernest-kpi-sub" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acctTypesPresent || tl('kpiNoAccounts')}</div>
         </div>
         <div className="ledgernest-kpi-cell">
           <div className="ledgernest-kpi-label">{tl('kpiLiabilities')}</div>
-          <div className="ledgernest-kpi-value" style={{ color: totalLiabilities > 0 ? 'var(--danger)' : undefined }}>{fmtEur(totalLiabilities)}</div>
+          <div className="ledgernest-kpi-value" style={{ color: totalLiabilities > 0 ? 'var(--danger)' : undefined }}>{fmt(totalLiabilities)}</div>
           <div className="ledgernest-kpi-sub">{liabSubtitle}</div>
         </div>
         <div className="ledgernest-kpi-cell">
           <div className="ledgernest-kpi-label">{tl('kpiLiquidity')}</div>
-          <div className="ledgernest-kpi-value">{fmtEur(cashValue)}</div>
+          <div className="ledgernest-kpi-value">{fmt(cashValue)}</div>
           <div className="ledgernest-kpi-sub">{liquidSubtitle}</div>
         </div>
       </div>
@@ -349,7 +351,7 @@ export default function PatrimonioPage() {
       </div>
 
       {/* ── Conti + Composizione ────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div className="ledgernest-nw-grid-2col">
 
         {/* Conti e wallet */}
         <div className="ledgernest-card">
@@ -382,10 +384,10 @@ export default function PatrimonioPage() {
                       <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 1 }}>{a.type}</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmtEur(a.balance)}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(a.balance)}</div>
                       {delta !== 0 && (
                         <div style={{ fontSize: 11, color: delta >= 0 ? 'var(--success)' : 'var(--danger)', fontVariantNumeric: 'tabular-nums', marginTop: 1 }}>
-                          {delta >= 0 ? '+' : ''}{fmtEur(delta)} 30d
+                          {delta >= 0 ? '+' : ''}{fmt(delta)} 30d
                         </div>
                       )}
                     </div>
@@ -463,10 +465,10 @@ export default function PatrimonioPage() {
                       </span>
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700, color: 'var(--danger)', fontVariantNumeric: 'tabular-nums' }}>
-                      {fmtEur(l.residuo)}
+                      {fmt(l.residuo)}
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                      {fmtEur(l.monthlyPayment)}
+                      {fmt(l.monthlyPayment)}
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>
                       {l.interestRate > 0 ? `${l.interestRate.toFixed(2)}%` : '—'}
@@ -493,10 +495,10 @@ export default function PatrimonioPage() {
                   <tr style={{ borderTop: '1px solid var(--border-subtle)' }}>
                     <td colSpan={2} style={{ padding: '10px 16px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)' }}>{tl('liabilitiesTotal')}</td>
                     <td style={{ padding: '10px 16px', textAlign: 'right', fontWeight: 700, color: 'var(--danger)', fontVariantNumeric: 'tabular-nums' }}>
-                      {fmtEur(totalLiabilities)}
+                      {fmt(totalLiabilities)}
                     </td>
                     <td style={{ padding: '10px 16px', textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-                      {fmtEur(liabilities.reduce((s, l) => s + l.monthlyPayment, 0))}
+                      {fmt(liabilities.reduce((s, l) => s + l.monthlyPayment, 0))}
                     </td>
                     <td colSpan={3} />
                   </tr>

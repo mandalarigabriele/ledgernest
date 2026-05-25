@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { useFinanceStore } from '@/stores/financeStore'
 import { useUIStore } from '@/stores/uiStore'
-import { fmtEur } from '@/lib/utils/format'
+import { useFormatters } from '@/hooks/useFormatters'
 import BarChart from '@/components/charts/BarChart'
 import Icon from '@/components/shared/Icon'
 import { CategoryPicker } from '@/components/shared/CategoryPicker'
@@ -351,6 +351,7 @@ const INVEST_CATS = new Set(Object.values(ASSET_CAT_ALIAS))
 
 export default function MovimentiPage() {
   const tl = useTranslations('movimenti')
+  const { fmt } = useFormatters()
   const { transactions, accounts, budgetCategories, budgetGroups, monthlyIncome, monthlyExpenses, deleteTransaction, merchantLogos } = useFinanceStore()
   const { openModal } = useUIStore()
 
@@ -469,7 +470,7 @@ export default function MovimentiPage() {
             {tl('kpiIncome', { window: WINDOW })}
           </div>
           <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>
-            {fmtEur(income28)}
+            {fmt(income28)}
           </div>
           <div style={{ fontSize: 12 }}>
             <span style={{ fontWeight: 600, color: 'var(--success)' }}>{incCount} {tl('kpiMovements')}</span>
@@ -484,7 +485,7 @@ export default function MovimentiPage() {
             {tl('kpiExpense', { window: WINDOW })}
           </div>
           <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>
-            {fmtEur(expense28)}
+            {fmt(expense28)}
           </div>
           <div style={{ fontSize: 12 }}>
             <span style={{ fontWeight: 600, color: 'var(--danger)' }}>{expCount} {tl('kpiMovements')}</span>
@@ -500,7 +501,7 @@ export default function MovimentiPage() {
             fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em',
             color: saldo28 >= 0 ? 'var(--success)' : 'var(--danger)',
           }}>
-            {saldo28 >= 0 ? '+' : ''}{fmtEur(saldo28)}
+            {saldo28 >= 0 ? '+' : ''}{fmt(saldo28)}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
             <span style={{ fontWeight: 600, color: saldo28 >= 0 ? 'var(--success)' : 'var(--danger)' }}>{tl('kpiSavings')}</span>
@@ -517,7 +518,7 @@ export default function MovimentiPage() {
           </div>
           {topCat ? (
             <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{fmtEur(topCat.val)}</span>
+              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{fmt(topCat.val)}</span>
               {' · '}{topCat.pct.toFixed(0)}% {tl('kpiPctExpenses')}
             </div>
           ) : (
@@ -547,7 +548,7 @@ export default function MovimentiPage() {
               </span>
             </div>
           </div>
-          <BarChart data={cashflowData} paired formatValue={fmtEur} height={160} />
+          <BarChart data={cashflowData} paired formatValue={fmt} height={160} />
         </div>
 
         <div className="ledgernest-card" style={{ padding: 20 }}>
@@ -651,7 +652,7 @@ export default function MovimentiPage() {
                     {fmtGroupDate(date)}
                   </span>
                   <span style={{ fontSize: 12, fontWeight: 600, color: daySum >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-                    {daySum >= 0 ? '+' : ''}{fmtEur(daySum)}
+                    {daySum >= 0 ? '+' : ''}{fmt(daySum)}
                   </span>
                 </div>
 
@@ -712,7 +713,7 @@ export default function MovimentiPage() {
                         color: tx.type === 'income' ? 'var(--success)' : 'var(--text-primary)',
                         flexShrink: 0, minWidth: 80, textAlign: 'right',
                       }}>
-                        {tx.type === 'income' ? '+' : '−'}{fmtEur(tx.amount)}
+                        {tx.type === 'income' ? '+' : '−'}{fmt(tx.amount)}
                       </div>
 
                       {/* Kebab — always visible, always last */}
