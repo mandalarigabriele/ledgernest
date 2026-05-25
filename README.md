@@ -126,31 +126,49 @@ Copy `.env.example` → `.env.local` and fill in:
 
 > **Prerequisites:** Node.js ≥ 20, PM2 (`npm install -g pm2`)
 
+### First install (manual)
+
 ```bash
 # 1. Clone on the server
 git clone https://github.com/mandalarigabriele/ledgernest.git
 cd ledgernest
 
-# 2. Install production dependencies
-npm install --omit=dev
-
-# 3. Configure environment
+# 2. Configure environment
 cp .env.example .env.local
 nano .env.local   # fill in your real values
 
-# 4. Initialise the database
-npm run db:migrate
-
-# 5. Build
-npm run build
-
-# 6. Start with PM2
-pm2 start npm --name ledgernest -- start
-pm2 save
-pm2 startup   # enable auto-start on boot
+# 3. First deploy
+bash deploy.sh --init
 ```
 
-The app runs on `http://SERVER-IP:3000`.
+### `deploy.sh` — automated deploy script
+
+The repo ships a `deploy.sh` script that handles the full deploy lifecycle.  
+Run it from the repo root on the server.
+
+| Command | When to use |
+|---|---|
+| `bash deploy.sh` | Update to latest version |
+| `bash deploy.sh --init` | First install (same flow, flag is informational) |
+
+**What the script does, in order:**
+
+1. `git fetch + reset --hard origin/main` — pulls the latest code, discarding any local changes
+2. `rm -rf .next node_modules/.cache` — cleans stale build artefacts
+3. `npm install` — installs/updates all dependencies
+4. `npm run db:migrate` — applies any pending database migrations (safe to re-run)
+5. `npm run build` — builds the Next.js production bundle
+6. PM2 restart or start — restarts the app if already running, starts it fresh otherwise; calls `pm2 save`
+
+The script exits immediately on any error (`set -euo pipefail`) and prints the server IP at the end.
+
+> **Note:** before the first run, create `.env.local` manually (see [Environment variables](#-environment-variables)).  
+> The script never touches `.env.local`.
+
+```bash
+# Enable PM2 auto-start on server reboot (run once after first deploy)
+pm2 startup
+```
 
 ### Nginx reverse proxy (optional)
 
@@ -168,16 +186,6 @@ server {
         proxy_cache_bypass $http_upgrade;
     }
 }
-```
-
-### Updating to a new version
-
-```bash
-cd ledgernest
-git pull
-npm install --omit=dev
-npm run build
-pm2 restart ledgernest
 ```
 
 ---
@@ -256,7 +264,7 @@ npm run db:reset     # ⚠️ FULL RESET (deletes all data)
 - **Search palette** — fully translated quick actions and section labels
 - **`useFormatters` hook** — currency-aware formatting tied to user settings
 
-### v0.1.0 (May 2025)
+### v0.1.0 (May 2026)
 - Initial release
 - Dashboard with interactive charts and time ranges
 - Stock / ETF / crypto portfolio with EUR/USD-corrected P&L
