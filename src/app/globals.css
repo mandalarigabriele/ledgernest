@@ -20,11 +20,14 @@ html {
   line-height: 1.5;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  overflow-x: hidden;          /* iOS Safari ignores body overflow-x, needs html too */
+  overscroll-behavior-x: none; /* disable horizontal elastic bounce */
 }
 
 body {
   min-height: 100vh;
   overflow-x: hidden;
+  overscroll-behavior-x: none;
 }
 
 img, svg { display: block; }
@@ -212,8 +215,8 @@ ul, ol { list-style: none; }
 .ledgernest-main {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -221,6 +224,9 @@ ul, ol { list-style: none; }
   flex: 1;
   padding: 24px;
   overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch; /* smooth momentum scroll on iOS */
+  overscroll-behavior: contain;      /* prevent scroll propagation to body */
 }
 
 /* ============================================================
