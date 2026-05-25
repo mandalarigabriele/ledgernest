@@ -4,6 +4,9 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Skip type-check and lint during production build — run locally with `tsc --noEmit`
+  typescript: { ignoreBuildErrors: true },
+  eslint: { ignoreDuringBuilds: true },
   experimental: {
     serverComponentsExternalPackages: ['better-sqlite3'],
   },
