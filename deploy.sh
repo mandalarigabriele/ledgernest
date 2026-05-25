@@ -1,0 +1,48 @@
+#!/bin/bash
+# LedgerNest — deploy / first-run script
+# Usage:
+#   First install : bash deploy.sh --init
+#   Update        : bash deploy.sh
+
+set -euo pipefail
+
+APP_DIR="$(cd "$(dirname "$0")" && pwd)"
+APP_NAME="ledgernest"
+
+cd "$APP_DIR"
+
+echo "==> LedgerNest deploy — $(date)"
+
+# ── Pull latest code ───────────────────────────────────────────
+echo "==> Pulling latest code..."
+git fetch origin
+git reset --hard origin/main
+
+# ── Clean stale artifacts ──────────────────────────────────────
+echo "==> Cleaning build cache..."
+rm -rf .next
+rm -rf node_modules/.cache
+
+# ── Dependencies ───────────────────────────────────────────────
+echo "==> Installing dependencies..."
+npm install
+
+# ── Database ───────────────────────────────────────────────────
+echo "==> Running database migrations..."
+npm run db:migrate
+
+# ── Build ──────────────────────────────────────────────────────
+echo "==> Building..."
+npm run build
+
+# ── Start / restart with PM2 ──────────────────────────────────
+echo "==> Starting app with PM2..."
+if pm2 describe "$APP_NAME" &>/dev/null; then
+  pm2 restart "$APP_NAME"
+else
+  pm2 start npm --name "$APP_NAME" -- start
+fi
+pm2 save
+
+echo ""
+echo "==> Done. App running at http://$(hostname -I | awk '{print $1}'):3000"
