@@ -26,11 +26,6 @@ const COLOR_THEMES = [
 ]
 
 type ThemeOption = [Theme, string, string]
-const THEME_OPTIONS: ThemeOption[] = [
-  ['dark',   'Scuro',  '🌙'],
-  ['light',  'Chiaro', '☀️'],
-  ['system', 'Sistema','🖥️'],
-]
 
 const CAT_COLORS = [
   '#5bc8d0', '#7c6df7', '#3fb950', '#f77c3a', '#f85149', '#58a6ff',
@@ -109,6 +104,7 @@ function SettingRow({ label, desc, children }: { label: string; desc?: string; c
 // ── emoji picker ──────────────────────────────────────────────
 
 function EmojiPicker({ value, onChange }: { value: string; onChange: (e: string) => void }) {
+  const t = useTranslations('settings')
   const [catIdx, setCatIdx] = useState(0)
   const cat = EMOJI_CATS[catIdx]
   return (
@@ -150,7 +146,7 @@ function EmojiPicker({ value, onChange }: { value: string; onChange: (e: string)
       </div>
       {/* Footer */}
       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 12px', background: 'var(--bg-elevated)', borderTop: '1px solid var(--border-subtle)', fontSize: 11, color: 'var(--text-tertiary)' }}>
-        <span>Selezionato: <span style={{ fontSize: 16 }}>{value}</span></span>
+        <span>{t('selectedEmoji')} <span style={{ fontSize: 16 }}>{value}</span></span>
         <span>{cat.emojis.length} emoji</span>
       </div>
     </div>
@@ -186,6 +182,8 @@ function MerchantLogoModal({ merchant, current, onClose, onSave }: {
   merchant: string; current?: string
   onClose: () => void; onSave: (logo: string) => void
 }) {
+  const t = useTranslations('settings')
+  const tc = useTranslations('common')
   const extractDomain = (url: string) => {
     const m = url.match(/domain=([^&]+)/)
     return m ? m[1] : ''
@@ -217,24 +215,24 @@ function MerchantLogoModal({ merchant, current, onClose, onSave }: {
               : <span style={{ fontSize: 28, fontWeight: 700, color: '#fff' }}>{merchant[0]?.toUpperCase()}</span>}
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>Logo esercente</div>
+            <div style={{ fontWeight: 700, fontSize: 15 }}>{t('merchantsLogoEdit')}</div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{merchant}</div>
-            {preview && imgError && <div style={{ fontSize: 11, color: '#f85149', marginTop: 4 }}>Immagine non valida o non caricabile</div>}
+            {preview && imgError && <div style={{ fontSize: 11, color: '#f85149', marginTop: 4 }}>{t('merchantsLogoInvalid')}</div>}
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 22, lineHeight: 1 }}>×</button>
         </div>
 
         {/* Tabs */}
         <div style={{ display: 'flex', borderBottom: '1px solid var(--border-subtle)', padding: '0 22px' }}>
-          {(['domain', 'url'] as const).map((t) => (
-            <button key={t} onClick={() => setTab(t)} style={{
+          {(['domain', 'url'] as const).map((tabKey) => (
+            <button key={tabKey} onClick={() => setTab(tabKey)} style={{
               padding: '10px 0', marginRight: 20, background: 'none', border: 'none', cursor: 'pointer',
-              fontSize: 13, fontWeight: tab === t ? 700 : 500,
-              color: tab === t ? 'var(--accent)' : 'var(--text-secondary)',
-              borderBottom: `2px solid ${tab === t ? 'var(--accent)' : 'transparent'}`,
+              fontSize: 13, fontWeight: tab === tabKey ? 700 : 500,
+              color: tab === tabKey ? 'var(--accent)' : 'var(--text-secondary)',
+              borderBottom: `2px solid ${tab === tabKey ? 'var(--accent)' : 'transparent'}`,
               marginBottom: -1, transition: 'all .12s',
             }}>
-              {t === 'domain' ? 'Da dominio (favicon)' : 'URL immagine'}
+              {tabKey === 'domain' ? t('merchantsLogoFromDomain') : t('merchantsLogoFromUrl')}
             </button>
           ))}
         </div>
@@ -243,12 +241,12 @@ function MerchantLogoModal({ merchant, current, onClose, onSave }: {
           {tab === 'domain' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                Inserisci il dominio del sito dell&apos;esercente per caricare il logo automaticamente.
+                {t('merchantsLogoDomainDesc')}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <input
                   className="ledgernest-input"
-                  placeholder="es. esselunga.it o amazon.com"
+                  placeholder={t('merchantsLogoDomainPlaceholder')}
                   value={domain}
                   onChange={(e) => setDomain(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') applyDomain() }}
@@ -256,7 +254,7 @@ function MerchantLogoModal({ merchant, current, onClose, onSave }: {
                   style={{ flex: 1, height: 38, fontSize: 13 }}
                 />
                 <button className="ledgernest-btn ledgernest-btn-ghost" onClick={applyDomain} style={{ flexShrink: 0 }}>
-                  Carica
+                  {t('merchantsLogoLoad')}
                 </button>
               </div>
             </div>
@@ -265,7 +263,7 @@ function MerchantLogoModal({ merchant, current, onClose, onSave }: {
           {tab === 'url' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                Incolla l&apos;URL diretto di un&apos;immagine (PNG, JPG, SVG, WebP).
+                {t('merchantsLogoUrlDesc')}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <input
@@ -278,7 +276,7 @@ function MerchantLogoModal({ merchant, current, onClose, onSave }: {
                   style={{ flex: 1, height: 38, fontSize: 13 }}
                 />
                 <button className="ledgernest-btn ledgernest-btn-ghost" onClick={applyUrl} style={{ flexShrink: 0 }}>
-                  Usa
+                  {t('merchantsLogoUse')}
                 </button>
               </div>
             </div>
@@ -290,17 +288,17 @@ function MerchantLogoModal({ merchant, current, onClose, onSave }: {
             <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm"
               style={{ color: 'var(--text-tertiary)' }}
               onClick={() => { onSave(''); onClose() }}>
-              Rimuovi logo
+              {t('merchantsLogoRemove')}
             </button>
           )}
           <div style={{ flex: 1 }} />
-          <button className="ledgernest-btn ledgernest-btn-ghost" onClick={onClose}>Annulla</button>
+          <button className="ledgernest-btn ledgernest-btn-ghost" onClick={onClose}>{tc('cancel')}</button>
           <button
             className="ledgernest-btn ledgernest-btn-primary"
             disabled={!preview || imgError}
             onClick={() => { if (preview && !imgError) { onSave(preview); onClose() } }}
           >
-            Salva
+            {tc('save')}
           </button>
         </div>
       </div>
@@ -316,6 +314,8 @@ function ItemModal({ title, subtitle, initialName = '', initialEmoji = '📋', i
   onClose: () => void
   onSave: (name: string, emoji: string, color: string) => void
 }) {
+  const t = useTranslations('settings')
+  const tc = useTranslations('common')
   const [name,  setName]  = useState(initialName)
   const [emoji, setEmoji] = useState(initialEmoji)
   const [color, setColor] = useState(initialColor)
@@ -332,7 +332,7 @@ function ItemModal({ title, subtitle, initialName = '', initialEmoji = '📋', i
         </div>
         <div style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Nome</div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{t('itemModalName')}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-elevated)', borderRadius: 10, padding: '10px 14px', border: '1px solid var(--border-subtle)' }}>
               <span style={{ fontSize: 20 }}>{emoji}</span>
               <input autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && name.trim()) { onSave(name.trim(), emoji, color); onClose() } }}
@@ -340,11 +340,11 @@ function ItemModal({ title, subtitle, initialName = '', initialEmoji = '📋', i
             </div>
           </div>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Icona</div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{t('itemModalIcon')}</div>
             <EmojiPicker value={emoji} onChange={setEmoji} />
           </div>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Colore</div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>{t('itemModalColor')}</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {CAT_COLORS.map((c) => (
                 <button key={c} onClick={() => setColor(c)} style={{ width: 34, height: 34, borderRadius: 9, background: c, border: 'none', cursor: 'pointer', flexShrink: 0, outline: color === c ? `3px solid ${c}` : 'none', outlineOffset: 2, opacity: color === c ? 1 : 0.65, transition: 'all .12s' }} />
@@ -353,8 +353,8 @@ function ItemModal({ title, subtitle, initialName = '', initialEmoji = '📋', i
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '14px 22px', borderTop: '1px solid var(--border-subtle)' }}>
-          <button onClick={onClose} className="ledgernest-btn ledgernest-btn-ghost">Annulla</button>
-          <button onClick={() => { if (name.trim()) { onSave(name.trim(), emoji, color); onClose() } }} className="ledgernest-btn ledgernest-btn-primary" disabled={!name.trim()}>Salva</button>
+          <button onClick={onClose} className="ledgernest-btn ledgernest-btn-ghost">{tc('cancel')}</button>
+          <button onClick={() => { if (name.trim()) { onSave(name.trim(), emoji, color); onClose() } }} className="ledgernest-btn ledgernest-btn-primary" disabled={!name.trim()}>{tc('save')}</button>
         </div>
       </div>
     </div>
@@ -362,13 +362,14 @@ function ItemModal({ title, subtitle, initialName = '', initialEmoji = '📋', i
 }
 
 function ConfirmDeleteModal({ msg, onClose, onConfirm }: { msg: string; onClose: () => void; onConfirm: () => void }) {
+  const tc = useTranslations('common')
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 16, width: 360, padding: '24px 24px 18px', boxShadow: '0 32px 80px rgba(0,0,0,.6)' }} onClick={(e) => e.stopPropagation()}>
         <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 18 }}>{msg}</div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button onClick={onClose} className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm">Annulla</button>
-          <button onClick={() => { onConfirm(); onClose() }} className="ledgernest-btn ledgernest-btn-danger ledgernest-btn-sm">Elimina</button>
+          <button onClick={onClose} className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm">{tc('cancel')}</button>
+          <button onClick={() => { onConfirm(); onClose() }} className="ledgernest-btn ledgernest-btn-danger ledgernest-btn-sm">{tc('delete')}</button>
         </div>
       </div>
     </div>
@@ -385,6 +386,8 @@ function NuovaCategoriaModal({ onClose, onSave, initialType = 'expense' }: {
   onSave: (name: string, catType: NewCatType, group: NewCatGroup, emoji: string, color: string) => void
   initialType?: NewCatType
 }) {
+  const t = useTranslations('settings')
+  const tc = useTranslations('common')
   const { budgetGroups } = useFinanceStore()
   const expenseGroups = budgetGroups.filter((g) => g.id !== 'income' && g.id !== 'transfers').sort((a, b) => a.order - b.order)
   const defaultGroup = expenseGroups[0]?.id ?? 'lifestyle'
@@ -405,8 +408,8 @@ function NuovaCategoriaModal({ onClose, onSave, initialType = 'expense' }: {
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '20px 22px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 16 }}>Nuova categoria</div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>Crea una categoria per organizzare i movimenti</div>
+            <div style={{ fontWeight: 700, fontSize: 16 }}>{t('newCatTitle')}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{t('newCatSub')}</div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 20, lineHeight: 1, padding: 2 }}>×</button>
         </div>
@@ -415,17 +418,17 @@ function NuovaCategoriaModal({ onClose, onSave, initialType = 'expense' }: {
 
           {/* Tipo */}
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Tipo</div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{t('catTypeLabel')}</div>
             <div style={{ display: 'flex', gap: 8 }}>
-              {(['expense', 'income'] as NewCatType[]).map((t) => (
-                <button key={t} onClick={() => setCatType(t)} style={{
+              {(['expense', 'income'] as NewCatType[]).map((ct) => (
+                <button key={ct} onClick={() => setCatType(ct)} style={{
                   flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                  border: `1.5px solid ${catType === t ? 'var(--accent)' : 'var(--border-subtle)'}`,
-                  background: catType === t ? 'var(--accent)' : 'transparent',
-                  color: catType === t ? 'var(--text-on-accent)' : 'var(--text-secondary)',
+                  border: `1.5px solid ${catType === ct ? 'var(--accent)' : 'var(--border-subtle)'}`,
+                  background: catType === ct ? 'var(--accent)' : 'transparent',
+                  color: catType === ct ? 'var(--text-on-accent)' : 'var(--text-secondary)',
                   transition: 'all .15s',
                 }}>
-                  {t === 'expense' ? '↑ Uscita' : '↓ Entrata'}
+                  {ct === 'expense' ? t('catExpenseType') : t('catIncomeType')}
                 </button>
               ))}
             </div>
@@ -433,12 +436,12 @@ function NuovaCategoriaModal({ onClose, onSave, initialType = 'expense' }: {
 
           {/* Nome */}
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Nome</div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{t('catNameLabel')}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-elevated)', borderRadius: 10, padding: '10px 14px', border: '1px solid var(--border-subtle)' }}>
               <span style={{ fontSize: 20 }}>{emoji}</span>
               <input
                 value={name} onChange={(e) => setName(e.target.value)}
-                placeholder={catType === 'income' ? 'Es. Stipendio' : 'Es. Spesa alimentare'}
+                placeholder={catType === 'income' ? t('catNamePlaceholderIncome') : t('catNamePlaceholderExpense')}
                 style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 14, color: 'var(--text-primary)' }}
               />
             </div>
@@ -447,7 +450,7 @@ function NuovaCategoriaModal({ onClose, onSave, initialType = 'expense' }: {
           {/* Gruppo (solo uscite) */}
           {catType === 'expense' && (
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Gruppo</div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{t('catGroupLabel')}</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {expenseGroups.map((g) => (
                 <button key={g.id} onClick={() => setGroup(g.id)} style={{
@@ -464,13 +467,13 @@ function NuovaCategoriaModal({ onClose, onSave, initialType = 'expense' }: {
 
           {/* Icona */}
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Icona</div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{t('catIconLabel')}</div>
             <EmojiPicker value={emoji} onChange={setEmoji} />
           </div>
 
           {/* Colore */}
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Colore</div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>{t('catColorLabel')}</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {CAT_COLORS.map((c) => (
                 <button
@@ -491,13 +494,13 @@ function NuovaCategoriaModal({ onClose, onSave, initialType = 'expense' }: {
 
         {/* Footer */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '14px 22px', borderTop: '1px solid var(--border-subtle)' }}>
-          <button onClick={onClose} className="ledgernest-btn ledgernest-btn-ghost">Annulla</button>
+          <button onClick={onClose} className="ledgernest-btn ledgernest-btn-ghost">{tc('cancel')}</button>
           <button
             onClick={() => { if (name.trim()) { onSave(name.trim(), catType, group, emoji, color); onClose() } }}
             className="ledgernest-btn ledgernest-btn-primary"
             disabled={!name.trim()}
           >
-            Crea categoria
+            {t('createCategory')}
           </button>
         </div>
       </div>
@@ -513,6 +516,8 @@ function EditCategoriaModal({ cat, onClose, onSave, onDelete }: {
   onSave: (id: string, patch: Partial<BudgetCategory>) => void
   onDelete: (id: string) => void
 }) {
+  const t = useTranslations('settings')
+  const tc = useTranslations('common')
   const [name,          setName]          = useState(cat.name)
   const [emoji,         setEmoji]         = useState(cat.emoji)
   const [color,         setColor]         = useState(cat.color)
@@ -531,7 +536,7 @@ function EditCategoriaModal({ cat, onClose, onSave, onDelete }: {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ width: 42, height: 42, borderRadius: 11, background: `${color}28`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>{emoji}</div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 16 }}>Modifica categoria</div>
+              <div style={{ fontWeight: 700, fontSize: 16 }}>{t('editCatTitle')}</div>
               <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{cat.name}</div>
             </div>
           </div>
@@ -541,7 +546,7 @@ function EditCategoriaModal({ cat, onClose, onSave, onDelete }: {
         <div style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 18 }}>
           {/* Nome */}
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Nome</div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{t('catNameLabel')}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-elevated)', borderRadius: 10, padding: '10px 14px', border: '1px solid var(--border-subtle)' }}>
               <span style={{ fontSize: 20 }}>{emoji}</span>
               <input
@@ -553,13 +558,13 @@ function EditCategoriaModal({ cat, onClose, onSave, onDelete }: {
 
           {/* Icona */}
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Icona</div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{t('catIconLabel')}</div>
             <EmojiPicker value={emoji} onChange={setEmoji} />
           </div>
 
           {/* Colore */}
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Colore</div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>{t('catColorLabel')}</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {CAT_COLORS.map((c) => (
                 <button key={c} onClick={() => setColor(c)} style={{
@@ -576,21 +581,21 @@ function EditCategoriaModal({ cat, onClose, onSave, onDelete }: {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 22px', borderTop: '1px solid var(--border-subtle)' }}>
           {confirmDelete ? (
             <>
-              <span style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>Eliminare &ldquo;{cat.name}&rdquo;?</span>
-              <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" onClick={() => setConfirmDelete(false)}>Annulla</button>
-              <button className="ledgernest-btn ledgernest-btn-danger ledgernest-btn-sm" onClick={() => { onDelete(cat.id); onClose() }}>Elimina</button>
+              <span style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>{t('confirmDeleteCat', { name: cat.name })}</span>
+              <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" onClick={() => setConfirmDelete(false)}>{tc('cancel')}</button>
+              <button className="ledgernest-btn ledgernest-btn-danger ledgernest-btn-sm" onClick={() => { onDelete(cat.id); onClose() }}>{tc('delete')}</button>
             </>
           ) : (
             <>
-              <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" style={{ color: 'var(--danger)' }} onClick={() => setConfirmDelete(true)}>🗑 Elimina</button>
+              <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" style={{ color: 'var(--danger)' }} onClick={() => setConfirmDelete(true)}>🗑 {tc('delete')}</button>
               <div style={{ flex: 1 }} />
-              <button className="ledgernest-btn ledgernest-btn-ghost" onClick={onClose}>Annulla</button>
+              <button className="ledgernest-btn ledgernest-btn-ghost" onClick={onClose}>{tc('cancel')}</button>
               <button
                 className="ledgernest-btn ledgernest-btn-primary"
                 disabled={!name.trim()}
                 onClick={() => { if (name.trim()) { onSave(cat.id, { name: name.trim(), emoji, color }); onClose() } }}
               >
-                Salva modifiche
+                {tc('saveChanges')}
               </button>
             </>
           )}
@@ -608,6 +613,8 @@ function MergeModal({ merchants, counts, onClose, onMerge }: {
   onClose: () => void
   onMerge: (aliases: string[], canonical: string) => void
 }) {
+  const t = useTranslations('settings')
+  const tc = useTranslations('common')
   const [choice, setChoice]       = useState(merchants[0])
   const [custom, setCustom]       = useState('')
   const [useCustom, setUseCustom] = useState(false)
@@ -618,8 +625,8 @@ function MergeModal({ merchants, counts, onClose, onMerge }: {
       <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, width: 420, boxShadow: '0 32px 80px rgba(0,0,0,.6)', overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
         <div style={{ padding: '20px 22px 16px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 16 }}>Unisci esercenti</div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>Scegli il nome canonico da mantenere</div>
+            <div style={{ fontWeight: 700, fontSize: 16 }}>{t('merchantsMergeTitle')}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{t('merchantsMergeSub')}</div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 20, lineHeight: 1, padding: 2 }}>×</button>
         </div>
@@ -629,19 +636,19 @@ function MergeModal({ merchants, counts, onClose, onMerge }: {
             <label key={m} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${!useCustom && choice === m ? 'var(--accent)' : 'var(--border-subtle)'}`, background: !useCustom && choice === m ? 'var(--accent-dim)' : 'var(--bg-elevated)', cursor: 'pointer' }}>
               <input type="radio" checked={!useCustom && choice === m} onChange={() => { setChoice(m); setUseCustom(false) }} style={{ accentColor: 'var(--accent)' }} />
               <span style={{ flex: 1, fontWeight: 600, fontSize: 13 }}>{m}</span>
-              <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{counts.get(m) ?? 0} mov.</span>
+              <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{counts.get(m) ?? 0} {t('merchantsAlias')}</span>
             </label>
           ))}
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${useCustom ? 'var(--accent)' : 'var(--border-subtle)'}`, background: useCustom ? 'var(--accent-dim)' : 'var(--bg-elevated)', cursor: 'pointer' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <input type="radio" checked={useCustom} onChange={() => setUseCustom(true)} style={{ accentColor: 'var(--accent)' }} />
-              <span style={{ fontSize: 13, fontWeight: 600 }}>Nome personalizzato</span>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>{t('merchantsMergeCustom')}</span>
             </div>
             <input
               value={custom}
               onChange={(e) => { setCustom(e.target.value); setUseCustom(true) }}
-              placeholder="Es. Tabaccheria Musine"
+              placeholder={t('merchantsMergeCustomPlaceholder')}
               onClick={(e) => { e.stopPropagation(); setUseCustom(true) }}
               style={{ marginLeft: 24, padding: '7px 11px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 13, outline: 'none' }}
             />
@@ -649,13 +656,13 @@ function MergeModal({ merchants, counts, onClose, onMerge }: {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '14px 22px', borderTop: '1px solid var(--border-subtle)' }}>
-          <button onClick={onClose} className="ledgernest-btn ledgernest-btn-ghost">Annulla</button>
+          <button onClick={onClose} className="ledgernest-btn ledgernest-btn-ghost">{tc('cancel')}</button>
           <button
             onClick={() => { if (canonical) onMerge(merchants, canonical) }}
             disabled={!canonical}
             className="ledgernest-btn ledgernest-btn-primary"
           >
-            Unisci
+            {t('merchantsMergeBtn')}
           </button>
         </div>
       </div>
@@ -666,19 +673,31 @@ function MergeModal({ merchants, counts, onClose, onMerge }: {
 // ── page ──────────────────────────────────────────────────────
 
 const SIDEBAR_ITEMS = [
-  { id: 'profilo',    label: 'Profilo',        icon: 'briefcase' },
-  { id: 'categorie',  label: 'Categorie',       icon: 'movimenti' },
-  { id: 'aspetto',    label: 'Aspetto',         icon: 'impostazioni' },
-  { id: 'conti',      label: 'Conti e broker',  icon: 'conti' },
-  { id: 'esercenti',  label: 'Esercenti',       icon: 'wallet' },
-  { id: 'notifiche',  label: 'Notifiche',       icon: 'bell' },
-  { id: 'privacy',    label: 'Privacy e sicur.', icon: 'report' },
-  { id: 'piano',      label: 'Piano · Pro',     icon: 'obiettivi' },
-  { id: 'dati',       label: 'Dati ed export',  icon: 'download' },
+  { id: 'profilo',   icon: 'briefcase'   },
+  { id: 'aspetto',   icon: 'impostazioni'},
+  { id: 'mercati',   icon: 'azioni'      },
+  { id: 'categorie', icon: 'movimenti'   },
+  { id: 'esercenti', icon: 'wallet'      },
+  { id: 'notifiche', icon: 'bell'        },
+  { id: 'privacy',   icon: 'report'      },
+  { id: 'dati',      icon: 'download'    },
 ]
 
 export default function ImpostazioniPage() {
   const t = useTranslations('settings')
+  const tc = useTranslations('common')
+
+  const THEME_OPTIONS: ThemeOption[] = [
+    ['dark',   t('dark'),   '🌙'],
+    ['light',  t('light'),  '☀️'],
+    ['system', t('system'), '🖥️'],
+  ]
+
+  const sidebarLabel = (id: string) => {
+    const key = `sidebar${id.charAt(0).toUpperCase()}${id.slice(1)}` as Parameters<typeof t>[0]
+    return t(key)
+  }
+
   const { settings, updateSettings } = useSettingsStore()
   const { resetPortfolio } = usePortfolioStore()
   const {
@@ -728,25 +747,25 @@ export default function ImpostazioniPage() {
       case 'profilo':
         return (
           <div>
-            <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 4 }}>Profilo</h2>
+            <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 4 }}>{t('profileTitle')}</h2>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 28 }}>
-              Preferenze personali e riconoscimento movimenti
+              {t('profileSub')}
             </p>
             <SettingRow
-              label="Nome intestatario conto"
-              desc="Come appare nel CSV bancario (es. ROSSI MARIO). Usato per riconoscere i giroconti come trasferimenti."
+              label={t('selfNameLabel')}
+              desc={t('selfNameDesc')}
             >
               <input
                 className="ledgernest-input"
-                placeholder="Es. ROSSI MARIO"
+                placeholder={t('selfNamePlaceholder')}
                 value={settings.selfName ?? ''}
                 onChange={(e) => updateSettings({ selfName: e.target.value.toUpperCase() })}
                 style={{ width: 240, textTransform: 'uppercase' }}
               />
             </SettingRow>
             <SettingRow
-              label="Ignora trasferimenti interni"
-              desc="Durante l'import, esclude automaticamente i movimenti riconosciuti come giroconto (nome intestatario o tipo trasferimento). Non impattano entrate/uscite reali."
+              label={t('ignoreTransfersLabel')}
+              desc={t('ignoreTransfersDesc')}
             >
               <Toggle
                 checked={settings.ignoreTransfers ?? true}
@@ -787,10 +806,10 @@ export default function ImpostazioniPage() {
               <span style={{ flex: 1, fontWeight: 600, fontSize: 13 }}>{cat.name}</span>
               <div style={{ width: 14, height: 14, borderRadius: '50%', background: cat.color, flexShrink: 0 }} />
               {isProtected
-                ? <span style={{ fontSize: 11, color: 'var(--text-tertiary)', padding: '4px 10px', border: '1px solid var(--border-subtle)', borderRadius: 7 }}>Sistema</span>
+                ? <span style={{ fontSize: 11, color: 'var(--text-tertiary)', padding: '4px 10px', border: '1px solid var(--border-subtle)', borderRadius: 7 }}>{t('categoriesSystem')}</span>
                 : <>
-                    {actionBtn('Modifica', (e) => { e.stopPropagation(); cat.parentId ? setSubcatModal({ groupId: cat.group, parentId: cat.parentId, cat }) : setCatModal({ groupId: cat.group, cat }) })}
-                    {actionBtn('✕', (e) => { e.stopPropagation(); setConfirmDel({ msg: `Eliminare "${cat.name}"?`, onConfirm: () => deleteBudgetCategory(cat.id) }) }, true)}
+                    {actionBtn(t('categoriesEdit'), (e) => { e.stopPropagation(); cat.parentId ? setSubcatModal({ groupId: cat.group, parentId: cat.parentId, cat }) : setCatModal({ groupId: cat.group, cat }) })}
+                    {actionBtn('✕', (e) => { e.stopPropagation(); setConfirmDel({ msg: t('confirmDeleteCat', { name: cat.name }), onConfirm: () => deleteBudgetCategory(cat.id) }) }, true)}
                   </>
               }
             </div>
@@ -806,14 +825,14 @@ export default function ImpostazioniPage() {
                 <div style={{ width: 34, height: 34, borderRadius: 10, background: `${cat.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{cat.emoji}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>{cat.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{subs.length} sotto-{subs.length === 1 ? 'categoria' : 'categorie'}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{subs.length} {subs.length === 1 ? t('subcatLabel') : t('subcatsLabel')}</div>
                 </div>
                 {isProtected
-                  ? <span style={{ fontSize: 11, color: 'var(--text-tertiary)', padding: '4px 10px', border: '1px solid var(--border-subtle)', borderRadius: 7 }}>Sistema</span>
+                  ? <span style={{ fontSize: 11, color: 'var(--text-tertiary)', padding: '4px 10px', border: '1px solid var(--border-subtle)', borderRadius: 7 }}>{t('categoriesSystem')}</span>
                   : <>
-                      {actionBtn('+ Sotto-cat', (e) => { e.stopPropagation(); setSubcatModal({ groupId: cat.group, parentId: cat.id }) })}
-                      {actionBtn('Modifica', (e) => { e.stopPropagation(); setCatModal({ groupId: cat.group, cat }) })}
-                      {actionBtn('✕', (e) => { e.stopPropagation(); setConfirmDel({ msg: `Eliminare "${cat.name}" e le sue ${subs.length} sotto-categorie?`, onConfirm: () => deleteBudgetCategory(cat.id) }) }, true)}
+                      {actionBtn(t('addSubcat'), (e) => { e.stopPropagation(); setSubcatModal({ groupId: cat.group, parentId: cat.id }) })}
+                      {actionBtn(t('categoriesEdit'), (e) => { e.stopPropagation(); setCatModal({ groupId: cat.group, cat }) })}
+                      {actionBtn('✕', (e) => { e.stopPropagation(); setConfirmDel({ msg: t('confirmDeleteCatWithSubs', { name: cat.name, count: subs.length }), onConfirm: () => deleteBudgetCategory(cat.id) }) }, true)}
                     </>
                 }
               </div>
@@ -827,12 +846,12 @@ export default function ImpostazioniPage() {
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
               <div>
-                <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 4 }}>Categorie</h2>
+                <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 4 }}>{t('categoriesTitle')}</h2>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                  {expenseGroups.length} gruppi · {midLevelCats.length} categorie · {leafCats.length} sotto-categorie
+                  {expenseGroups.length} gruppi · {midLevelCats.length} categorie · {leafCats.length} {t('subcatsLabel')}
                 </p>
               </div>
-              <button className="ledgernest-btn ledgernest-btn-primary" onClick={() => setGroupModal({})}>+ Nuovo gruppo</button>
+              <button className="ledgernest-btn ledgernest-btn-primary" onClick={() => setGroupModal({})}>{t('categoriesNewGroup')}</button>
             </div>
 
             {/* Expense groups */}
@@ -851,9 +870,9 @@ export default function ImpostazioniPage() {
                       {group.desc && <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{group.desc}</div>}
                     </div>
                     <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{totalCats} cat.</span>
-                    {actionBtn('+ Categoria', (e) => { e.stopPropagation(); setCatModal({ groupId: group.id }) })}
-                    {actionBtn('Modifica', (e) => { e.stopPropagation(); setGroupModal({ group }) })}
-                    {actionBtn('✕', (e) => { e.stopPropagation(); setConfirmDel({ msg: `Eliminare il gruppo "${group.label}" e tutte le sue categorie?`, onConfirm: () => deleteBudgetGroup(group.id) }) }, true)}
+                    {actionBtn(t('categoriesNewCat'), (e) => { e.stopPropagation(); setCatModal({ groupId: group.id }) })}
+                    {actionBtn(t('categoriesEdit'), (e) => { e.stopPropagation(); setGroupModal({ group }) })}
+                    {actionBtn('✕', (e) => { e.stopPropagation(); setConfirmDel({ msg: t('confirmDeleteGroup', { name: group.label }), onConfirm: () => deleteBudgetGroup(group.id) }) }, true)}
                     <span style={{ fontSize: 11, color: 'var(--text-tertiary)', transition: 'transform .15s', transform: collapsedCatGroups.has(group.id) ? 'rotate(-90deg)' : 'rotate(0deg)', display: 'inline-block', marginLeft: 4 }}>▾</span>
                   </div>
                   {!collapsedCatGroups.has(group.id) && (
@@ -861,7 +880,7 @@ export default function ImpostazioniPage() {
                       {groupMidCats.map(renderMidCat)}
                       {groupDirLeaves.map((c) => renderLeaf(c, false))}
                       {totalCats === 0 && (
-                        <div style={{ padding: '18px 14px', fontSize: 13, color: 'var(--text-tertiary)', textAlign: 'center' }}>Nessuna categoria · usa "+ Categoria" per aggiungerne una</div>
+                        <div style={{ padding: '18px 14px', fontSize: 13, color: 'var(--text-tertiary)', textAlign: 'center' }}>{t('categoriesEmpty')}</div>
                       )}
                     </div>
                   )}
@@ -881,10 +900,10 @@ export default function ImpostazioniPage() {
                     <span style={{ fontSize: 18 }}>{transferGroup.emoji}</span>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 700, fontSize: 14 }}>{transferGroup.label}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Non appaiono nel budget</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{t('transfersGroupSub')}</div>
                     </div>
                     <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{totalTransferCats} cat.</span>
-                    {actionBtn('+ Categoria', (e) => { e.stopPropagation(); setCatModal({ groupId: 'transfers' }) })}
+                    {actionBtn(t('categoriesNewCat'), (e) => { e.stopPropagation(); setCatModal({ groupId: 'transfers' }) })}
                     <span style={{ fontSize: 11, color: 'var(--text-tertiary)', transition: 'transform .15s', transform: collapsedCatGroups.has('transfers') ? 'rotate(-90deg)' : 'rotate(0deg)', display: 'inline-block', marginLeft: 4 }}>▾</span>
                   </div>
                   {!collapsedCatGroups.has('transfers') && (
@@ -908,11 +927,11 @@ export default function ImpostazioniPage() {
                     onClick={() => toggleCatGroup('income')}>
                     <span style={{ fontSize: 18 }}>{incomeGroup?.emoji ?? '🟢'}</span>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14 }}>Entrate</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Fonti di reddito</div>
+                      <div style={{ fontWeight: 700, fontSize: 14 }}>{t('incomeGroupTitle')}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{t('incomeGroupSub')}</div>
                     </div>
                     <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{incomeMidCats.length} cat.</span>
-                    {actionBtn('+ Categoria', (e) => { e.stopPropagation(); setCatModal({ groupId: 'income' }) })}
+                    {actionBtn(t('categoriesNewCat'), (e) => { e.stopPropagation(); setCatModal({ groupId: 'income' }) })}
                     <span style={{ fontSize: 11, color: 'var(--text-tertiary)', transition: 'transform .15s', transform: collapsedCatGroups.has('income') ? 'rotate(-90deg)' : 'rotate(0deg)', display: 'inline-block', marginLeft: 4 }}>▾</span>
                   </div>
                   {!collapsedCatGroups.has('income') && (
@@ -927,7 +946,7 @@ export default function ImpostazioniPage() {
 
             <div style={{ padding: '16px 18px', borderRadius: 12, background: 'color-mix(in oklch, var(--accent) 8%, transparent)', border: '1px solid color-mix(in oklch, var(--accent) 20%, transparent)', fontSize: 12, color: 'var(--text-secondary)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
               <span style={{ fontSize: 16, flexShrink: 0 }}>💡</span>
-              <span>Il budget mensile per ogni categoria si gestisce dalla scheda Budget. I trasferimenti non appaiono nel budget.</span>
+              <span>{t('categoriesNote')}</span>
             </div>
           </div>
         )
@@ -937,12 +956,12 @@ export default function ImpostazioniPage() {
       case 'aspetto':
         return (
           <div>
-            <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 4 }}>Aspetto</h2>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 28 }}>Tema, colori e densità dell&apos;interfaccia</p>
+            <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 4 }}>{t('appearanceTitle')}</h2>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 28 }}>{t('appearanceSub')}</p>
 
             {/* Tema */}
             <div style={{ marginBottom: 28 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12 }}>Tema</div>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12 }}>{t('themeLabel')}</div>
               <div className="ledgernest-settings-theme-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
                 {THEME_OPTIONS.map(([th, label, icon]) => (
                   <div
@@ -969,8 +988,8 @@ export default function ImpostazioniPage() {
 
             {/* Tema colori */}
             <div style={{ marginBottom: 28 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Tema colori</div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>Accento e sidebar coordinati</div>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>{t('colorThemeLabel')}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>{t('colorThemeSub')}</div>
               <div className="ledgernest-settings-color-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
                 {COLOR_THEMES.map((th) => {
                   const isSelected = settings.accentColor === th.accent && (settings.sidebarColor ?? '#111418') === th.sidebar
@@ -1042,92 +1061,101 @@ export default function ImpostazioniPage() {
 
             {/* Densità */}
             <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12 }}>Densità</div>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12 }}>{t('densityLabel')}</div>
               <TabGroup
                 value={settings.density}
                 onChange={(v) => updateSettings({ density: v })}
                 options={[
-                  { value: 'comfortable', label: 'Spaziosa' },
-                  { value: 'normal',      label: 'Comoda'   },
-                  { value: 'compact',     label: 'Compatta' },
+                  { value: 'comfortable', label: t('densityComfortable') },
+                  { value: 'normal',      label: t('densityNormal')      },
+                  { value: 'compact',     label: t('densityCompact')     },
                 ]}
               />
             </div>
 
             {/* Font */}
             <div style={{ marginBottom: 28 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12 }}>Font</div>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12 }}>{t('fontLabel')}</div>
               <TabGroup
                 value={settings.font ?? 'inter'}
                 onChange={(v) => updateSettings({ font: v as 'inter' | 'monospace' | 'system' })}
                 options={[
                   { value: 'inter',     label: 'Inter (default)' },
                   { value: 'monospace', label: 'Monospace'        },
-                  { value: 'system',    label: 'Sistema'          },
+                  { value: 'system',    label: t('fontSystem')    },
                 ]}
               />
             </div>
 
             <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 24, display: 'flex', flexDirection: 'column' }}>
-              <SettingRow label="Animazioni" desc="Transizioni e micro-interazioni">
+              <SettingRow label={t('animationsLabel')} desc={t('animationsDesc')}>
                 <Toggle checked={settings.animations ?? true} onChange={(v) => updateSettings({ animations: v })} />
               </SettingRow>
-              <SettingRow label="Mostra valori in numeri grandi" desc="Aumenta la dimensione tipografica dei totali">
+              <SettingRow label={t('largeNumbersLabel')} desc={t('largeNumbersDesc')}>
                 <Toggle checked={settings.showLargeNumbers ?? false} onChange={(v) => updateSettings({ showLargeNumbers: v })} />
               </SettingRow>
-              <SettingRow label="Nascondi importi sensibili" desc="Mostra ●●●● al posto dei numeri quando inattivo">
+              <SettingRow label={t('hideSensitiveLabel')} desc={t('hideSensitiveDesc')}>
                 <Toggle checked={settings.hideSensitiveAmounts ?? false} onChange={(v) => updateSettings({ hideSensitiveAmounts: v })} />
+              </SettingRow>
+            </div>
+
+            {/* Language + Currency */}
+            <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 24, display: 'flex', flexDirection: 'column' }}>
+              <SettingRow label={t('language')} desc={t('languageDesc')}>
+                <select
+                  className="ledgernest-input ledgernest-select"
+                  value={settings.locale}
+                  onChange={(e) => {
+                    const newLocale = e.target.value as Locale
+                    updateSettings({ locale: newLocale })
+                    document.cookie = `ledgernest-locale=${newLocale}; path=/; max-age=31536000`
+                    window.location.reload()
+                  }}
+                  style={{ width: 150 }}
+                >
+                  <option value="it">🇮🇹 Italiano</option>
+                  <option value="en">🇬🇧 English</option>
+                </select>
+              </SettingRow>
+              <SettingRow label={t('currency')} desc={t('currencyDesc')}>
+                <select
+                  className="ledgernest-input ledgernest-select"
+                  value={settings.currency}
+                  onChange={(e) => updateSettings({ currency: e.target.value as Currency })}
+                  style={{ width: 130 }}
+                >
+                  <option value="EUR">€ EUR</option>
+                  <option value="USD">$ USD</option>
+                </select>
               </SettingRow>
             </div>
           </div>
         )
 
-      // ── Conti e broker ────────────────────────────────────────
-      case 'conti':
+      // ── Mercati ────────────────────────────────────────────────
+      case 'mercati':
         return (
           <div>
-            <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 4 }}>Conti e broker</h2>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 28 }}>Valuta, aggiornamenti prezzi e connessioni</p>
-            <SettingRow label={t('currency')} desc="Valuta principale visualizzata">
-              <select
-                className="ledgernest-input ledgernest-select"
-                value={settings.currency}
-                onChange={(e) => updateSettings({ currency: e.target.value as Currency })}
-                style={{ width: 130 }}
-              >
-                <option value="EUR">€ EUR</option>
-                <option value="USD">$ USD</option>
-              </select>
-            </SettingRow>
-            <SettingRow label={t('language')} desc="Lingua dell'interfaccia">
-              <select
-                className="ledgernest-input ledgernest-select"
-                value={settings.locale}
-                onChange={(e) => updateSettings({ locale: e.target.value as Locale })}
-                style={{ width: 150 }}
-              >
-                <option value="it">🇮🇹 Italiano</option>
-                <option value="en">🇬🇧 English</option>
-              </select>
-            </SettingRow>
-            <SettingRow label={t('refreshInterval')} desc="Con quale frequenza aggiornare i prezzi">
+            <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 4 }}>{t('marketsTitle')}</h2>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 28 }}>{t('marketsSub')}</p>
+            <SettingRow label={t('refreshInterval')} desc={t('refreshIntervalDesc')}>
               <select
                 className="ledgernest-input ledgernest-select"
                 value={settings.refreshInterval}
                 onChange={(e) => updateSettings({ refreshInterval: parseInt(e.target.value) })}
                 style={{ width: 150 }}
               >
-                <option value={0}>Manuale</option>
-                <option value={30}>30 secondi</option>
-                <option value={60}>1 minuto</option>
-                <option value={300}>5 minuti</option>
-                <option value={600}>10 minuti</option>
+                <option value={0}>{t('refreshManual')}</option>
+                <option value={30}>30 sec</option>
+                <option value={60}>1 min</option>
+                <option value={300}>5 min</option>
+                <option value={600}>10 min</option>
               </select>
             </SettingRow>
-            <SettingRow label={t('showPrePostMarket')} desc="Prezzi pre-market e post-market">
+            <SettingRow label={t('showPrePostMarket')} desc={t('showPrePostDesc')}>
               <Toggle checked={settings.showPrePostMarket} onChange={(v) => updateSettings({ showPrePostMarket: v })} />
             </SettingRow>
-            <SettingRow label="Mostra valore portfolio" desc="Visibile nella panoramica principale">
+            <SettingRow label={t('showPortfolioLabel')} desc={t('showPortfolioDesc')}>
               <Toggle checked={settings.showPortfolioValue} onChange={(v) => updateSettings({ showPortfolioValue: v })} />
             </SettingRow>
           </div>
@@ -1137,11 +1165,11 @@ export default function ImpostazioniPage() {
       case 'esercenti': {
         const merchantCounts   = new Map<string, number>()
         const merchantLastDate = new Map<string, string>()
-        for (const t of transactions) {
-          if (t.merchant?.trim()) {
-            merchantCounts.set(t.merchant, (merchantCounts.get(t.merchant) ?? 0) + 1)
-            const prev = merchantLastDate.get(t.merchant)
-            if (!prev || t.date > prev) merchantLastDate.set(t.merchant, t.date)
+        for (const tx of transactions) {
+          if (tx.merchant?.trim()) {
+            merchantCounts.set(tx.merchant, (merchantCounts.get(tx.merchant) ?? 0) + 1)
+            const prev = merchantLastDate.get(tx.merchant)
+            if (!prev || tx.date > prev) merchantLastDate.set(tx.merchant, tx.date)
           }
         }
         const allMerchants = Array.from(merchantCounts.entries())
@@ -1170,25 +1198,25 @@ export default function ImpostazioniPage() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
               <div>
-                <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 4 }}>Esercenti</h2>
+                <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 4 }}>{t('merchantsTitle')}</h2>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                  {allMerchants.length} esercenti · unisci varianti dello stesso nome per normalizzare i dati
+                  {t('merchantsSubCount', { count: allMerchants.length })}
                 </p>
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <button
                   className="ledgernest-btn ledgernest-btn-ghost"
-                  title="Normalizza i nomi degli esercenti: rimuove codici, suffissi legali, uniforma brand noti"
+                  title={t('merchantsAutoNormalizeDesc')}
                   onClick={() => normalizeMerchants(normalizeMerchantName)}
                 >
-                  Normalizza nomi
+                  {t('merchantsNormalize')}
                 </button>
                 <button
                   className="ledgernest-btn ledgernest-btn-ghost"
-                  title="Carica automaticamente il favicon per i brand riconosciuti senza logo"
+                  title={t('merchantsAutoLogo')}
                   onClick={() => {
                     const uniqueMerchants = transactions
-                      .map((t) => t.merchant)
+                      .map((tx) => tx.merchant)
                       .filter((m): m is string => !!m)
                       .filter((m, i, a) => a.indexOf(m) === i)
                     let count = 0
@@ -1198,19 +1226,19 @@ export default function ImpostazioniPage() {
                         count++
                       }
                     }
-                    if (count === 0) alert('Nessun logo da caricare (tutti già impostati o brand non riconosciuti)')
+                    if (count === 0) alert(t('merchantsNoLogoAlert'))
                   }}
                 >
-                  Auto-carica loghi
+                  {t('merchantsAutoLogo')}
                 </button>
                 {selectedMerchants.size >= 2 && (
                   <button className="ledgernest-btn ledgernest-btn-primary" onClick={() => setShowMergeModal(true)}>
-                    Unisci {selectedMerchants.size}
+                    {t('merchantsMergeCount', { count: selectedMerchants.size })}
                   </button>
                 )}
                 {selectedMerchants.size > 0 && (
                   <button className="ledgernest-btn ledgernest-btn-ghost" onClick={() => setSelectedMerchants(new Set())}>
-                    Deseleziona
+                    {t('merchantsDeselect')}
                   </button>
                 )}
               </div>
@@ -1219,7 +1247,7 @@ export default function ImpostazioniPage() {
             {/* Search */}
             <input
               className="ledgernest-input"
-              placeholder="Cerca esercente..."
+              placeholder={t('merchantsSearchPlaceholder')}
               value={merchantSearch}
               onChange={(e) => setMerchantSearch(e.target.value)}
               style={{ width: '100%', marginBottom: 14 }}
@@ -1236,15 +1264,15 @@ export default function ImpostazioniPage() {
                   style={{ accentColor: 'var(--accent)', width: 15, height: 15 }}
                 />
                 <div />
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '0.06em' }}>NOME</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '0.06em', textAlign: 'center' }}>MOVIMENTI</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '0.06em', textAlign: 'right' }}>ULTIMA DATA</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '0.06em' }}>{t('merchantsColName')}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '0.06em', textAlign: 'center' }}>{t('merchantsColTxn')}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '0.06em', textAlign: 'right' }}>{t('merchantsColLastDate')}</div>
                 <div />
               </div>
 
               {filteredMerchants.length === 0 ? (
                 <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
-                  {allMerchants.length === 0 ? 'Nessun esercente trovato nei movimenti' : 'Nessun risultato'}
+                  {allMerchants.length === 0 ? t('merchantsEmpty') : tc('noResults')}
                 </div>
               ) : filteredMerchants.map(([name, count], i) => {
                 const checked  = selectedMerchants.has(name)
@@ -1276,7 +1304,7 @@ export default function ImpostazioniPage() {
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                       <button
                         onClick={() => setEditLogoMerchant(name)}
-                        title="Cambia logo"
+                        title={t('merchantsLogoChange')}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, borderRadius: 11, position: 'relative' }}
                       >
                         <MerchantAvatar name={name} logo={logo} size={38} />
@@ -1327,7 +1355,7 @@ export default function ImpostazioniPage() {
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '4px 6px', borderRadius: 6, fontSize: 13, transition: 'color .1s' }}
                         onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent)')}
                         onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-tertiary)')}
-                        title="Modifica logo"
+                        title={t('merchantsLogoChange')}
                       >✎</button>
                     </div>
                   </div>
@@ -1338,9 +1366,9 @@ export default function ImpostazioniPage() {
             {/* Merge rules */}
             {aliasEntries.length > 0 && (
               <div style={{ marginTop: 28 }}>
-                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Regole di merge</div>
+                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{t('merchantsAliases')}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
-                  Applicate automaticamente ai prossimi import CSV
+                  {t('merchantsAliasesDesc')}
                 </div>
                 <div style={{ border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}>
                   {aliasEntries.map(([alias, canonical], i) => (
@@ -1356,7 +1384,7 @@ export default function ImpostazioniPage() {
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', fontSize: 16, lineHeight: 1, padding: '0 4px', textAlign: 'center' }}
                         onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--danger)')}
                         onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-tertiary)')}
-                        title="Rimuovi regola"
+                        title={t('merchantsRemoveAlias')}
                       >×</button>
                     </div>
                   ))}
@@ -1393,9 +1421,9 @@ export default function ImpostazioniPage() {
       case 'notifiche':
         return (
           <div>
-            <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 4 }}>Notifiche</h2>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 28 }}>Avvisi e promemoria</p>
-            <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>Presto disponibile</div>
+            <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 4 }}>{t('notificationsTitle')}</h2>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 28 }}>{t('notificationsSub')}</p>
+            <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>{t('notificationsComingSoon')}</div>
           </div>
         )
 
@@ -1403,77 +1431,77 @@ export default function ImpostazioniPage() {
       case 'privacy':
         return (
           <div>
-            <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 4 }}>Privacy e sicurezza</h2>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 28 }}>Gestisci i tuoi dati e la tua privacy</p>
-            <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>Presto disponibile</div>
+            <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 4 }}>{t('privacyTitle')}</h2>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 28 }}>{t('privacySub')}</p>
+            <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>{t('privacyComingSoon')}</div>
           </div>
         )
 
-      // ── Piano ─────────────────────────────────────────────────
-      case 'piano':
-        return (
-          <div>
-            <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 4 }}>Piano · Pro</h2>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 28 }}>Gestisci il tuo abbonamento</p>
-            <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>Presto disponibile</div>
-          </div>
-        )
-
-      // ── Dati ed export ────────────────────────────────────────
+      // ── Dati ──────────────────────────────────────────────────
       case 'dati':
         return (
           <div>
-            <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 4 }}>Dati ed export</h2>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 28 }}>Esporta, importa o resetta i tuoi dati</p>
+            <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 4 }}>{t('dataTitle')}</h2>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 28 }}>{t('dataSub')}</p>
 
-            <SettingRow label="Importa CSV" desc="Trade Republic · Credit Agricole">
+            <SettingRow label={t('importTitle')} desc={t('importDesc')}>
               <button className="ledgernest-btn ledgernest-btn-ghost" onClick={() => setImportOpen(true)}>
-                ↑ Importa
+                {t('importBtn')}
               </button>
             </SettingRow>
 
-            <SettingRow label={t('exportData')} desc="Scarica un backup completo in formato JSON">
-              <button
-                className="ledgernest-btn ledgernest-btn-ghost"
-                onClick={() => {
-                  const blob = new Blob([JSON.stringify({ version: '1.0', exportedAt: new Date().toISOString() }, null, 2)], { type: 'application/json' })
-                  const url = URL.createObjectURL(blob)
-                  const a = document.createElement('a'); a.href = url
-                  a.download = `ledgernest-backup-${new Date().toISOString().slice(0, 10)}.json`
-                  a.click(); URL.revokeObjectURL(url)
-                }}
-              >
-                ↓ {t('exportJson')}
-              </button>
-            </SettingRow>
+            {/* Danger zone */}
+            <div style={{ marginTop: 32, padding: '20px 22px', borderRadius: 14, border: '1px solid color-mix(in oklch, var(--danger) 30%, transparent)', background: 'color-mix(in oklch, var(--danger) 5%, transparent)' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--danger)', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
+                ⚠️ {t('dangerZoneTitle')}
+              </div>
 
-            <SettingRow
-              label="Reset Portfolio"
-              desc="Elimina tutte le posizioni, trade e dividendi — azione irreversibile"
-            >
-              {resetConfirm ? (
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" onClick={() => setResetConfirm(false)}>Annulla</button>
-                  <button className="ledgernest-btn ledgernest-btn-danger ledgernest-btn-sm" onClick={() => { resetPortfolio(); setResetConfirm(false) }}>Conferma</button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {/* Reset portfolio */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{t('resetPortfolioLabel')}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3, lineHeight: 1.5 }}>
+                      {t('resetPortfolioDesc')}
+                    </div>
+                  </div>
+                  {resetConfirm ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end', flexShrink: 0 }}>
+                      <div style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, whiteSpace: 'nowrap' }}>{t('resetConfirmWarning')}</div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" onClick={() => setResetConfirm(false)}>{tc('cancel')}</button>
+                        <button className="ledgernest-btn ledgernest-btn-danger ledgernest-btn-sm" onClick={() => { resetPortfolio(); setResetConfirm(false) }}>{t('resetPortfolioConfirmBtn')}</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button className="ledgernest-btn ledgernest-btn-danger ledgernest-btn-sm" style={{ flexShrink: 0 }} onClick={() => setResetConfirm(true)}>{t('resetPortfolioBtn')}</button>
+                  )}
                 </div>
-              ) : (
-                <button className="ledgernest-btn ledgernest-btn-danger ledgernest-btn-sm" onClick={() => setResetConfirm(true)}>Reset Portfolio</button>
-              )}
-            </SettingRow>
 
-            <SettingRow
-              label="Reset completo"
-              desc="Elimina tutti i dati finanziari e del portafoglio — azione irreversibile"
-            >
-              {confirmFullReset ? (
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" onClick={() => setConfirmFullReset(false)}>Annulla</button>
-                  <button className="ledgernest-btn ledgernest-btn-danger ledgernest-btn-sm" onClick={() => { resetAllFinance(); resetPortfolio(); setConfirmFullReset(false) }}>Conferma reset</button>
+                <div style={{ borderTop: '1px solid color-mix(in oklch, var(--danger) 20%, transparent)' }} />
+
+                {/* Full reset */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{t('resetAllLabel')}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3, lineHeight: 1.5 }}>
+                      {t('resetAllDesc')}
+                    </div>
+                  </div>
+                  {confirmFullReset ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end', flexShrink: 0 }}>
+                      <div style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, whiteSpace: 'nowrap' }}>{t('resetAllWarning')}</div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" onClick={() => setConfirmFullReset(false)}>{tc('cancel')}</button>
+                        <button className="ledgernest-btn ledgernest-btn-danger ledgernest-btn-sm" onClick={() => { resetAllFinance(); resetPortfolio(); setConfirmFullReset(false) }}>{t('resetAllConfirmBtn')}</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button className="ledgernest-btn ledgernest-btn-danger ledgernest-btn-sm" style={{ flexShrink: 0 }} onClick={() => setConfirmFullReset(true)}>{t('resetAllBtn')}</button>
+                  )}
                 </div>
-              ) : (
-                <button className="ledgernest-btn ledgernest-btn-danger ledgernest-btn-sm" onClick={() => setConfirmFullReset(true)}>Reset completo</button>
-              )}
-            </SettingRow>
+              </div>
+            </div>
           </div>
         )
 
@@ -1506,7 +1534,7 @@ export default function ImpostazioniPage() {
                 <span style={{ color: active ? 'var(--accent)' : 'var(--text-tertiary)', display: 'flex', flexShrink: 0 }}>
                   <Icon name={item.icon} size={16} />
                 </span>
-                {item.label}
+                {sidebarLabel(item.id)}
               </button>
             )
           })}
@@ -1548,8 +1576,8 @@ export default function ImpostazioniPage() {
       {/* Group modal (add / edit) */}
       {groupModal !== null && (
         <ItemModal
-          title={groupModal.group ? 'Modifica gruppo' : 'Nuovo gruppo'}
-          subtitle={groupModal.group ? groupModal.group.label : 'Crea un nuovo gruppo di categorie'}
+          title={groupModal.group ? t('editGroupTitle') : t('newGroupTitle')}
+          subtitle={groupModal.group ? groupModal.group.label : t('newGroupSub')}
           initialName={groupModal.group?.label ?? ''}
           initialEmoji={groupModal.group?.emoji ?? '📂'}
           initialColor={groupModal.group?.color ?? '#5bc8d0'}
@@ -1567,8 +1595,8 @@ export default function ImpostazioniPage() {
       {/* Category modal (mid-level, add / edit) */}
       {catModal !== null && (
         <ItemModal
-          title={catModal.cat ? 'Modifica categoria' : 'Nuova categoria'}
-          subtitle={catModal.cat ? catModal.cat.name : `Categoria nel gruppo ${budgetGroups.find((g) => g.id === catModal.groupId)?.label ?? ''}`}
+          title={catModal.cat ? t('editCatTitle') : t('newCatTitle')}
+          subtitle={catModal.cat ? catModal.cat.name : t('newCatSubWithGroup', { group: budgetGroups.find((g) => g.id === catModal.groupId)?.label ?? '' })}
           initialName={catModal.cat?.name ?? ''}
           initialEmoji={catModal.cat?.emoji ?? '📁'}
           initialColor={catModal.cat?.color ?? '#5bc8d0'}
@@ -1587,8 +1615,8 @@ export default function ImpostazioniPage() {
       {/* Subcategory modal (leaf, add / edit) */}
       {subcatModal !== null && (
         <ItemModal
-          title={subcatModal.cat ? 'Modifica sotto-categoria' : 'Nuova sotto-categoria'}
-          subtitle={subcatModal.cat ? subcatModal.cat.name : `Sotto ${budgetCategories.find((c) => c.id === subcatModal.parentId)?.name ?? ''}`}
+          title={subcatModal.cat ? t('editSubcatTitle') : t('newSubcatTitle')}
+          subtitle={subcatModal.cat ? subcatModal.cat.name : t('newSubcatSubWithParent', { parent: budgetCategories.find((c) => c.id === subcatModal.parentId)?.name ?? '' })}
           initialName={subcatModal.cat?.name ?? ''}
           initialEmoji={subcatModal.cat?.emoji ?? '📋'}
           initialColor={subcatModal.cat?.color ?? '#5bc8d0'}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { useUIStore } from '@/stores/uiStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useFinanceStore } from '@/stores/financeStore'
@@ -9,32 +10,25 @@ import { usePricesStore } from '@/stores/pricesStore'
 import { fmtEur } from '@/lib/utils/format'
 import Icon from './Icon'
 
-// ── static data ───────────────────────────────────────────────
+// ── static data (hrefs and icons only — labels come from translations) ────
 
-const QUICK_ACTIONS = [
-  { id: 'movement', label: 'Nuovo movimento', sub: 'Entrata o uscita',  icon: 'plus',        action: 'movement' as const, primary: true },
-  { id: 'buy-az',   label: 'Acquista azione', sub: 'Aggiungi posizione', icon: 'azioni',      action: 'buy'      as const },
-  { id: 'buy-cr',   label: 'Acquista crypto', sub: 'BTC, ETH, …',       icon: 'crypto',      action: 'buy'      as const },
-  { id: 'goal',     label: 'Nuovo obiettivo', sub: 'Risparmio',          icon: 'obiettivi',   action: 'goal'     as const },
-]
-
-const SECTIONS = [
-  { id: 'dashboard',  label: 'Dashboard',    sub: 'Portfolio', icon: 'dashboard',    href: '/dashboard' },
-  { id: 'azioni',     label: 'Azioni',       sub: 'Portfolio', icon: 'azioni',       href: '/portfolio/azioni' },
-  { id: 'dividendi',  label: 'Dividendi',    sub: 'Portfolio', icon: 'dividendi',    href: '/portfolio/dividendi' },
-  { id: 'crypto',     label: 'Crypto',       sub: 'Portfolio', icon: 'crypto',       href: '/portfolio/crypto' },
-  { id: 'etf',        label: 'ETF',          sub: 'Portfolio', icon: 'etf',          href: '/portfolio/etf' },
-  { id: 'screener',   label: 'Screener',     sub: 'Analisi',   icon: 'screener',     href: '/portfolio/screener' },
-  { id: 'heatmap',    label: 'Heatmap',      sub: 'Analisi',   icon: 'heatmap',      href: '/portfolio/heatmap' },
-  { id: 'conti',      label: 'Conti',        sub: 'Finanze',   icon: 'conti',        href: '/finance/conti' },
-  { id: 'movimenti',  label: 'Movimenti',    sub: 'Finanze',   icon: 'movimenti',    href: '/finance/movimenti' },
-  { id: 'budget',     label: 'Budget',       sub: 'Finanze',   icon: 'budget',       href: '/finance/budget' },
-  { id: 'obiettivi',  label: 'Obiettivi',    sub: 'Finanze',   icon: 'obiettivi',    href: '/finance/obiettivi' },
-  { id: 'ricorrenti', label: 'Ricorrenti',   sub: 'Finanze',   icon: 'ricorrenti',   href: '/finance/ricorrenti' },
-  { id: 'patrimonio', label: 'Patrimonio',   sub: 'Finanze',   icon: 'patrimonio',   href: '/finance/patrimonio' },
-  { id: 'report',     label: 'Report',       sub: 'Finanze',   icon: 'report',       href: '/finance/report' },
-  { id: 'settings',   label: 'Impostazioni', sub: 'Sistema',   icon: 'impostazioni', href: '/impostazioni' },
-]
+const SECTION_META = [
+  { id: 'dashboard',  icon: 'dashboard',    href: '/dashboard',              navKey: 'dashboard',  groupKey: 'portfolio' },
+  { id: 'azioni',     icon: 'azioni',       href: '/portfolio/stocks',       navKey: 'azioni',     groupKey: 'portfolio' },
+  { id: 'dividendi',  icon: 'dividendi',    href: '/portfolio/dividends',    navKey: 'dividendi',  groupKey: 'portfolio' },
+  { id: 'crypto',     icon: 'crypto',       href: '/portfolio/crypto',       navKey: 'crypto',     groupKey: 'portfolio' },
+  { id: 'etf',        icon: 'etf',          href: '/portfolio/etf',          navKey: 'etf',        groupKey: 'portfolio' },
+  { id: 'screener',   icon: 'screener',     href: '/portfolio/screener',     navKey: 'screener',   groupKey: 'analisi'   },
+  { id: 'heatmap',    icon: 'heatmap',      href: '/portfolio/heatmap',      navKey: 'heatmap',    groupKey: 'analisi'   },
+  { id: 'conti',      icon: 'conti',        href: '/finance/accounts',       navKey: 'conti',      groupKey: 'finanze'   },
+  { id: 'movimenti',  icon: 'movimenti',    href: '/finance/transactions',   navKey: 'movimenti',  groupKey: 'finanze'   },
+  { id: 'budget',     icon: 'budget',       href: '/finance/budget',         navKey: 'budget',     groupKey: 'finanze'   },
+  { id: 'obiettivi',  icon: 'obiettivi',    href: '/finance/goals',          navKey: 'obiettivi',  groupKey: 'finanze'   },
+  { id: 'ricorrenti', icon: 'ricorrenti',   href: '/finance/recurring',      navKey: 'ricorrenti', groupKey: 'finanze'   },
+  { id: 'patrimonio', icon: 'patrimonio',   href: '/finance/net-worth',      navKey: 'patrimonio', groupKey: 'finanze'   },
+  { id: 'report',     icon: 'report',       href: '/finance/report',         navKey: 'report',     groupKey: 'finanze'   },
+  { id: 'settings',   icon: 'impostazioni', href: '/settings',               navKey: 'impostazioni', groupKey: 'sistema' },
+] as const
 
 // ── helpers ───────────────────────────────────────────────────
 
@@ -45,6 +39,8 @@ function fmtPct(n: number) {
 // ── component ─────────────────────────────────────────────────
 
 export default function SearchPalette() {
+  const ts = useTranslations('search')
+  const tn = useTranslations('nav')
   const router = useRouter()
   const { setSearchOpen, openModal } = useUIStore()
   const { positions } = usePortfolioStore()
@@ -67,13 +63,25 @@ export default function SearchPalette() {
 
   // ── build flat navigable items list ─────────────────────────
   const items = useMemo(() => {
+    const QUICK_ACTIONS = [
+      { id: 'movement', label: ts('qaNewMovement'), sub: ts('qaNewMovementSub'), icon: 'plus',      action: 'movement' as const, primary: true },
+      { id: 'buy-az',   label: ts('qaBuyStock'),    sub: ts('qaBuyStockSub'),    icon: 'azioni',    action: 'buy'      as const },
+      { id: 'buy-cr',   label: ts('qaBuyCrypto'),   sub: ts('qaBuyCryptoSub'),   icon: 'crypto',    action: 'buy'      as const },
+      { id: 'goal',     label: ts('qaNewGoal'),      sub: ts('qaNewGoalSub'),     icon: 'obiettivi', action: 'goal'     as const },
+    ]
+
+    const SECTIONS = SECTION_META.map((s) => ({
+      ...s,
+      label: tn(s.navKey),
+      sub: tn(s.groupKey),
+    }))
+
     const q = query.toLowerCase().trim()
 
     if (!q) {
-      // Default: quick actions + all sections
       return [
-        ...QUICK_ACTIONS.map((a) => ({ kind: 'action' as const, ...a, group: 'Azioni rapide' })),
-        ...SECTIONS.map((s) => ({ kind: 'section' as const, ...s, group: 'Sezioni' })),
+        ...QUICK_ACTIONS.map((a) => ({ kind: 'action' as const, ...a, group: ts('quickActions') })),
+        ...SECTIONS.map((s) => ({ kind: 'section' as const, ...s, group: ts('sections') })),
       ]
     }
 
@@ -83,7 +91,7 @@ export default function SearchPalette() {
     const matchSections = SECTIONS.filter(
       (s) => s.label.toLowerCase().includes(q) || s.sub.toLowerCase().includes(q)
     )
-    matchSections.forEach((s) => out.push({ kind: 'section', ...s, group: 'Sezioni' }))
+    matchSections.forEach((s) => out.push({ kind: 'section', ...s, group: ts('sections') }))
 
     // Positions
     const usd = eurUsd ?? 1.1
@@ -94,15 +102,15 @@ export default function SearchPalette() {
       const price = p.currency === 'USD' ? rawPrice / usd : rawPrice
       const value = price * p.quantity
       const pct = qt?.changePct ?? 0
-      const typeLabel = p.type === 'stock' ? 'Azione' : p.type === 'etf' ? 'ETF' : 'Crypto'
+      const typeLabel = p.type === 'stock' ? tn('azioni') : p.type === 'etf' ? tn('etf') : tn('crypto')
       out.push({
         kind: 'position',
         id: p.id,
         label: `${p.ticker} · ${p.name ?? p.ticker}`,
         sub: `${typeLabel} · ${fmtEur(price)} · ${fmtPct(pct)}`,
         icon: p.type === 'crypto' ? 'crypto' : p.type === 'etf' ? 'etf' : 'azioni',
-        href: `/portfolio/${p.type === 'stock' ? 'azioni' : p.type}`,
-        group: 'Posizioni',
+        href: `/portfolio/${p.type === 'stock' ? 'stocks' : p.type}`,
+        group: ts('positions'),
         value,
         pct,
       })
@@ -118,14 +126,14 @@ export default function SearchPalette() {
       label: t.description,
       sub: `${t.category} · ${t.date}`,
       icon: t.type === 'income' ? 'movimenti' : 'movimenti',
-      href: '/finance/movimenti',
-      group: 'Movimenti',
+      href: '/finance/transactions',
+      group: ts('movements'),
       value: t.amount,
       pct: undefined,
     }))
 
     return out
-  }, [query, positions, transactions, quotes, eurUsd])
+  }, [query, positions, transactions, quotes, eurUsd, ts, tn])
 
   // Group items for display
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -173,7 +181,7 @@ export default function SearchPalette() {
           <input
             ref={inputRef}
             className="ledgernest-cmd-search-input"
-            placeholder="Cerca: posizioni, movimenti, sezioni…"
+            placeholder={ts('placeholder')}
             value={query}
             onChange={(e) => { setQuery(e.target.value); setFocused(0) }}
             onKeyDown={onKeyDown}
@@ -187,7 +195,7 @@ export default function SearchPalette() {
         {/* Results */}
         <div ref={listRef} className="ledgernest-cmd-list">
           {items.length === 0 ? (
-            <div className="ledgernest-cmd-empty">Nessun risultato per &ldquo;{query}&rdquo;</div>
+            <div className="ledgernest-cmd-empty">{ts('noResults')} &ldquo;{query}&rdquo;</div>
           ) : (
             groups.map(([group, groupItems]) => (
               <div key={group}>
@@ -250,15 +258,15 @@ export default function SearchPalette() {
           fontSize: 11, color: 'var(--text-tertiary)',
         }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <kbd style={kbdStyle}>↑</kbd><kbd style={kbdStyle}>↓</kbd> Naviga
+            <kbd style={kbdStyle}>↑</kbd><kbd style={kbdStyle}>↓</kbd> {ts('navigate')}
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <kbd style={kbdStyle}>↵</kbd> Apri
+            <kbd style={kbdStyle}>↵</kbd> {ts('open')}
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <kbd style={kbdStyle}>esc</kbd> Chiudi
+            <kbd style={kbdStyle}>esc</kbd> {ts('close')}
           </span>
-          <span style={{ marginLeft: 'auto' }}>{items.length} risultati</span>
+          <span style={{ marginLeft: 'auto' }}>{items.length} {ts('results')}</span>
         </div>
       </div>
     </div>

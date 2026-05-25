@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useFinanceStore } from '@/stores/financeStore'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -336,6 +337,7 @@ export default function OnboardingWizard() {
   const { addAccount } = useFinanceStore()
   const { settings, updateSettings } = useSettingsStore()
   const { data: session } = useSession()
+  const router = useRouter()
   const [step, setStep] = useState(1)
   const TOTAL = 4
 
@@ -346,7 +348,7 @@ export default function OnboardingWizard() {
 
   function finish(acct: Omit<Account, 'id' | 'createdAt' | 'updatedAt'>) {
     addAccount(acct)
-    // wizard disappears automatically when accounts.length > 0
+    router.push('/dashboard')
   }
 
   return (

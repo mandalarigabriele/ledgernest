@@ -8,6 +8,7 @@ import { fmtEur, fmtUsd, fmtPct, fmtNum, deltaClass, fmtDelta } from '@/lib/util
 import Sparkline from '@/components/charts/Sparkline'
 import Icon from '@/components/shared/Icon'
 import { useUIStore } from '@/stores/uiStore'
+import { useTranslations } from 'next-intl'
 import type { PortfolioPosition, Quote } from '@/types'
 
 // ── region colors ─────────────────────────────────────────────
@@ -87,6 +88,8 @@ function EtfChart({
   quotes: Record<string, Quote>
   eurUsd: number
 }) {
+  const tl = useTranslations('etf')
+  const tlAzioni = useTranslations('azioni')
   const { trades } = usePortfolioStore()
   const [chartPts, setChartPts] = useState<ChartPoint[]>([])
   const [loading, setLoading] = useState(false)
@@ -163,7 +166,7 @@ function EtfChart({
     return (
       <div style={{ width: '100%', height: H, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
         <div className="ledgernest-spinner" style={{ width: 20, height: 20, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%' }} />
-        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Caricamento dati storici…</span>
+        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{tl('chartLoading')}</span>
       </div>
     )
   }
@@ -172,14 +175,14 @@ function EtfChart({
     return (
       <div style={{ width: '100%', height: H, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-          {period === '1G' ? 'Prezzi non ancora caricati' : 'Dati insufficienti per il periodo selezionato'}
+          {period === '1G' ? tl('chartNoData') : tl('chartInsufficient')}
         </span>
       </div>
     )
   }
 
   const values = pts.map((p) => p.value)
-  const labels = period === '1G' ? ['Ieri', 'Oggi'] : buildChartLabels(pts)
+  const labels = period === '1G' ? [tlAzioni('chartYesterday'), tlAzioni('chartToday')] : buildChartLabels(pts)
   const n = values.length
   const minV = Math.min(...values) * 0.986
   const maxV = Math.max(...values) * 1.006
@@ -227,7 +230,7 @@ function EtfChart({
         const tDays = pts.length >= 2
           ? (new Date(pts.at(-1)!.date).getTime() - new Date(pts[0].date).getTime()) / 86_400_000
           : 1
-        const dateLabel = period === '1G' ? (hoverIdx === 0 ? 'Ieri' : 'Oggi') : fmtChartLabel(pts[hoverIdx].date, tDays)
+        const dateLabel = period === '1G' ? (hoverIdx === 0 ? tlAzioni('chartYesterday') : tlAzioni('chartToday')) : fmtChartLabel(pts[hoverIdx].date, tDays)
         const tw = 110, th = 38
         const tx = Math.max(P.l, Math.min(W - P.r - tw, hx - tw / 2))
         const ty = Math.max(P.t + 4, hy - th - 10)
@@ -248,6 +251,7 @@ function EtfChart({
 // ── page ──────────────────────────────────────────────────────
 
 function PositionRowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
+  const tl = useTranslations('etf')
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState({ top: 0, right: 0 })
   const btnRef = useRef<HTMLButtonElement>(null)
@@ -290,12 +294,12 @@ function PositionRowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: (
           <button onClick={() => { setOpen(false); onEdit() }} style={{ ...item, color: 'var(--text-primary)' }}
             onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-elevated)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
-            <Icon name="edit" size={13} /> Modifica
+            <Icon name="edit" size={13} /> {tl('menuEdit')}
           </button>
           <button onClick={() => { setOpen(false); onDelete() }} style={{ ...item, color: 'var(--danger)' }}
             onMouseEnter={(e) => (e.currentTarget.style.background = 'color-mix(in oklch, var(--danger) 10%, transparent)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
-            <Icon name="trash" size={13} /> Elimina
+            <Icon name="trash" size={13} /> {tl('menuDelete')}
           </button>
         </div>
       )}
@@ -307,6 +311,7 @@ type EtfFilter = 'Tutti' | 'Azionari' | 'Bond' | 'REIT'
 const ETF_FILTERS: EtfFilter[] = ['Tutti', 'Azionari', 'Bond', 'REIT']
 
 export default function EtfPage() {
+  const tl = useTranslations('etf')
   const { refetch } = usePrices()
   const { positions, deletePosition, updatePosition } = usePortfolioStore()
   const { quotes, eurUsd, loading } = usePricesStore()
@@ -367,9 +372,9 @@ export default function EtfPage() {
       <div className="ledgernest-card">
         <div className="ledgernest-empty">
           <div className="ledgernest-empty-icon">🌐</div>
-          <div style={{ fontWeight: 600, marginBottom: 6 }}>Nessun ETF nel portafoglio</div>
+          <div style={{ fontWeight: 600, marginBottom: 6 }}>{tl('emptyTitle')}</div>
           <button className="ledgernest-btn ledgernest-btn-primary" onClick={() => openModal('buy', { assetType: 'etf' })}>
-            <Icon name="plus" size={14} /> Aggiungi il primo ETF
+            <Icon name="plus" size={14} /> {tl('emptyAdd')}
           </button>
         </div>
       </div>
@@ -382,36 +387,36 @@ export default function EtfPage() {
       {/* KPI strip */}
       <div className="ledgernest-port-kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
         <div className="ledgernest-kpi is-hl" style={{ padding: '18px 20px', gap: 5 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>TOTALE ETF</div>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiTotal')}</div>
           <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{fmtEur(totalValue)}</div>
           <div style={{ fontSize: 12, fontWeight: 600, color: totalPnlPct >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-            {totalPnlPct >= 0 ? '+' : ''}{fmtPct(totalPnlPct)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{etfs.length} fondi</span>
+            {totalPnlPct >= 0 ? '+' : ''}{fmtPct(totalPnlPct)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{tl('kpiFunds', { n: etfs.length })}</span>
           </div>
         </div>
 
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: 5 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>P&amp;L TOTALE</div>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiPnl')}</div>
           <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', color: totalPnl >= 0 ? 'var(--success)' : 'var(--danger)' }}>
             {fmtDelta(totalPnl)}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-            dal costo <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{fmtEur(totalCost)}</span> investiti
+            {tl('kpiCost', { cost: fmtEur(totalCost) })}
           </div>
         </div>
 
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: 5 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>TER MEDIO</div>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiTer')}</div>
           <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em' }}>{(weightedTer * 100).toFixed(2)}%</div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-            ponderato <span style={{ fontWeight: 600, color: 'var(--danger)' }}>{fmtEur(annualCost)}/anno</span>
+            {tl('kpiWeightedTer', { annualCost: `${fmtEur(annualCost)}` })}
           </div>
         </div>
 
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: 5 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>ESPOSIZIONE</div>
-          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em' }}>{regionCount} {regionCount === 1 ? 'regione' : 'regioni'}</div>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiExposure')}</div>
+          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em' }}>{regionCount} {regionCount === 1 ? tl('kpiRegion') : tl('kpiRegions')}</div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-            <span style={{ fontWeight: 700, color: 'var(--accent)' }}>globale</span>{exposureDesc ? ` con ${exposureDesc}` : ''}
+            {exposureDesc ? tl('kpiGlobal', { exposureDesc }) : <span style={{ fontWeight: 700, color: 'var(--accent)' }}>{tl('kpiGlobal', { exposureDesc: '' }).replace(' con ', '')}</span>}
           </div>
         </div>
       </div>
@@ -421,10 +426,9 @@ export default function EtfPage() {
         <div className="ledgernest-card" style={{ padding: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>Andamento ETF</div>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>{tl('chartTitle')}</div>
               <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-                Valore complessivo ·{' '}
-                {chartPeriod === '1G' ? '1 giorno' : chartPeriod === '1S' ? '1 settimana' : chartPeriod === '1M' ? '1 mese' : chartPeriod === '1A' ? '1 anno' : 'da inizio'}
+                {tl('chartSubtitle', { period: chartPeriod === '1G' ? tl('period1D') : chartPeriod === '1S' ? tl('period1W') : chartPeriod === '1M' ? tl('period1M') : chartPeriod === '1A' ? tl('period1Y') : tl('periodAll') })}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 2, background: 'var(--bg-elevated)', borderRadius: 8, padding: 3 }}>
@@ -442,8 +446,8 @@ export default function EtfPage() {
         </div>
 
         <div className="ledgernest-card" style={{ padding: 20 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>Esposizione regionale</div>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 18 }}>{regionCount} aree</div>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{tl('exposureTitle')}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 18 }}>{tl('exposureCount', { n: regionCount })}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
             {Object.entries(regionMap).sort((a, b) => b[1] - a[1]).map(([region, value]) => {
               const pct   = totalValue > 0 ? (value / totalValue) * 100 : 0
@@ -472,8 +476,8 @@ export default function EtfPage() {
       <div className="ledgernest-card ledgernest-port-table-card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', flexWrap: 'wrap', gap: 10 }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>Tutti gli ETF · {etfs.length}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>TER, regione, P&L per riga</div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{tl('tableTitle', { n: etfs.length })}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{tl('tableSubtitle')}</div>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: 2, background: 'var(--bg-elevated)', borderRadius: 10, padding: 3 }}>
@@ -493,7 +497,7 @@ export default function EtfPage() {
             </button>
             <button className="ledgernest-btn ledgernest-btn-primary ledgernest-btn-sm"
               onClick={() => openModal('buy', { assetType: 'etf' })}>
-              <Icon name="plus" size={13} /> Aggiungi
+              <Icon name="plus" size={13} /> {tl('addButton')}
             </button>
           </div>
         </div>
@@ -502,21 +506,21 @@ export default function EtfPage() {
         <table className="ledgernest-table">
           <thead>
             <tr>
-              <th>ETF</th>
-              <th>REGIONE</th>
-              <th className="num">QTY</th>
-              <th className="num">PREZZO MEDIO</th>
-              <th className="num">PREZZO</th>
-              <th style={{ paddingLeft: 12 }}>TREND 60G</th>
-              <th className="num">TER</th>
-              <th className="num">VALORE</th>
-              <th className="num">P&amp;L</th>
+              <th>{tl('colEtf')}</th>
+              <th>{tl('colRegion')}</th>
+              <th className="num">{tl('colQty')}</th>
+              <th className="num">{tl('colAvgPrice')}</th>
+              <th className="num">{tl('colPrice')}</th>
+              <th style={{ paddingLeft: 12 }}>{tl('colTrend')}</th>
+              <th className="num">{tl('colTer')}</th>
+              <th className="num">{tl('colValue')}</th>
+              <th className="num">{tl('colPnl')}</th>
               <th />
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan={10} style={{ textAlign: 'center', padding: 32, color: 'var(--text-secondary)' }}>Nessun ETF trovato</td></tr>
+              <tr><td colSpan={10} style={{ textAlign: 'center', padding: 32, color: 'var(--text-secondary)' }}>{tl('emptyTable')}</td></tr>
             ) : filtered.map((r) => (
               <tr key={r.id}>
                 <td>
@@ -536,7 +540,7 @@ export default function EtfPage() {
                           style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 13, width: 90, padding: '2px 6px', borderRadius: 5, border: '1px solid var(--accent)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', outline: 'none' }}
                         />
                       ) : (
-                        <div className="ledgernest-table-ticker-name" style={{ cursor: 'pointer' }} title="Clicca per modificare" onClick={() => { setEditingTickerId(r.id); setEditingTickerVal(r.ticker) }}>
+                        <div className="ledgernest-table-ticker-name" style={{ cursor: 'pointer' }} title={tl('menuEdit')} onClick={() => { setEditingTickerId(r.id); setEditingTickerVal(r.ticker) }}>
                           {r.ticker}
                         </div>
                       )}
@@ -595,18 +599,18 @@ export default function EtfPage() {
           <div className="ledgernest-modal-overlay" onClick={() => setDeletingPositionId(null)}>
             <div className="ledgernest-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
               <div className="ledgernest-modal-header">
-                <div className="ledgernest-modal-title">Elimina ETF · {pos?.ticker}</div>
+                <div className="ledgernest-modal-title">{tl('deleteTitle', { ticker: pos?.ticker ?? '' })}</div>
               </div>
               <div className="ledgernest-modal-body">
                 <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 14 }}>
-                  Elimini la posizione <strong>{pos?.name ?? pos?.ticker}</strong> e tutti i movimenti finanziari correlati.
+                  {tl('deleteBody')}
                 </p>
               </div>
               <div className="ledgernest-modal-footer">
-                <button className="ledgernest-btn ledgernest-btn-ghost" onClick={() => setDeletingPositionId(null)}>Annulla</button>
+                <button className="ledgernest-btn ledgernest-btn-ghost" onClick={() => setDeletingPositionId(null)}>{tl('cancel')}</button>
                 <button className="ledgernest-btn" style={{ background: 'var(--danger)', color: '#fff' }}
                   onClick={() => { deletePosition(deletingPositionId); setDeletingPositionId(null) }}>
-                  Elimina
+                  {tl('delete')}
                 </button>
               </div>
             </div>
@@ -617,11 +621,11 @@ export default function EtfPage() {
       {/* Daily change footer */}
       <div style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-tertiary)', fontSize: 11 }}>
         <span style={{ opacity: 0.5 }}>●</span>
-        Variazione giornaliera portafoglio ETF:{' '}
+        {tl('footerDayChange')}{' '}
         <span style={{ fontWeight: 600, color: totalDayChg >= 0 ? 'var(--success)' : 'var(--danger)' }}>
           {totalDayChg >= 0 ? '+' : ''}{fmtEur(totalDayChg)}
         </span>
-        · Fonte: Yahoo Finance · Prezzi ritardati di 15 min
+        · {tl('footerSource')}
       </div>
     </div>
   </div>

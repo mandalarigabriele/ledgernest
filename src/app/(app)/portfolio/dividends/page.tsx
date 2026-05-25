@@ -4,12 +4,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { usePricesStore } from '@/stores/pricesStore'
 import { fmtEur, fmtDateShort } from '@/lib/utils/format'
+import { useTranslations } from 'next-intl'
 import type { Dividend, PortfolioPosition } from '@/types'
 
 // ── constants ────────────────────────────────────────────────
 
-const IT_MONTHS = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic']
-const IT_DAYS   = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab']
+function fmtMonthShort(date: Date): string {
+  return date.toLocaleDateString(undefined, { month: 'short' }).replace('.', '')
+}
+function fmtWeekdayShort(date: Date): string {
+  return date.toLocaleDateString(undefined, { weekday: 'short' }).replace('.', '')
+}
 
 // ETF ticker prefixes/suffixes that signal accumulating (no distribution)
 const ACC_TICKERS = new Set(['VWCE', 'IWDA', 'CSPX', 'EUNL', 'SWRD', 'IUSQ', 'SPYL', 'LCUW'])
@@ -52,7 +57,7 @@ function computeDivRows(
       )
       if (isAcc) return {
         pos, recentDivs: [], annualIncome: 0, perShareAnnual: 0,
-        yieldPct: 0, freq: 'Acc.', freqMonths: 0, nextDate: null, status: 'reinvestito',
+        yieldPct: 0, freq: 'acc', freqMonths: 0, nextDate: null, status: 'reinvestito',
       }
 
       const posDivs = dividends.filter(d => d.positionId === pos.id)
@@ -68,10 +73,10 @@ function computeDivRows(
 
       // Frequency from payment count last 12 months
       const n = recentDivs.length
-      let freq = 'Ann.'; let freqMonths = 12
-      if (n >= 10) { freq = 'Mens.'; freqMonths = 1 }
-      else if (n >= 3) { freq = 'Trim.'; freqMonths = 3 }
-      else if (n >= 2) { freq = 'Sem.'; freqMonths = 6 }
+      let freq = 'ann'; let freqMonths = 12
+      if (n >= 10) { freq = 'mens'; freqMonths = 1 }
+      else if (n >= 3) { freq = 'trim'; freqMonths = 3 }
+      else if (n >= 2) { freq = 'sem'; freqMonths = 6 }
 
       // Next date
       const sortedAll = [...posDivs].sort((a, b) => b.payDate.localeCompare(a.payDate))
@@ -172,7 +177,7 @@ function CalendarHeatmap({ events }: { events: { date: string; ticker: string }[
             return (
               <div key={wi} style={{ width: CELL_W, marginRight: GAP, fontSize: 10, fontWeight: 600,
                 color: isFirst ? 'var(--text-secondary)' : 'transparent', flexShrink: 0 }}>
-                {IT_MONTHS[week[0].getMonth()]}
+                {fmtMonthShort(week[0])}
               </div>
             )
           })}
@@ -218,16 +223,17 @@ function CalendarHeatmap({ events }: { events: { date: string; ticker: string }[
 // ── status badge ─────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: 'confermato' | 'stimato' | 'reinvestito' }) {
+  const tl = useTranslations('dividendi')
   const map = {
-    confermato:  { bg: 'rgba(63,185,80,0.14)',   color: '#3fb950' },
-    stimato:     { bg: 'rgba(230,162,0,0.18)',   color: '#e6a200' },
-    reinvestito: { bg: 'rgba(91,200,208,0.18)',  color: '#5bc8d0' },
+    confermato:  { bg: 'rgba(63,185,80,0.14)',   color: '#3fb950',  key: 'statusConfirmed' as const },
+    stimato:     { bg: 'rgba(230,162,0,0.18)',   color: '#e6a200',  key: 'statusEstimated' as const },
+    reinvestito: { bg: 'rgba(91,200,208,0.18)',  color: '#5bc8d0',  key: 'statusReinvested' as const },
   }
   const s = map[status]
   return (
     <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 20,
       background: s.bg, color: s.color, whiteSpace: 'nowrap' }}>
-      {status}
+      {tl(s.key)}
     </span>
   )
 }
@@ -305,6 +311,7 @@ function useAutoImport() {
 }
 
 export default function DividendiPage() {
+  const tl = useTranslations('dividendi')
   const { dividends, positions } = usePortfolioStore()
   const { eurUsd } = usePricesStore()
   const importState = useAutoImport()
@@ -372,11 +379,11 @@ export default function DividendiPage() {
     const result = []
     for (let i = 11; i >= 0; i--) {
       const d = addMonths(now, -i)
-      result.push({ label: IT_MONTHS[d.getMonth()], value: map[d.toISOString().slice(0, 7)] ?? 0, future: false })
+      result.push({ label: fmtMonthShort(d), value: map[d.toISOString().slice(0, 7)] ?? 0, future: false })
     }
     for (let i = 1; i <= 2; i++) {
       const d = addMonths(now, i)
-      result.push({ label: IT_MONTHS[d.getMonth()], value: map[d.toISOString().slice(0, 7)] ?? 0, future: true })
+      result.push({ label: fmtMonthShort(d), value: map[d.toISOString().slice(0, 7)] ?? 0, future: true })
     }
     return result
   }, [dividends, now, eurUsd])
@@ -400,8 +407,8 @@ export default function DividendiPage() {
         return {
           ...r,
           day: nd.getDate().toString().padStart(2, '0'),
-          month: IT_MONTHS[nd.getMonth()].toUpperCase(),
-          weekday: IT_DAYS[nd.getDay()],
+          month: fmtMonthShort(nd).toUpperCase(),
+          weekday: fmtWeekdayShort(nd),
           payAmt: r.annualIncome > 0 && r.freqMonths > 0 ? r.annualIncome * r.freqMonths / 12 : 0,
         }
       })
@@ -416,9 +423,9 @@ export default function DividendiPage() {
         <div className="ledgernest-card">
           <div className="ledgernest-empty">
             <div className="ledgernest-empty-icon">💰</div>
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>Nessun dividendo registrato</div>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>{tl('emptyTitle')}</div>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-              Aggiungi dividendi dalle posizioni per vedere statistiche, storico e calendario cedole
+              {tl('emptyDesc')}
             </div>
           </div>
         </div>
@@ -432,10 +439,10 @@ export default function DividendiPage() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>Dividendi</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>{tl('headerTitle')}</h1>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 3 }}>
-            {payingCount} titoli che pagano
-            {upcoming[0] ? ` · prossima cedola ${upcoming[0].day} ${IT_MONTHS[new Date(upcoming[0].nextDate!).getMonth()].toLowerCase()}` : ''}
+            {tl('headerPositions', { n: payingCount })}
+            {upcoming[0] ? ` · ${tl('headerNextCoupon', { day: upcoming[0].day, month: fmtMonthShort(new Date(upcoming[0].nextDate!)) })}` : ''}
           </div>
         </div>
         {importState.status === 'running' && (
@@ -445,14 +452,14 @@ export default function DividendiPage() {
             fontSize: 12, color: 'var(--text-secondary)' }}>
             <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%',
               background: 'var(--accent)', animation: 'pulse 1s infinite' }} />
-            Importo storico {importState.current} · {importState.done}/{importState.total}
+            {tl('importRunning', { ticker: importState.current, done: importState.done, total: importState.total })}
           </div>
         )}
         {importState.status === 'done' && importState.total > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 10,
             background: 'rgba(63,185,80,0.1)', border: '1px solid rgba(63,185,80,0.3)',
             fontSize: 12, color: '#3fb950' }}>
-            ✓ Storico importato · {importState.total} titoli
+            {tl('importDone', { total: importState.total })}
           </div>
         )}
       </div>
@@ -462,35 +469,35 @@ export default function DividendiPage() {
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: 5,
           background: 'color-mix(in oklch, var(--accent) 12%, var(--bg-surface))',
           border: '1px solid color-mix(in oklch, var(--accent) 35%, transparent)' }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>Dividendi 12 mesi</div>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpi12m')}</div>
           <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{fmtEur(annual12m)}</div>
           <div style={{ fontSize: 12, display: 'flex', gap: 6, alignItems: 'center' }}>
             <span style={{ fontWeight: 700, color: yoyPct >= 0 ? '#3fb950' : 'var(--danger)' }}>{yoyLabel}</span>
-            <span style={{ color: 'var(--text-secondary)' }}>proiezione lordo</span>
+            <span style={{ color: 'var(--text-secondary)' }}>{tl('kpi12mSub')}</span>
           </div>
         </div>
 
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: 5 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>YTD</div>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiYtd')}</div>
           <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{fmtEur(ytdData.total)}</div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-            <span style={{ fontWeight: 700, color: 'var(--accent)' }}>{ytdData.months} {ytdData.months === 1 ? 'mese' : 'mesi'}</span> già incassati
+            <span style={{ fontWeight: 700, color: 'var(--accent)' }}>{tl('kpiYtdSub', { n: ytdData.months })}</span>
           </div>
         </div>
 
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: 5 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>Prossimi 30 giorni</div>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiNext30')}</div>
           <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{fmtEur(next30Data.total)}</div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-            <span style={{ fontWeight: 700, color: next30Data.count > 0 ? '#e6a200' : 'var(--text-secondary)' }}>{next30Data.count} {next30Data.count === 1 ? 'evento' : 'eventi'}</span> confermati
+            <span style={{ fontWeight: 700, color: next30Data.count > 0 ? '#e6a200' : 'var(--text-secondary)' }}>{tl('kpiNext30Sub', { n: next30Data.count })}</span>
           </div>
         </div>
 
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: 5 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>Yield medio</div>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiYield')}</div>
           <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{weightedYield.toFixed(1)}%</div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-            <span style={{ fontWeight: 700, color: 'var(--accent)' }}>ponderato</span> su {payingCount} titoli
+            {tl('kpiYieldSub', { n: payingCount })}
           </div>
         </div>
       </div>
@@ -500,8 +507,8 @@ export default function DividendiPage() {
         <div className="ledgernest-card" style={{ padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>Storico mensile</div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>Ultimi 12 mesi · lordo</div>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>{tl('barTitle')}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{tl('barSubtitle')}</div>
             </div>
             {prevYear12m > 0 && (
               <span style={{
@@ -515,8 +522,8 @@ export default function DividendiPage() {
         </div>
 
         <div className="ledgernest-card" style={{ padding: '20px' }}>
-          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>Calendario · 12 settimane</div>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14 }}>Date stacco</div>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{tl('calendarTitle')}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14 }}>{tl('calendarSubtitle')}</div>
           <CalendarHeatmap events={calendarEvents} />
         </div>
       </div>
@@ -526,20 +533,20 @@ export default function DividendiPage() {
         {/* Table */}
         <div className="ledgernest-card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-subtle)' }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>Tutte le posizioni · {divRows.length}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>Yield, frequenza, prossima cedola</div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{tl('positionsTitle', { n: divRows.length })}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{tl('positionsSubtitle')}</div>
           </div>
           <table className="ledgernest-table">
             <thead>
               <tr>
-                <th>Titolo</th>
-                <th className="num">Qty</th>
-                <th className="num">€/Azione</th>
-                <th className="num">Freq.</th>
-                <th className="num">Yield</th>
-                <th className="num">Prossima</th>
-                <th className="num">€/Anno</th>
-                <th>Stato</th>
+                <th>{tl('colSecurity')}</th>
+                <th className="num">{tl('colQty')}</th>
+                <th className="num">{tl('colPerShare')}</th>
+                <th className="num">{tl('colFreq')}</th>
+                <th className="num">{tl('colYield')}</th>
+                <th className="num">{tl('colNext')}</th>
+                <th className="num">{tl('colPerYear')}</th>
+                <th>{tl('colStatus')}</th>
               </tr>
             </thead>
             <tbody>
@@ -558,7 +565,9 @@ export default function DividendiPage() {
                   <td className="num ledgernest-mono" style={{ fontSize: 13 }}>
                     {r.perShareAnnual > 0 ? fmtEur(r.perShareAnnual) : <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
                   </td>
-                  <td className="num" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{r.freq}</td>
+                  <td className="num" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                    {r.freq === 'acc' ? tl('freqAcc') : r.freq === 'ann' ? tl('freqAnn') : r.freq === 'mens' ? tl('freqMens') : r.freq === 'trim' ? tl('freqTrim') : tl('freqSem')}
+                  </td>
                   <td className="num" style={{ fontSize: 13, fontWeight: 600 }}>
                     {r.yieldPct > 0
                       ? <span style={{ color: r.yieldPct >= 5 ? '#3fb950' : 'var(--text-primary)' }}>{r.yieldPct.toFixed(1)}%</span>
@@ -581,11 +590,11 @@ export default function DividendiPage() {
 
         {/* Upcoming cedole */}
         <div className="ledgernest-card" style={{ padding: '20px' }}>
-          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>Prossime cedole</div>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 18 }}>In ordine cronologico</div>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{tl('upcomingTitle')}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 18 }}>{tl('upcomingSubtitle')}</div>
           {upcoming.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-tertiary)', fontSize: 13 }}>
-              Nessuna cedola imminente
+              {tl('upcomingEmpty')}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

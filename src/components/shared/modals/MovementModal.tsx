@@ -71,14 +71,14 @@ export default function MovementModal() {
             {/* Description */}
             <div className="ledgernest-field">
               <label className="ledgernest-label">{t('description')}</label>
-              <input className="ledgernest-input" type="text" placeholder="Es. Spesa supermercato"
+              <input className="ledgernest-input" type="text" placeholder={t('descriptionPlaceholder')}
                 value={description} onChange={(e) => setDescription(e.target.value)} required />
             </div>
 
             {/* Merchant */}
             <div className="ledgernest-field">
               <label className="ledgernest-label">
-                Merchant <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(opzionale)</span>
+                {t('merchant')} <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>({t('optional')})</span>
               </label>
               <MerchantInput value={merchant} onChange={setMerchant} />
             </div>
@@ -94,7 +94,7 @@ export default function MovementModal() {
               <label className="ledgernest-label">{t('account')}</label>
               <select className="ledgernest-input ledgernest-select" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
                 {accounts.length === 0
-                  ? <option value="">Nessun conto</option>
+                  ? <option value="">{t('noAccountFallback')}</option>
                   : accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)
                 }
               </select>
@@ -109,11 +109,11 @@ export default function MovementModal() {
             {/* Note */}
             <div className="ledgernest-field">
               <label className="ledgernest-label">
-                Note <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(opzionale)</span>
+                {tc('note')} <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>({t('optional')})</span>
               </label>
               <textarea
                 className="ledgernest-input"
-                placeholder="Aggiunge un dettaglio al movimento…"
+                placeholder={t('notePlaceholder')}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 rows={2}

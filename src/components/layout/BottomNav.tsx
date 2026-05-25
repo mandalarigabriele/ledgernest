@@ -15,7 +15,7 @@ const TABS = [
     ),
   },
   {
-    href: '/portfolio/azioni',
+    href: '/portfolio/stocks',
     label: 'Portfolio',
     matchPrefix: '/portfolio',
     icon: (
@@ -26,7 +26,7 @@ const TABS = [
     ),
   },
   {
-    href: '/finance/movimenti',
+    href: '/finance/transactions',
     label: 'Finanze',
     matchPrefix: '/finance',
     icon: (
@@ -50,7 +50,7 @@ const TABS = [
     ),
   },
   {
-    href: '/impostazioni',
+    href: '/settings',
     label: 'Altro',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">

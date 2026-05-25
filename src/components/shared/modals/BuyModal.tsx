@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 import { useUIStore } from '@/stores/uiStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useFinanceStore } from '@/stores/financeStore'
@@ -10,14 +11,6 @@ import type { AssetType } from '@/types'
 import Icon from '../Icon'
 
 const ACC_TICKERS = new Set(['VWCE', 'IWDA', 'CSPX', 'EUNL', 'SWRD', 'IUSQ', 'SPYL', 'LCUW'])
-
-const ASSET_TYPE_META: Record<AssetType, { label: string; icon: string }> = {
-  stock:     { label: 'Azione',   icon: 'azioni' },
-  etf:       { label: 'ETF',      icon: 'etf'    },
-  crypto:    { label: 'Crypto',   icon: 'crypto' },
-  bond:      { label: 'Bond',     icon: 'report' },
-  commodity: { label: 'Materia',  icon: 'globe'  },
-}
 
 function quoteTypeToAsset(qt: string): AssetType {
   const map: Record<string, AssetType> = {
@@ -36,11 +29,22 @@ interface Suggestion {
 }
 
 export default function BuyModal() {
+  const t = useTranslations('modals')
+  const tc = useTranslations('common')
+  const tn = useTranslations('nav')
   const { closeModal, modalProps } = useUIStore()
   const { addPosition, addTrade, positions } = usePortfolioStore()
   const { accounts } = useFinanceStore()
   const { getPriceEur } = usePricesStore()
   const { refetch } = usePrices()
+
+  const ASSET_TYPE_META: Record<AssetType, { label: string; icon: string }> = {
+    stock:     { label: t('stockLabel'),   icon: 'azioni' },
+    etf:       { label: tn('etf'),         icon: 'etf'    },
+    crypto:    { label: tn('crypto'),      icon: 'crypto' },
+    bond:      { label: t('bond'),         icon: 'report' },
+    commodity: { label: t('commodity'),    icon: 'globe'  },
+  }
 
   const initialType = (modalProps.assetType as AssetType | undefined) ?? 'stock'
   const [assetType, setAssetType] = useState<AssetType>(initialType)
@@ -235,9 +239,9 @@ export default function BuyModal() {
         {/* Header */}
         <div className="ledgernest-modal-header">
           <div>
-            <div className="ledgernest-modal-title">Nuovo acquisto</div>
+            <div className="ledgernest-modal-title">{t('buyTitle')}</div>
             <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-              Aggiungi una posizione al portafoglio
+              {t('buySub')}
             </div>
           </div>
           <button className="ledgernest-modal-close" onClick={closeModal}>
@@ -248,7 +252,7 @@ export default function BuyModal() {
         <form onSubmit={handleSubmit}>
           <div className="ledgernest-modal-body" style={{ gap: '20px' }}>
 
-            {/* Tipo asset — dedotto dal contesto / ticker */}
+            {/* Asset type — deduced from context / ticker */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div style={{
                 display: 'inline-flex', alignItems: 'center', gap: '7px',
@@ -260,14 +264,14 @@ export default function BuyModal() {
                 {ASSET_TYPE_META[assetType].label}
               </div>
               <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                rilevato automaticamente
+                {t('assetAutoDetected')}
               </span>
             </div>
 
-            {/* Conto — obbligatorio */}
+            {/* Account — required */}
             <div className="ledgernest-field">
               <label className="ledgernest-label">
-                Conto <span style={{ color: 'var(--danger,#f85149)' }}>*</span>
+                {tc('account')} <span style={{ color: 'var(--danger,#f85149)' }}>*</span>
               </label>
               {brokerAccounts.length === 0 ? (
                 <div style={{
@@ -275,7 +279,7 @@ export default function BuyModal() {
                   background: 'color-mix(in oklch, var(--danger,#f85149) 10%, transparent)',
                   color: 'var(--danger,#f85149)',
                 }}>
-                  Nessun conto disponibile. Creane uno in <strong>Conti</strong> prima di procedere.
+                  {t('accountRequired')}
                 </div>
               ) : (
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -303,11 +307,11 @@ export default function BuyModal() {
               )}
             </div>
 
-            {/* Ticker con autocomplete */}
+            {/* Ticker with autocomplete */}
             <div className="ledgernest-field">
               <label className="ledgernest-label">
-                Ticker <span style={{ color: 'var(--danger,#f85149)' }}>*</span>
-                {infoState === 'loading' && <span style={{ marginLeft: '8px', fontSize: '11px', color: 'var(--text-secondary)' }}>ricerca...</span>}
+                {t('ticker')} <span style={{ color: 'var(--danger,#f85149)' }}>*</span>
+                {infoState === 'loading' && <span style={{ marginLeft: '8px', fontSize: '11px', color: 'var(--text-secondary)' }}>{t('tickerSearching')}</span>}
                 {infoState === 'done' && name && <span style={{ marginLeft: '8px', fontSize: '11px', color: 'var(--success,#3fb950)' }}>✓ {name}{sector ? ` · ${sector}` : ''}</span>}
               </label>
               <div ref={wrapRef} style={{ position: 'relative' }}>
@@ -376,10 +380,10 @@ export default function BuyModal() {
               </div>
             </div>
 
-            {/* Data acquisto */}
+            {/* Purchase date */}
             <div className="ledgernest-field">
               <label className="ledgernest-label">
-                Data acquisto <span style={{ color: 'var(--danger,#f85149)' }}>*</span>
+                {t('purchaseDate')} <span style={{ color: 'var(--danger,#f85149)' }}>*</span>
               </label>
               <input
                 className="ledgernest-input ledgernest-mono"
@@ -391,10 +395,10 @@ export default function BuyModal() {
               />
             </div>
 
-            {/* Quantità + Prezzo */}
+            {/* Quantity + Price */}
             <div className="ledgernest-modal-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div className="ledgernest-field">
-                <label className="ledgernest-label">Quantità *</label>
+                <label className="ledgernest-label">{t('quantityLabel')} *</label>
                 <input
                   className="ledgernest-input"
                   type="number" step="any" min="0" placeholder="0"
@@ -405,7 +409,7 @@ export default function BuyModal() {
               </div>
               <div className="ledgernest-field">
                 <label className="ledgernest-label">
-                  Prezzo unitario ({selectedAccount?.currency === 'USD' ? '$' : '€'}) *
+                  {t('unitPrice')} ({selectedAccount?.currency === 'USD' ? '$' : '€'}) *
                 </label>
                 <input
                   className="ledgernest-input ledgernest-mono"
@@ -418,9 +422,9 @@ export default function BuyModal() {
               </div>
             </div>
 
-            {/* Commissioni */}
+            {/* Commissions */}
             <div className="ledgernest-field">
-              <label className="ledgernest-label">Commissioni ({selectedAccount?.currency === 'USD' ? '$' : '€'})</label>
+              <label className="ledgernest-label">{t('commissions')} ({selectedAccount?.currency === 'USD' ? '$' : '€'})</label>
               <input
                 className="ledgernest-input ledgernest-mono"
                 type="number" step="0.01" min="0" placeholder="0,00"
@@ -438,27 +442,27 @@ export default function BuyModal() {
               fontSize: '13px',
             }}>
               <div>
-                <div style={{ color: 'var(--text-secondary)', marginBottom: '4px' }}>Totale</div>
+                <div style={{ color: 'var(--text-secondary)', marginBottom: '4px' }}>{t('summaryTotal')}</div>
                 <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
                   {selectedAccount?.currency === 'USD' ? '$' : '€'}{total.toFixed(2)}
                 </div>
               </div>
               <div>
-                <div style={{ color: 'var(--text-secondary)', marginBottom: '4px' }}>Commissioni stim.</div>
+                <div style={{ color: 'var(--text-secondary)', marginBottom: '4px' }}>{t('summaryCommission')}</div>
                 <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
                   {selectedAccount?.currency === 'USD' ? '$' : '€'}{comm.toFixed(2)}
                 </div>
               </div>
               <div>
-                <div style={{ color: 'var(--text-secondary)', marginBottom: '4px' }}>Tipo ordine</div>
-                <div style={{ color: 'var(--accent)', fontWeight: 600 }}>A mercato</div>
+                <div style={{ color: 'var(--text-secondary)', marginBottom: '4px' }}>{t('summaryOrderType')}</div>
+                <div style={{ color: 'var(--accent)', fontWeight: 600 }}>{t('marketOrder')}</div>
               </div>
             </div>
           </div>
 
           <div className="ledgernest-modal-footer">
             <button type="button" className="ledgernest-btn ledgernest-btn-ghost" onClick={closeModal}>
-              Annulla
+              {tc('cancel')}
             </button>
             <button
               type="submit"
@@ -466,7 +470,7 @@ export default function BuyModal() {
               disabled={!canSubmit}
               style={{ opacity: canSubmit ? 1 : 0.5, cursor: canSubmit ? 'pointer' : 'not-allowed', minWidth: '140px' }}
             >
-              Acquista · {selectedAccount?.currency === 'USD' ? '$' : '€'}{(total + comm).toFixed(2)}
+              {t('buyBtn')} · {selectedAccount?.currency === 'USD' ? '$' : '€'}{(total + comm).toFixed(2)}
             </button>
           </div>
         </form>

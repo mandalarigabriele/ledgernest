@@ -6,11 +6,17 @@ import { usePortfolioStore } from '@/stores/portfolioStore'
 import { usePricesStore } from '@/stores/pricesStore'
 import { fmtEur } from '@/lib/utils/format'
 import Icon from '@/components/shared/Icon'
+import { useTranslations } from 'next-intl'
 import type { BudgetCategory } from '@/types'
 
-// ── constants ─────────────────────────────────────────────────
+// ── helpers ───────────────────────────────────────────────────
 
-const IT_MONTHS = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre']
+function fmtMonthFull(date: Date): string {
+  return date.toLocaleDateString(undefined, { month: 'long' })
+}
+function fmtMonthShort(date: Date): string {
+  return date.toLocaleDateString(undefined, { month: 'short' }).replace('.', '')
+}
 
 // target % for 50/30/20 rule — keyed by stable group id
 const GROUP_TARGETS: Record<string, number> = { needs: 50, lifestyle: 30, finance: 10, investments: 10 }
@@ -118,6 +124,7 @@ function LeafCategoryRow({ cat, budget, spent, onBudgetChange, income = 0 }: {
 // ── page ──────────────────────────────────────────────────────
 
 export default function BudgetPage() {
+  const tl = useTranslations('budget')
   const now = new Date()
   const currentMonthKey = now.toISOString().slice(0, 7)
 
@@ -288,7 +295,7 @@ export default function BudgetPage() {
 
   // ── date info ─────────────────────────────────────────────
   const d0 = new Date(month + '-01T12:00:00')
-  const monthName = IT_MONTHS[d0.getMonth()]
+  const monthName = fmtMonthFull(d0)
 
   // ── month navigation ──────────────────────────────────────
   function prevMonth() {
@@ -372,12 +379,12 @@ export default function BudgetPage() {
 
   const diagnostica: { type: 'warning' | 'info'; msg: string }[] = []
   if (income > 0) {
-    if (needsPct > 50)     diagnostica.push({ type: 'warning', msg: `Necessità al ${needsPct.toFixed(0)}% del reddito · target ≤50%` })
-    if (lifestylePct > 30) diagnostica.push({ type: 'warning', msg: `Stile di vita al ${lifestylePct.toFixed(0)}% del reddito · target ≤30%` })
-    if (savingsPct < 10)   diagnostica.push({ type: 'warning', msg: `Risparmio al ${savingsPct.toFixed(0)}% del reddito · target ≥20%` })
-    if (available < 0)     diagnostica.push({ type: 'warning', msg: `Budget ecceduto di ${fmtEur(Math.abs(available))}` })
+    if (needsPct > 50)     diagnostica.push({ type: 'warning', msg: tl('diagNeeds', { pct: needsPct.toFixed(0) }) })
+    if (lifestylePct > 30) diagnostica.push({ type: 'warning', msg: tl('diagLifestyle', { pct: lifestylePct.toFixed(0) }) })
+    if (savingsPct < 10)   diagnostica.push({ type: 'warning', msg: tl('diagSavings', { pct: savingsPct.toFixed(0) }) })
+    if (available < 0)     diagnostica.push({ type: 'warning', msg: tl('diagOver', { amt: fmtEur(Math.abs(available)) }) })
   }
-  if (totalBudget === 0 && income > 0) diagnostica.push({ type: 'info', msg: 'Nessuna categoria con budget impostato' })
+  if (totalBudget === 0 && income > 0) diagnostica.push({ type: 'info', msg: tl('diagNoBudget') })
 
   // ── summary-card derived ──────────────────────────────────
   const isCurrentMonth = month === currentMonthKey
@@ -399,10 +406,10 @@ export default function BudgetPage() {
       {/* ── Month selector ────────────────────────── */}
       <div className="ledgernest-card" style={{ padding: '14px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button style={{ ...navBtn, flexShrink: 0, height: 'auto', minHeight: 28, padding: '0 12px' }} onClick={prevMonth} title="Mese precedente">‹</button>
+          <button style={{ ...navBtn, flexShrink: 0, height: 'auto', minHeight: 28, padding: '0 12px' }} onClick={prevMonth}>‹</button>
           {planningMonths.map((m, i) => {
             const md = new Date(m + '-01T12:00:00')
-            const mName = IT_MONTHS[md.getMonth()]
+            const mName = fmtMonthFull(md)
             const mYear = md.getFullYear()
             const isActive = m === month
             const isCurrent = m === currentMonthKey
@@ -414,7 +421,7 @@ export default function BudgetPage() {
                 cursor: 'pointer', textAlign: 'center', transition: 'all .15s',
               }}>
                 <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.07em', opacity: 0.7, marginBottom: 4, textTransform: 'uppercase' }}>
-                  {isCurrent ? 'Questo mese' : `+${i} ${i === 1 ? 'mese' : 'mesi'}`}
+                  {isCurrent ? tl('monthThis') : i === 1 ? tl('monthPlus', { i }) : tl('monthPlusPlural', { i })}
                 </div>
                 <div style={{ fontSize: 15, fontWeight: isActive ? 800 : 600 }}>{mName}</div>
                 <div style={{ fontSize: 11, opacity: 0.6, marginTop: 1 }}>{mYear}</div>
@@ -422,7 +429,7 @@ export default function BudgetPage() {
             )
           })}
           <button style={{ ...navBtn, flexShrink: 0, height: 'auto', minHeight: 28, padding: '0 12px', opacity: month >= planningMonths[3] ? 0.3 : 1 }}
-            onClick={nextMonth} disabled={month >= planningMonths[3]} title="Mese successivo">›</button>
+            onClick={nextMonth} disabled={month >= planningMonths[3]}>›</button>
         </div>
       </div>
 
@@ -432,7 +439,7 @@ export default function BudgetPage() {
         {/* Left — Budget di {monthName} */}
         <div className="ledgernest-card" style={{ padding: '20px 22px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', background: 'var(--accent)', color: 'var(--text-on-accent)', borderRadius: 20, padding: '3px 12px' }}>Budget di {monthName}</div>
+            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', background: 'var(--accent)', color: 'var(--text-on-accent)', borderRadius: 20, padding: '3px 12px' }}>{tl('summaryTitle', { monthName })}</div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
               {d0.getDate()} {monthName.slice(0,3).toLowerCase()}
               {isCurrentMonth && ` · giorno ${dayOfMonth} di ${daysInMonth}`}
@@ -440,14 +447,14 @@ export default function BudgetPage() {
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
             <div className="ledgernest-budget-bignum" style={{ fontSize: 42, fontWeight: 900, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.03em' }}>{fmtEur(totalSpent)}</div>
-            <div style={{ fontSize: 16, color: 'var(--text-secondary)', fontWeight: 600 }}>su {fmtEur(totalBudget)}</div>
+            <div style={{ fontSize: 16, color: 'var(--text-secondary)', fontWeight: 600 }}>{tl('summaryOf', { total: fmtEur(totalBudget) })}</div>
           </div>
           {totalBudget > 0 && (
             <div style={{ position: 'relative', height: 7, background: 'var(--bg-elevated)', borderRadius: 99, marginBottom: 8, overflow: 'visible' }}>
               <div style={{ height: '100%', width: `${Math.min(100, totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0)}%`, background: totalSpent > totalBudget ? 'var(--danger)' : 'var(--accent)', borderRadius: 99, transition: 'width .3s' }} />
               {isCurrentMonth && (
                 <div style={{ position: 'absolute', top: -4, bottom: -4, left: `${Math.min(99, (dayOfMonth / daysInMonth) * 100)}%`, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none' }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', marginBottom: 1 }}>oggi</div>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', marginBottom: 1 }}>{tl('summaryToday')}</div>
                   <div style={{ width: 2, height: 15, background: 'rgba(255,255,255,0.45)', borderRadius: 1 }} />
                 </div>
               )}
@@ -455,7 +462,7 @@ export default function BudgetPage() {
           )}
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: totalBudget - totalSpent >= 0 ? 'var(--text-secondary)' : 'var(--danger)', fontVariantNumeric: 'tabular-nums' }}>
-              {fmtEur(Math.abs(totalBudget - totalSpent))} rimasti per il mese
+              {tl('summaryRemaining', { rem: fmtEur(Math.abs(totalBudget - totalSpent)) })}
             </span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
@@ -463,7 +470,7 @@ export default function BudgetPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, background: vsLastMonth <= 0 ? 'color-mix(in oklch, var(--success) 12%, transparent)' : 'color-mix(in oklch, var(--danger) 10%, transparent)', border: `1px solid ${vsLastMonth <= 0 ? 'color-mix(in oklch, var(--success) 30%, transparent)' : 'color-mix(in oklch, var(--danger) 25%, transparent)'}` }}>
                 <span style={{ fontSize: 13, color: vsLastMonth <= 0 ? 'var(--success)' : 'var(--danger)' }}>{vsLastMonth <= 0 ? '↓' : '↑'}</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: vsLastMonth <= 0 ? 'var(--success)' : 'var(--danger)' }}>
-                  {vsLastMonth <= 0 ? 'In linea con il budget' : 'Sopra il mese scorso'} · {vsLastMonth > 0 ? '+' : ''}{vsLastMonth.toFixed(1)}% vs {IT_MONTHS[(() => { const pd = new Date(month + '-01T12:00:00'); pd.setMonth(pd.getMonth() - 1); return pd; })().getMonth()].toLowerCase()}
+                  {vsLastMonth <= 0 ? tl('badgeOnTrack') : tl('badgeOverLastMonth')} · {vsLastMonth > 0 ? '+' : ''}{vsLastMonth.toFixed(1)}% vs {fmtMonthShort((() => { const pd = new Date(month + '-01T12:00:00'); pd.setMonth(pd.getMonth() - 1); return pd; })())}
                 </span>
               </div>
             )}
@@ -471,7 +478,7 @@ export default function BudgetPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, background: projection > totalBudget ? 'color-mix(in oklch, var(--danger) 10%, transparent)' : 'color-mix(in oklch, var(--success) 10%, transparent)', border: `1px solid ${projection > totalBudget ? 'color-mix(in oklch, var(--danger) 25%, transparent)' : 'color-mix(in oklch, var(--success) 25%, transparent)'}` }}>
                 <span style={{ fontSize: 13, color: projection > totalBudget ? 'var(--danger)' : 'var(--success)' }}>↗</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: projection > totalBudget ? 'var(--danger)' : 'var(--success)', fontVariantNumeric: 'tabular-nums' }}>
-                  Proiezione fine mese: {fmtEur(projection)}
+                  {tl('projectionLabel', { amt: fmtEur(projection) })}
                 </span>
               </div>
             )}
@@ -479,7 +486,7 @@ export default function BudgetPage() {
               <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, background: 'color-mix(in oklch, var(--warning) 10%, transparent)', border: '1px solid color-mix(in oklch, var(--warning) 25%, transparent)' }}>
                 <span style={{ fontSize: 13 }}>🔔</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--warning)', fontVariantNumeric: 'tabular-nums' }}>
-                  {c.name} ha superato il budget di {fmtEur((spentByCategory[c.id] ?? 0) - getCatBudget(c.id))}
+                  {tl('overrunMessage', { category: c.name, amt: fmtEur((spentByCategory[c.id] ?? 0) - getCatBudget(c.id)) })}
                 </span>
               </div>
             ))}
@@ -488,9 +495,9 @@ export default function BudgetPage() {
 
         {/* Right — Dove vanno i tuoi soldi */}
         <div className="ledgernest-card" style={{ padding: '20px 22px' }}>
-          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3 }}>Dove vanno i tuoi soldi</div>
+          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3 }}>{tl('whereMoneyGoes')}</div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>
-            Da {fmtEur(income)} di reddito · {allocPct}% allocato
+            {tl('whereMoneyDesc', { income: fmtEur(income), pct: allocPct })}
           </div>
           {income > 0 && (
             <>
@@ -526,7 +533,7 @@ export default function BudgetPage() {
                     <div style={{ fontSize: 11, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'flex-end' }}>
                       <span>{pct.toFixed(0)}%</span>
                       <span style={{ fontWeight: 700, fontSize: 10, padding: '1px 7px', borderRadius: 20, background: onTarget ? 'color-mix(in oklch, var(--success) 15%, transparent)' : 'var(--bg-elevated)', color: onTarget ? 'var(--success)' : 'var(--text-tertiary)', border: `1px solid ${onTarget ? 'color-mix(in oklch, var(--success) 30%, transparent)' : 'transparent'}` }}>
-                        target {g.target}%
+                        {tl('whereMoneyTarget', { target: g.target })}
                       </span>
                     </div>
                   </div>
@@ -546,25 +553,25 @@ export default function BudgetPage() {
           {/* Toolbar */}
           <div className="ledgernest-budget-toolbar" style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 15 }}>Pianifica il budget mensile</div>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>{tl('toolbarTitle')}</div>
               <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-                Assegna un budget a ciascun gruppo, poi distribuiscilo alle categorie
+                {tl('toolbarDesc')}
               </div>
             </div>
             <div className="ledgernest-budget-toolbar-btns" style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-              <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" onClick={copyPrevMonth} disabled={!hasPrevPlan}>← Copia mese prec.</button>
-              <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" onClick={initFromRecurring} disabled={recurringItems.filter((r) => r.active !== false && r.type === 'expense').length === 0}>← Da ricorrenti</button>
-              <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" onClick={() => resetMonthPlan(month)}>Reset</button>
+              <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" onClick={copyPrevMonth} disabled={!hasPrevPlan}>{tl('toolbarCopyPrev')}</button>
+              <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" onClick={initFromRecurring} disabled={recurringItems.filter((r) => r.active !== false && r.type === 'expense').length === 0}>{tl('toolbarFromRecurring')}</button>
+              <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" onClick={() => resetMonthPlan(month)}>{tl('toolbarReset')}</button>
               <div style={{ width: 1, background: 'var(--border-subtle)', alignSelf: 'stretch' }} />
-              <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" onClick={() => setCollapsed(new Set(['income', 'goals', ...budgetGroups.map((g) => g.id)]))}>Collassa tutto</button>
-              <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" onClick={() => setCollapsed(new Set())}>Apri tutto</button>
+              <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" onClick={() => setCollapsed(new Set(['income', 'goals', ...budgetGroups.map((g) => g.id)]))}>{tl('toolbarCollapseAll')}</button>
+              <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" onClick={() => setCollapsed(new Set())}>{tl('toolbarExpandAll')}</button>
             </div>
           </div>
 
           {/* ── Group tab strip ─────────────────────── */}
           {(() => {
             const groupTabs = [
-              { id: 'income',  label: 'Entrate', color: '#4ade80', amount: income },
+              { id: 'income',  label: tl('incomeGroup'), color: '#4ade80', amount: income },
               ...expenseBudgetGroups.map((g) => ({
                 id: g.id, label: g.label, color: g.color,
                 amount: leafExpenseCats.filter((c) => c.group === g.id).reduce((s, c) => s + getCatBudget(c.id), 0),
@@ -609,19 +616,19 @@ export default function BudgetPage() {
             >
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#4ade80', justifySelf: 'center' }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-primary)' }}>Entrate</span>
-                <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 400 }}>Fonti di reddito mensile</span>
+                <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-primary)' }}>{tl('incomeGroup')}</span>
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 400 }}>{tl('incomeGroupDesc')}</span>
                 <span style={{ fontSize: 11, color: 'var(--text-tertiary)', transition: 'transform .2s', transform: collapsed.has('income') ? 'rotate(-90deg)' : 'rotate(0deg)', display: 'inline-block' }}>▾</span>
               </div>
-              <div style={colLabelStyle}>PIANIFICATO</div>
-              <div style={colLabelStyle}>ATTUALE</div>
-              <div style={{ ...colLabelStyle, textAlign: 'right' }}>RESIDUO</div>
+              <div style={colLabelStyle}>{tl('colPlanned')}</div>
+              <div style={colLabelStyle}>{tl('colActual')}</div>
+              <div style={{ ...colLabelStyle, textAlign: 'right' }}>{tl('colRemaining')}</div>
             </div>
 
             {/* Totals row — always visible */}
             <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 140px 110px 90px', padding: '9px 20px', background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-subtle)', alignItems: 'center' }}>
               <div />
-              <div style={{ fontWeight: 700, fontSize: 13, paddingLeft: 8 }}>Totale entrate</div>
+              <div style={{ fontWeight: 700, fontSize: 13, paddingLeft: 8 }}>{tl('totalIncome')}</div>
               <div style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmtEur(income)}</div>
               <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fmtEur(actualIncome)}</div>
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}><AttesoPill planned={income} received={actualIncome} /></div>
@@ -661,7 +668,7 @@ export default function BudgetPage() {
                                 <div style={{ width: 26, height: 26, borderRadius: 7, background: `${cat.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, flexShrink: 0 }}>{cat.emoji}</div>
                                 <span className="ledgernest-budget-cat-name" style={{ fontWeight: 600, fontSize: 13 }}>{cat.name}</span>
                                 {cat.variable && (
-                                  <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', color: 'var(--text-tertiary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 4, padding: '1px 5px' }}>VARIABILE</span>
+                                  <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', color: 'var(--text-tertiary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 4, padding: '1px 5px' }}>{tl('badgeVariable')}</span>
                                 )}
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -762,15 +769,15 @@ export default function BudgetPage() {
                     <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-primary)' }}>{group.label}</span>
                     <span style={{ fontSize: 11, color: 'var(--text-tertiary)', transition: 'transform .2s', transform: collapsed.has(group.id) ? 'rotate(-90deg)' : 'rotate(0deg)', display: 'inline-block' }}>▾</span>
                   </div>
-                  <div style={colLabelStyle}>PIANIFICATO</div>
-                  <div style={colLabelStyle}>ATTUALE</div>
-                  <div style={{ ...colLabelStyle, textAlign: 'right' }}>RESIDUO</div>
+                  <div style={colLabelStyle}>{tl('colPlanned')}</div>
+                  <div style={colLabelStyle}>{tl('colActual')}</div>
+                  <div style={{ ...colLabelStyle, textAlign: 'right' }}>{tl('colRemaining')}</div>
                 </div>
 
                 {/* Totals row — always visible */}
                 <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 140px 110px 90px', padding: '9px 20px', background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-subtle)', alignItems: 'center' }}>
                   <div />
-                  <div style={{ fontWeight: 700, fontSize: 13, paddingLeft: 8 }}>Totale {group.label.toLowerCase()}</div>
+                  <div style={{ fontWeight: 700, fontSize: 13, paddingLeft: 8 }}>{tl('totalExpenseGroup', { group: group.label.toLowerCase() })}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmtEur(catTotal)}</span>
                     {income > 0 && catTotal > 0 && <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{Math.round(catTotal / income * 100)}%</span>}
@@ -820,18 +827,18 @@ export default function BudgetPage() {
               >
                 <span style={{ fontSize: 18 }}>🎯</span>
                 <div style={{ flex: 1 }}>
-                  <span style={{ fontWeight: 800, fontSize: 15 }}>Obiettivi</span>
-                  <span style={{ fontSize: 12, color: 'var(--text-secondary)', marginLeft: 10 }}>Contributi mensili automatici</span>
+                  <span style={{ fontWeight: 800, fontSize: 15 }}>{tl('goalsSection')}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)', marginLeft: 10 }}>{tl('goalsSectionDesc')}</span>
                 </div>
-                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', fontVariantNumeric: 'tabular-nums', marginRight: 12 }}>{fmtEur(totalGoalContrib)}/mese</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', fontVariantNumeric: 'tabular-nums', marginRight: 12 }}>{fmtEur(totalGoalContrib)}{tl('perMonth')}</span>
                 <span style={{ fontSize: 12, color: 'var(--text-tertiary)', transition: 'transform .2s', transform: collapsed.has('goals') ? 'rotate(-90deg)' : 'rotate(0deg)', display: 'inline-block' }}>▾</span>
               </div>
               {!collapsed.has('goals') && (<>
               <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 140px 110px 90px', padding: '5px 20px', background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-subtle)' }}>
                 <div /><div />
-                <div style={colLabelStyle}>CONTRIBUTO</div>
-                <div style={colLabelStyle}>% REDDITO</div>
-                <div style={{ ...colLabelStyle, textAlign: 'right' }}>PROGRESSO</div>
+                <div style={colLabelStyle}>{tl('colContribution')}</div>
+                <div style={colLabelStyle}>{tl('colPctIncome')}</div>
+                <div style={{ ...colLabelStyle, textAlign: 'right' }}>{tl('colProgress')}</div>
               </div>
               {goals.map((goal) => {
                 const contrib  = goal.monthlyContribution ?? 0
@@ -886,12 +893,12 @@ export default function BudgetPage() {
               borderBottom: '1px solid var(--border-subtle)',
             }}>
               <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: available >= 0 ? '#4ade80' : 'var(--danger)', marginBottom: 4 }}>
-                {available >= 0 ? 'Da assegnare' : 'Sforato dal reddito'}
+                {available >= 0 ? tl('sidebarAssign') : tl('sidebarOver')}
               </div>
               <div style={{ fontSize: 34, fontWeight: 900, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', color: available >= 0 ? '#4ade80' : 'var(--danger)', lineHeight: 1 }}>
                 {available < 0 ? '−' : ''}{fmtEur(Math.abs(available))}
               </div>
-              {income > 0 && <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 5 }}>{allocPct}% del reddito allocato</div>}
+              {income > 0 && <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 5 }}>{tl('sidebarPctAllocated', { pct: allocPct })}</div>}
             </div>
 
             {/* Tabs */}
@@ -904,7 +911,7 @@ export default function BudgetPage() {
                   borderBottom: `2px solid ${activeTab === tab ? 'var(--accent)' : 'transparent'}`,
                   marginBottom: -1, transition: 'all .15s',
                 }}>
-                  {tab === 'riepilogo' ? 'Riepilogo' : tab === 'confronto' ? 'Confronto' : 'Money flow'}
+                  {tab === 'riepilogo' ? tl('tabSummary') : tab === 'confronto' ? tl('tabComparison') : tl('tabMoneyFlow')}
                 </button>
               ))}
             </div>
@@ -913,9 +920,9 @@ export default function BudgetPage() {
             {activeTab === 'riepilogo' && (
               <div style={{ padding: '18px 22px', display: 'flex', flexDirection: 'column', gap: 18 }}>
                 {[
-                  { label: 'Entrate',   planned: income,                          actual: actualIncome, rem: income - actualIncome,                            color: '#4ade80', remLabel: 'attesi'  },
-                  { label: 'Uscite',    planned: opexBudget,                      actual: opexSpent,    rem: opexBudget - opexSpent,                            color: 'var(--accent)', remLabel: 'rimasti' },
-                  { label: 'Risparmio', planned: investBudget + totalGoalContrib, actual: investSpent,  rem: (investBudget + totalGoalContrib) - investSpent,   color: '#5bc8d0', remLabel: 'rimasti' },
+                  { label: tl('summaryIncome'),   planned: income,                          actual: actualIncome, rem: income - actualIncome,                            color: '#4ade80', remLabel: tl('summaryExpected')  },
+                  { label: tl('summaryExpenses'), planned: opexBudget,                      actual: opexSpent,    rem: opexBudget - opexSpent,                            color: 'var(--accent)', remLabel: tl('summaryRemain') },
+                  { label: tl('summarySavings'),  planned: investBudget + totalGoalContrib, actual: investSpent,  rem: (investBudget + totalGoalContrib) - investSpent,   color: '#5bc8d0', remLabel: tl('summaryRemain') },
                 ].map((s) => {
                   const pct  = s.planned > 0 ? Math.min(100, (s.actual / s.planned) * 100) : 0
                   const over = s.actual > s.planned && s.planned > 0
@@ -947,12 +954,12 @@ export default function BudgetPage() {
                 {/* Savings rate */}
                 {income > 0 && (
                   <div style={{ padding: '14px 16px', borderRadius: 12, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
-                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 8, textTransform: 'uppercase' }}>Tasso di risparmio</div>
+                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 8, textTransform: 'uppercase' }}>{tl('savingsRateLabel')}</div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 }}>
                       <span style={{ fontSize: 30, fontWeight: 900, letterSpacing: '-0.02em', color: savingsPct >= 20 ? '#4ade80' : savingsPct >= 10 ? '#d29922' : 'var(--danger)', fontVariantNumeric: 'tabular-nums' }}>
                         {savingsPct.toFixed(0)}%
                       </span>
-                      <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>target 20%</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{tl('savingsRateTarget')}</span>
                     </div>
                     <div style={{ position: 'relative', height: 5, background: 'var(--bg-surface)', borderRadius: 99, overflow: 'visible' }}>
                       <div style={{ height: '100%', width: `${Math.min(100, savingsPct)}%`, background: savingsPct >= 20 ? '#4ade80' : savingsPct >= 10 ? '#d29922' : 'var(--danger)', borderRadius: 99, transition: 'width .3s' }} />
@@ -964,7 +971,7 @@ export default function BudgetPage() {
                 {/* Diagnostica */}
                 {diagnostica.length > 0 && (
                   <div>
-                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 8, textTransform: 'uppercase' }}>Diagnostica</div>
+                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 8, textTransform: 'uppercase' }}>{tl('diagLabel')}</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {diagnostica.map((d, i) => (
                         <div key={i} style={{
@@ -986,7 +993,7 @@ export default function BudgetPage() {
             {activeTab === 'confronto' && (
               <div style={{ padding: '18px 22px' }}>
                 <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: 18 }}>
-                  Ultimi 6 mesi · per gruppo
+                  {tl('comparisonTitle')}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
                   {expenseBudgetGroups.map((group) => {
@@ -1014,7 +1021,7 @@ export default function BudgetPage() {
                             const amt        = monthAmounts[i]
                             const isCurrent  = m === month
                             const intensity  = maxAmt > 0 ? Math.max(0.12, amt / maxAmt) : 0
-                            const mLabel     = IT_MONTHS[new Date(m + '-01T12:00:00').getMonth()].slice(0, 3)
+                            const mLabel     = fmtMonthShort(new Date(m + '-01T12:00:00'))
                             return (
                               <div key={m} style={{ textAlign: 'center' }}>
                                 <div style={{
@@ -1043,8 +1050,8 @@ export default function BudgetPage() {
             {activeTab === 'moneyflow' && (
               <div style={{ padding: '18px 22px' }}>
                 <div style={{ marginBottom: 18 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 3 }}>Flusso mensile</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Da {income > 0 ? fmtEur(income) : '—'} di reddito pianificato</div>
+                  <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 3 }}>{tl('moneyFlowTitle')}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{tl('moneyFlowDesc', { income: income > 0 ? fmtEur(income) : '—' })}</div>
                 </div>
                 {income > 0 ? (<>
                   <div style={{ height: 22, background: 'var(--bg-elevated)', borderRadius: 8, overflow: 'hidden', display: 'flex', marginBottom: 18 }}>
@@ -1062,10 +1069,10 @@ export default function BudgetPage() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {[
-                      { key: 'needs',       label: 'Necessità',     color: '#f85149' },
-                      { key: 'lifestyle',   label: 'Stile di vita', color: '#d29922' },
-                      { key: 'finance',     label: 'Finanze',       color: '#7c6df7' },
-                      { key: 'investments', label: 'Investimenti',  color: '#5bc8d0' },
+                      { key: 'needs',       label: tl('flowNeeds'),       color: '#f85149' },
+                      { key: 'lifestyle',   label: tl('flowLifestyle'),   color: '#d29922' },
+                      { key: 'finance',     label: tl('flowFinances'),    color: '#7c6df7' },
+                      { key: 'investments', label: tl('flowInvestments'), color: '#5bc8d0' },
                     ].map((g) => {
                       const amt = leafExpenseCats.filter((c) => c.group === g.key).reduce((s, c) => s + getCatBudget(c.id), 0)
                       const pct = income > 0 ? (amt / income) * 100 : 0
@@ -1081,7 +1088,7 @@ export default function BudgetPage() {
                     {totalGoalContrib > 0 && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#a78bfa', flexShrink: 0 }} />
-                        <div style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>Obiettivi</div>
+                        <div style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{tl('flowGoals')}</div>
                         <div style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>{fmtEur(totalGoalContrib)}</div>
                         <div style={{ fontSize: 11, color: 'var(--text-tertiary)', width: 32, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{(totalGoalContrib / income * 100).toFixed(0)}%</div>
                       </div>
@@ -1089,7 +1096,7 @@ export default function BudgetPage() {
                     {available > 0 && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 6, borderTop: '1px solid var(--border-subtle)' }}>
                         <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--border)', flexShrink: 0 }} />
-                        <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: 'var(--text-tertiary)' }}>Non allocato</div>
+                        <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: 'var(--text-tertiary)' }}>{tl('flowUnallocated')}</div>
                         <div style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: 'var(--text-tertiary)' }}>{fmtEur(available)}</div>
                         <div style={{ fontSize: 11, color: 'var(--text-tertiary)', width: 32, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{(available / income * 100).toFixed(0)}%</div>
                       </div>
@@ -1097,7 +1104,7 @@ export default function BudgetPage() {
                   </div>
                 </>) : (
                   <div style={{ fontSize: 13, color: 'var(--text-tertiary)', textAlign: 'center', paddingTop: 20 }}>
-                    Imposta il reddito per visualizzare il flusso
+                    {tl('flowNoIncome')}
                   </div>
                 )}
               </div>

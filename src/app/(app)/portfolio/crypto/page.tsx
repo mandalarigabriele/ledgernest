@@ -9,6 +9,7 @@ import Donut from '@/components/charts/Donut'
 import Sparkline from '@/components/charts/Sparkline'
 import Icon from '@/components/shared/Icon'
 import { useUIStore } from '@/stores/uiStore'
+import { useTranslations } from 'next-intl'
 import type { PortfolioPosition, Quote } from '@/types'
 
 // ── palette ──────────────────────────────────────────────────
@@ -73,6 +74,7 @@ function CryptoChart({
   quotes: Record<string, Quote>
   quotesLoading: boolean
 }) {
+  const tl = useTranslations('crypto')
   const { trades } = usePortfolioStore()
   const [apiPoints, setApiPoints] = useState<{ date: string; value: number }[]>([])
   const [apiLoading, setApiLoading] = useState(false)
@@ -134,7 +136,7 @@ function CryptoChart({
     return (
       <div style={{ width: '100%', height: H, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
         <div className="ledgernest-spinner" style={{ width: 20, height: 20, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%' }} />
-        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Caricamento dati storici…</span>
+        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{tl('chartLoading')}</span>
       </div>
     )
   }
@@ -142,7 +144,7 @@ function CryptoChart({
   if (!hasData) {
     return (
       <div style={{ width: '100%', height: H, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Dati insufficienti per il periodo selezionato</span>
+        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{tl('chartInsufficient')}</span>
       </div>
     )
   }
@@ -239,6 +241,7 @@ function makeSpark(seed: number, positive: boolean, n = 60): number[] {
 // ── page ──────────────────────────────────────────────────────
 
 function PositionRowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
+  const tl = useTranslations('crypto')
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState({ top: 0, right: 0 })
   const btnRef = useRef<HTMLButtonElement>(null)
@@ -281,12 +284,12 @@ function PositionRowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: (
           <button onClick={() => { setOpen(false); onEdit() }} style={{ ...item, color: 'var(--text-primary)' }}
             onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-elevated)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
-            <Icon name="edit" size={13} /> Modifica
+            <Icon name="edit" size={13} /> {tl('menuEdit')}
           </button>
           <button onClick={() => { setOpen(false); onDelete() }} style={{ ...item, color: 'var(--danger)' }}
             onMouseEnter={(e) => (e.currentTarget.style.background = 'color-mix(in oklch, var(--danger) 10%, transparent)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
-            <Icon name="trash" size={13} /> Elimina
+            <Icon name="trash" size={13} /> {tl('menuDelete')}
           </button>
         </div>
       )}
@@ -295,6 +298,7 @@ function PositionRowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: (
 }
 
 export default function CryptoPage() {
+  const tl = useTranslations('crypto')
   const { refetch } = usePrices()
   const { positions, deletePosition, updatePosition } = usePortfolioStore()
   const { quotes, eurUsd, loading: quotesLoading } = usePricesStore()
@@ -349,9 +353,9 @@ export default function CryptoPage() {
         <div className="ledgernest-card">
           <div className="ledgernest-empty">
             <div className="ledgernest-empty-icon">₿</div>
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>Nessuna crypto nel portafoglio</div>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>{tl('emptyTitle')}</div>
             <button className="ledgernest-btn ledgernest-btn-primary" onClick={() => openModal('buy', { assetType: 'crypto' })}>
-              <Icon name="plus" size={14} /> Aggiungi la prima posizione
+              <Icon name="plus" size={14} /> {tl('emptyAdd')}
             </button>
           </div>
         </div>
@@ -365,41 +369,41 @@ export default function CryptoPage() {
       {/* KPI strip */}
       <div className="ledgernest-port-kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
         <div className="ledgernest-kpi is-hl" style={{ padding: '18px 20px', gap: 5 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>Totale Crypto</div>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiTotal')}</div>
           <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{fmtEur(totalValue)}</div>
           <div style={{ fontSize: 12, fontWeight: 600, color: totalDayPct >= 0 ? '#3fb950' : 'var(--danger)' }}>
-            {totalDayPct >= 0 ? '+' : ''}{totalDayPct.toFixed(2)}% <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>oggi</span>
+            {totalDayPct >= 0 ? '+' : ''}{totalDayPct.toFixed(2)}% <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{tl('kpiToday')}</span>
           </div>
         </div>
 
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: 5 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>P&amp;L</div>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiPnl')}</div>
           <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', color: totalPnl >= 0 ? '#3fb950' : 'var(--danger)' }}>
             {totalPnl >= 0 ? '+' : ''}{fmtEur(totalPnl)}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
             <span style={{ fontWeight: 700, color: totalPnl >= 0 ? '#3fb950' : 'var(--danger)' }}>
               {totalPnl >= 0 ? '+' : ''}{totalCost > 0 ? ((totalPnl / totalCost) * 100).toFixed(2) : '0.00'}%
-            </span> vs costo storico
+            </span> {tl('kpiVsCost')}
           </div>
         </div>
 
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: 5 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>Holdings</div>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiHoldings')}</div>
           <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em' }}>{cryptos.length}</div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
             {stableCount > 0
-              ? <><span style={{ fontWeight: 700, color: '#f0a500' }}>{stableCount} stablecoin</span> diversificazione bassa</>
-              : <span style={{ color: '#3fb950', fontWeight: 600 }}>nessuna stablecoin</span>}
+              ? <><span style={{ fontWeight: 700, color: '#f0a500' }}>{tl('kpiStablecoins', { n: stableCount })}</span> {tl('kpiLowDiv')}</>
+              : <span style={{ color: '#3fb950', fontWeight: 600 }}>{tl('kpiNoStable')}</span>}
           </div>
         </div>
 
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: 5 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>Maggiore</div>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiTop')}</div>
           <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em' }}>{biggest?.ticker ?? '—'}</div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
             {biggest && totalValue > 0
-              ? <><span style={{ fontWeight: 700 }}>{((biggest.value / totalValue) * 100).toFixed(0)}% del portafoglio</span> {fmtEur(biggest.value)}</>
+              ? <><span style={{ fontWeight: 700 }}>{((biggest.value / totalValue) * 100).toFixed(0)}% {tl('kpiOfPortfolio')}</span> {fmtEur(biggest.value)}</>
               : '—'}
           </div>
         </div>
@@ -412,10 +416,9 @@ export default function CryptoPage() {
         <div className="ledgernest-card" style={{ padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>Andamento crypto</div>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>{tl('chartTitle')}</div>
               <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-                Valore complessivo ·{' '}
-                {period === '1G' ? '1 giorno' : period === '1S' ? '1 settimana' : period === '1M' ? '1 mese' : period === '1A' ? '1 anno' : 'da inizio'}
+                {tl('chartSubtitle', { period: period === '1G' ? tl('period1D') : period === '1S' ? tl('period1W') : period === '1M' ? tl('period1M') : period === '1A' ? tl('period1Y') : tl('periodAll') })}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 2, background: 'var(--bg-elevated)', borderRadius: 8, padding: 3 }}>
@@ -442,15 +445,15 @@ export default function CryptoPage() {
 
         {/* Allocazione */}
         <div className="ledgernest-card" style={{ padding: '20px' }}>
-          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>Allocazione</div>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>Per asset · {cryptos.length} holdings</div>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{tl('allocationTitle')}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>{tl('allocationSubtitle', { n: cryptos.length })}</div>
 
           {/* Donut */}
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
             <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
               <Donut data={donutData} size={160} thickness={26}
                 label={`€${totalValue >= 1000 ? (totalValue / 1000).toFixed(1) + 'k' : totalValue.toFixed(0)}`}
-                sublabel="totale" />
+                sublabel={tl('allocationTotal')} />
             </div>
           </div>
 
@@ -474,9 +477,9 @@ export default function CryptoPage() {
       <div className="ledgernest-card ledgernest-port-table-card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)' }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>Holdings · {cryptos.length}</div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{tl('tableTitle', { n: cryptos.length })}</div>
             <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
-              Prezzi in tempo reale{custody ? ` · custody ${custody}` : ''}
+              {custody ? tl('tableCustody', { custody }) : tl('tableSubtitle')}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -486,7 +489,7 @@ export default function CryptoPage() {
             </button>
             <button className="ledgernest-btn ledgernest-btn-primary ledgernest-btn-sm"
               onClick={() => openModal('buy', { assetType: 'crypto' })}>
-              <Icon name="plus" size={13} /> Acquista
+              <Icon name="plus" size={13} /> {tl('buyButton')}
             </button>
           </div>
         </div>
@@ -495,16 +498,16 @@ export default function CryptoPage() {
         <table className="ledgernest-table">
           <thead>
             <tr>
-              <th>Asset</th>
-              <th className="num">Qty</th>
-              <th className="num">Pr. medio</th>
-              <th className="num">Prezzo</th>
-              <th className="num">24H</th>
-              <th style={{ paddingLeft: 12 }}>Trend 60g</th>
-              <th className="num">Valore</th>
-              <th className="num">P&amp;L</th>
-              <th className="num">% Port.</th>
-              <th>Custody</th>
+              <th>{tl('colAsset')}</th>
+              <th className="num">{tl('colQty')}</th>
+              <th className="num">{tl('colAvgPrice')}</th>
+              <th className="num">{tl('colPrice')}</th>
+              <th className="num">{tl('col24h')}</th>
+              <th style={{ paddingLeft: 12 }}>{tl('colTrend')}</th>
+              <th className="num">{tl('colValue')}</th>
+              <th className="num">{tl('colPnl')}</th>
+              <th className="num">{tl('colPortPct')}</th>
+              <th>{tl('colCustody')}</th>
               <th />
             </tr>
           </thead>
@@ -532,7 +535,7 @@ export default function CryptoPage() {
                             style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 13, width: 90, padding: '2px 6px', borderRadius: 5, border: '1px solid var(--accent)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', outline: 'none' }}
                           />
                         ) : (
-                          <div className="ledgernest-table-ticker-name" style={{ cursor: 'pointer' }} title="Clicca per modificare" onClick={() => { setEditingTickerId(r.id); setEditingTickerVal(r.ticker) }}>
+                          <div className="ledgernest-table-ticker-name" style={{ cursor: 'pointer' }} title={tl('tickerEditTooltip')} onClick={() => { setEditingTickerId(r.id); setEditingTickerVal(r.ticker) }}>
                             {r.ticker.replace(/-USD$|-EUR$|\..*/, '')}
                           </div>
                         )}
@@ -597,18 +600,18 @@ export default function CryptoPage() {
           <div className="ledgernest-modal-overlay" onClick={() => setDeletingPositionId(null)}>
             <div className="ledgernest-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
               <div className="ledgernest-modal-header">
-                <div className="ledgernest-modal-title">Elimina crypto · {pos?.ticker}</div>
+                <div className="ledgernest-modal-title">{tl('deleteTitle', { ticker: pos?.ticker ?? '' })}</div>
               </div>
               <div className="ledgernest-modal-body">
                 <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 14 }}>
-                  Elimini la posizione <strong>{pos?.name ?? pos?.ticker}</strong> e tutti i movimenti finanziari correlati.
+                  {tl('deleteBody', { name: pos?.name ?? pos?.ticker ?? '' })}
                 </p>
               </div>
               <div className="ledgernest-modal-footer">
-                <button className="ledgernest-btn ledgernest-btn-ghost" onClick={() => setDeletingPositionId(null)}>Annulla</button>
+                <button className="ledgernest-btn ledgernest-btn-ghost" onClick={() => setDeletingPositionId(null)}>{tl('cancel')}</button>
                 <button className="ledgernest-btn" style={{ background: 'var(--danger)', color: '#fff' }}
                   onClick={() => { deletePosition(deletingPositionId); setDeletingPositionId(null) }}>
-                  Elimina
+                  {tl('delete')}
                 </button>
               </div>
             </div>

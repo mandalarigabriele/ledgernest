@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { useFinanceStore } from '@/stores/financeStore'
 import { useUIStore } from '@/stores/uiStore'
 import Icon from '@/components/shared/Icon'
@@ -22,24 +23,26 @@ const ICON_OPTIONS = [
 type CatTab = 'expense' | 'income'
 type CatGroup = 'needs' | 'lifestyle' | 'finance' | 'investments' | 'transfers'
 
-const GROUPS: { key: CatGroup; label: string; color: string }[] = [
-  { key: 'needs',       label: 'Necessità',    color: '#7c6df7' },
-  { key: 'lifestyle',   label: 'Stile di vita', color: '#f77c3a' },
-  { key: 'finance',     label: 'Finanze',      color: '#d29922' },
-  { key: 'investments', label: 'Investimenti', color: '#5bc8d0' },
-  { key: 'transfers',   label: 'Trasferimenti', color: '#94a3b8' },
-]
-
-function groupLabel(g?: string) {
-  return GROUPS.find((x) => x.key === g)?.label ?? ''
-}
-function groupColor(g?: string) {
-  return GROUPS.find((x) => x.key === g)?.color ?? 'var(--text-tertiary)'
-}
-
 export default function CategoryManagerModal() {
+  const t = useTranslations('modals')
+  const tc = useTranslations('common')
   const { budgetCategories, addBudgetCategory, deleteBudgetCategory } = useFinanceStore()
   const { closeModal } = useUIStore()
+
+  const GROUPS: { key: CatGroup; label: string; color: string }[] = [
+    { key: 'needs',       label: t('groupNeeds'),       color: '#7c6df7' },
+    { key: 'lifestyle',   label: t('groupLifestyle'),   color: '#f77c3a' },
+    { key: 'finance',     label: t('groupFinance'),     color: '#d29922' },
+    { key: 'investments', label: t('groupInvestments'), color: '#5bc8d0' },
+    { key: 'transfers',   label: t('groupTransfers'),   color: '#94a3b8' },
+  ]
+
+  function groupLabel(g?: string) {
+    return GROUPS.find((x) => x.key === g)?.label ?? ''
+  }
+  function groupColor(g?: string) {
+    return GROUPS.find((x) => x.key === g)?.color ?? 'var(--text-tertiary)'
+  }
 
   const [tab, setTab]           = useState<CatTab>('expense')
   const [showAdd, setShowAdd]   = useState(false)
@@ -101,7 +104,7 @@ export default function CategoryManagerModal() {
           boxShadow: '0 32px 80px rgba(0,0,0,0.6)',
         }}
       >
-        {/* ── Header ─────────────────────────────────────────── */}
+        {/* Header */}
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           padding: '18px 22px 16px',
@@ -109,9 +112,9 @@ export default function CategoryManagerModal() {
           flexShrink: 0,
         }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 16 }}>Categorie Movimenti</div>
+            <div style={{ fontWeight: 700, fontSize: 16 }}>{t('catManagerTitle')}</div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-              {visible.length} {tab === 'income' ? 'entrate' : 'uscite'} · gestisci le tue categorie
+              {visible.length} {tab === 'income' ? t('catTabIncome').toLowerCase() : t('catTabExpense').toLowerCase()} · {t('catManagerSub')}
             </div>
           </div>
           <button onClick={closeModal} style={{
@@ -123,29 +126,29 @@ export default function CategoryManagerModal() {
           </button>
         </div>
 
-        {/* ── Tabs ───────────────────────────────────────────── */}
+        {/* Tabs */}
         <div style={{ padding: '14px 22px 0', flexShrink: 0 }}>
           <div style={{ display: 'flex', gap: 2, background: 'var(--bg-elevated)', borderRadius: 10, padding: 3, width: 'fit-content' }}>
-            {(['expense', 'income'] as CatTab[]).map((t) => (
-              <button key={t} onClick={() => { setTab(t); resetAdd() }} style={{
+            {(['expense', 'income'] as CatTab[]).map((tp) => (
+              <button key={tp} onClick={() => { setTab(tp); resetAdd() }} style={{
                 padding: '5px 22px', borderRadius: 7, fontSize: 13, fontWeight: 600,
                 border: 'none', cursor: 'pointer',
-                background: tab === t ? 'var(--bg-surface)' : 'transparent',
-                color: tab === t ? 'var(--text-primary)' : 'var(--text-secondary)',
-                boxShadow: tab === t ? '0 1px 4px rgba(0,0,0,.25)' : 'none',
+                background: tab === tp ? 'var(--bg-surface)' : 'transparent',
+                color: tab === tp ? 'var(--text-primary)' : 'var(--text-secondary)',
+                boxShadow: tab === tp ? '0 1px 4px rgba(0,0,0,.25)' : 'none',
                 transition: 'all .12s',
               }}>
-                {t === 'expense' ? 'Uscite' : 'Entrate'}
+                {tp === 'expense' ? t('catTabExpense') : t('catTabIncome')}
               </button>
             ))}
           </div>
         </div>
 
-        {/* ── Category list ──────────────────────────────────── */}
+        {/* Category list */}
         <div style={{ overflowY: 'auto', flex: 1, padding: '10px 14px' }}>
           {visible.length === 0 && (
             <div style={{ textAlign: 'center', padding: '32px 0', fontSize: 13, color: 'var(--text-tertiary)' }}>
-              Nessuna categoria
+              {t('catEmpty')}
             </div>
           )}
           {visible.map((cat) => (
@@ -182,7 +185,7 @@ export default function CategoryManagerModal() {
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--danger)')}
                 onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-tertiary)')}
-                title="Elimina"
+                title={tc('delete')}
               >
                 <Icon name="trash" size={14} />
               </button>
@@ -190,7 +193,7 @@ export default function CategoryManagerModal() {
           ))}
         </div>
 
-        {/* ── Add form ───────────────────────────────────────── */}
+        {/* Add form */}
         <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '14px 22px 18px', flexShrink: 0 }}>
           {showAdd ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -198,7 +201,7 @@ export default function CategoryManagerModal() {
               {/* Name */}
               <input
                 className="ledgernest-input"
-                placeholder="Nome categoria..."
+                placeholder={t('catNamePlaceholder')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
@@ -209,7 +212,7 @@ export default function CategoryManagerModal() {
               {/* Group picker (only for expenses) */}
               {tab === 'expense' && (
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 8 }}>GRUPPO</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 8 }}>{t('catGroupLabel')}</div>
                   <div style={{ display: 'flex', gap: 6 }}>
                     {GROUPS.map((g) => (
                       <button
@@ -232,7 +235,7 @@ export default function CategoryManagerModal() {
 
               {/* Icon picker */}
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 8 }}>ICONA</div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 8 }}>{t('catIconLabel')}</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {ICON_OPTIONS.map((ic) => (
                     <button key={ic} onClick={() => setIconName(ic)} style={{
@@ -251,7 +254,7 @@ export default function CategoryManagerModal() {
 
               {/* Color picker */}
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 8 }}>COLORE</div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 8 }}>{t('catColorLabel')}</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
                   {CAT_COLORS.map((c) => (
                     <button key={c} onClick={() => setColor(c)} style={{
@@ -291,14 +294,14 @@ export default function CategoryManagerModal() {
                   className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm"
                   onClick={resetAdd}
                 >
-                  Annulla
+                  {tc('cancel')}
                 </button>
                 <button
                   className="ledgernest-btn ledgernest-btn-primary ledgernest-btn-sm"
                   onClick={handleAdd}
                   disabled={!name.trim()}
                 >
-                  <Icon name="plus" size={13} /> Aggiungi
+                  <Icon name="plus" size={13} /> {t('catAdd')}
                 </button>
               </div>
             </div>
@@ -309,7 +312,7 @@ export default function CategoryManagerModal() {
               style={{ width: '100%', justifyContent: 'center', gap: 6 }}
             >
               <Icon name="plus" size={13} />
-              Nuova categoria {tab === 'income' ? 'entrata' : 'uscita'}
+              {tab === 'income' ? t('catNewIncome') : t('catNewExpense')}
             </button>
           )}
         </div>

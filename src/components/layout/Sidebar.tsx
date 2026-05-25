@@ -5,7 +5,9 @@ import { usePathname } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useSession, signOut } from 'next-auth/react'
 import { useUIStore } from '@/stores/uiStore'
+import { useSettingsStore } from '@/stores/settingsStore'
 import Icon from '@/components/shared/Icon'
+import type { Locale } from '@/types'
 
 interface NavItem {
   href: string
@@ -14,26 +16,26 @@ interface NavItem {
 }
 
 const portfolioItems: NavItem[] = [
-  { href: '/dashboard',           icon: 'dashboard',  labelKey: 'dashboard' },
-  { href: '/portfolio/azioni',    icon: 'azioni',     labelKey: 'azioni' },
-  { href: '/portfolio/dividendi', icon: 'dividendi',  labelKey: 'dividendi' },
-  { href: '/portfolio/crypto',    icon: 'crypto',     labelKey: 'crypto' },
-  { href: '/portfolio/etf',       icon: 'etf',        labelKey: 'etf' },
+  { href: '/dashboard',              icon: 'dashboard',  labelKey: 'dashboard' },
+  { href: '/portfolio/stocks',       icon: 'azioni',     labelKey: 'azioni' },
+  { href: '/portfolio/dividends',    icon: 'dividendi',  labelKey: 'dividendi' },
+  { href: '/portfolio/crypto',       icon: 'crypto',     labelKey: 'crypto' },
+  { href: '/portfolio/etf',          icon: 'etf',        labelKey: 'etf' },
 ]
 
 const analisiItems: NavItem[] = [
-  { href: '/portfolio/screener',  icon: 'screener',   labelKey: 'screener' },
-  { href: '/portfolio/heatmap',   icon: 'heatmap',    labelKey: 'heatmap' },
+  { href: '/portfolio/screener',     icon: 'screener',   labelKey: 'screener' },
+  { href: '/portfolio/heatmap',      icon: 'heatmap',    labelKey: 'heatmap' },
 ]
 
 const financeItems: NavItem[] = [
-  { href: '/finance/conti',      icon: 'conti',      labelKey: 'conti' },
-  { href: '/finance/movimenti',  icon: 'movimenti',  labelKey: 'movimenti' },
-  { href: '/finance/budget',     icon: 'budget',     labelKey: 'budget' },
-  { href: '/finance/patrimonio', icon: 'patrimonio', labelKey: 'patrimonio' },
-  { href: '/finance/obiettivi',  icon: 'obiettivi',  labelKey: 'obiettivi' },
-  { href: '/finance/ricorrenti', icon: 'ricorrenti', labelKey: 'ricorrenti' },
-  { href: '/finance/report',     icon: 'report',     labelKey: 'report' },
+  { href: '/finance/accounts',       icon: 'conti',      labelKey: 'conti' },
+  { href: '/finance/transactions',   icon: 'movimenti',  labelKey: 'movimenti' },
+  { href: '/finance/budget',         icon: 'budget',     labelKey: 'budget' },
+  { href: '/finance/net-worth',      icon: 'patrimonio', labelKey: 'patrimonio' },
+  { href: '/finance/goals',          icon: 'obiettivi',  labelKey: 'obiettivi' },
+  { href: '/finance/recurring',      icon: 'ricorrenti', labelKey: 'ricorrenti' },
+  { href: '/finance/report',         icon: 'report',     labelKey: 'report' },
 ]
 
 function NavLink({ item }: { item: NavItem }) {
@@ -57,11 +59,20 @@ function NavLink({ item }: { item: NavItem }) {
 
 export default function Sidebar() {
   const t = useTranslations('nav')
+  const tc = useTranslations('common')
   const { openModal, sidebarOpen, setSidebarOpen } = useUIStore()
+  const { settings, updateSettings } = useSettingsStore()
   const pathname = usePathname()
   const { data: session } = useSession()
   const user = session?.user
   const initials = user?.name?.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() ?? '?'
+
+  function toggleLocale() {
+    const newLocale: Locale = settings.locale === 'it' ? 'en' : 'it'
+    updateSettings({ locale: newLocale })
+    document.cookie = `ledgernest-locale=${newLocale}; path=/; max-age=31536000`
+    window.location.reload()
+  }
 
   return (
     <>
@@ -81,15 +92,21 @@ export default function Sidebar() {
           <div className="ledgernest-brand-name">LedgerNest</div>
           <div className="ledgernest-brand-sub">Personale</div>
         </div>
-        <button className="ledgernest-icon-btn ledgernest-icon-btn--sm" aria-label="Cambia workspace">
-          <Icon name="chevron" size={14} />
+        <button
+          className="ledgernest-icon-btn ledgernest-icon-btn--sm"
+          onClick={toggleLocale}
+          aria-label={settings.locale === 'it' ? 'Switch to English' : 'Passa all\'italiano'}
+          title={settings.locale === 'it' ? 'Switch to English' : 'Passa all\'italiano'}
+          style={{ fontSize: 14, lineHeight: 1 }}
+        >
+          {settings.locale === 'it' ? '🇮🇹' : '🇬🇧'}
         </button>
       </div>
 
       {/* CTA */}
       <button className="ledgernest-cta" onClick={() => openModal('quickAdd')}>
         <Icon name="plus" size={16} />
-        <span>Aggiungi</span>
+        <span>{tc('add')}</span>
       </button>
 
       {/* Nav */}
@@ -118,9 +135,9 @@ export default function Sidebar() {
         <div className="ledgernest-nav-grp">
           <div className="ledgernest-nav-label">{t('sistema')}</div>
           <Link
-            href="/impostazioni"
-            className={`ledgernest-nav-item${pathname === '/impostazioni' ? ' is-active' : ''}`}
-            aria-current={pathname === '/impostazioni' ? 'page' : undefined}
+            href="/settings"
+            className={`ledgernest-nav-item${pathname === '/settings' ? ' is-active' : ''}`}
+            aria-current={pathname === '/settings' ? 'page' : undefined}
           >
             <Icon name="impostazioni" size={18} />
             <span>{t('impostazioni')}</span>

@@ -7,57 +7,36 @@ import { useSettingsStore } from "@/stores/settingsStore";
 import { usePricesStore } from "@/stores/pricesStore";
 import Icon from "@/components/shared/Icon";
 
-const PAGE_META: Record<string, { title: string; sub: string }> = {
-  "/dashboard": {
-    title: "Ciao, Gabriele",
-    sub: "Ecco una panoramica del tuo patrimonio e dei conti.",
-  },
-  "/portfolio/azioni": { title: "Azioni", sub: "Le tue posizioni azionarie" },
-  "/portfolio/etf": { title: "ETF", sub: "Fondi indicizzati ed ETF" },
-  "/portfolio/crypto": {
-    title: "Crypto",
-    sub: "Criptovalute e asset digitali",
-  },
-  "/portfolio/dividendi": {
-    title: "Dividendi",
-    sub: "Titoli che pagano cedola",
-  },
-  "/portfolio/heatmap": { title: "Heatmap", sub: "Rendimenti per asset class" },
-  "/portfolio/screener": { title: "Screener", sub: "Analisi e ricerca titoli" },
-  "/finance/conti": { title: "Conti", sub: "Conti bancari, broker e wallet" },
-  "/finance/movimenti": { title: "Movimenti", sub: "Tutte le transazioni" },
-  "/finance/budget": {
-    title: "Budget",
-    sub: "Allocazione budget e pianificazione investimenti",
-  },
-  "/finance/patrimonio": {
-    title: "Patrimonio",
-    sub: "Attività, passività e composizione",
-  },
-  "/finance/obiettivi": { title: "Obiettivi", sub: "Risparmi e traguardi" },
-  "/finance/ricorrenti": {
-    title: "Ricorrenti",
-    sub: "Addebiti automatici e abbonamenti",
-  },
-  "/finance/report": {
-    title: "Report",
-    sub: "Analisi delle finanze per periodo",
-  },
-  "/impostazioni": {
-    title: "Impostazioni",
-    sub: "Profilo, preferenze e account",
-  },
-};
-
 export default function Topbar() {
   const pathname = usePathname();
-  const t = useTranslations("common");
+  const tc = useTranslations("common");
+  const tb = useTranslations("topbar");
+  const tn = useTranslations("nav");
   const { setSearchOpen, toggleSidebar } = useUIStore();
   const { settings, updateSettings } = useSettingsStore();
   const { loading } = usePricesStore();
 
-  const meta = PAGE_META[pathname] ?? { title: "LedgerNest", sub: "" };
   const isDark = settings.theme === "dark";
+
+  const PAGE_META: Record<string, { title: string; sub: string }> = {
+    "/dashboard":              { title: tb("welcome"),       sub: tb("welcomeSub") },
+    "/portfolio/stocks":       { title: tn("azioni"),        sub: tb("subAzioni") },
+    "/portfolio/etf":          { title: tn("etf"),           sub: tb("subEtf") },
+    "/portfolio/crypto":       { title: tn("crypto"),        sub: tb("subCrypto") },
+    "/portfolio/dividends":    { title: tn("dividendi"),     sub: tb("subDividendi") },
+    "/portfolio/heatmap":      { title: tn("heatmap"),       sub: tb("subHeatmap") },
+    "/portfolio/screener":     { title: tn("screener"),      sub: tb("subScreener") },
+    "/finance/accounts":       { title: tn("conti"),         sub: tb("subConti") },
+    "/finance/transactions":   { title: tn("movimenti"),     sub: tb("subMovimenti") },
+    "/finance/budget":         { title: tn("budget"),        sub: tb("subBudget") },
+    "/finance/net-worth":      { title: tn("patrimonio"),    sub: tb("subPatrimonio") },
+    "/finance/goals":          { title: tn("obiettivi"),     sub: tb("subObiettivi") },
+    "/finance/recurring":      { title: tn("ricorrenti"),    sub: tb("subRicorrenti") },
+    "/finance/report":         { title: tn("report"),        sub: tb("subReport") },
+    "/settings":               { title: tn("impostazioni"),  sub: tb("subImpostazioni") },
+  };
+
+  const meta = PAGE_META[pathname] ?? { title: "LedgerNest", sub: "" };
 
   function toggleTheme() {
     updateSettings({ theme: isDark ? "light" : "dark" });
@@ -82,17 +61,17 @@ export default function Topbar() {
         <button
           className="ledgernest-search-btn"
           onClick={() => setSearchOpen(true)}
-          aria-label={t("openSearch")}
+          aria-label={tc("openSearch")}
         >
           <Icon name="search" size={14} />
           <span className="ledgernest-search-btn-text">
-            Cerca un titolo, una transazione…
+            {tb("searchPlaceholder")}
           </span>
           <kbd>⌘K</kbd>
         </button>
 
         {/* Notifications */}
-        <button className="ledgernest-icon-btn" aria-label={t("notifications")}>
+        <button className="ledgernest-icon-btn" aria-label={tc("notifications")}>
           <Icon name="bell" size={18} />
           <span className="ledgernest-dot" />
         </button>
@@ -101,7 +80,7 @@ export default function Topbar() {
         <button
           className="ledgernest-icon-btn"
           onClick={toggleTheme}
-          aria-label={t("toggleTheme")}
+          aria-label={tc("toggleTheme")}
         >
           <Icon name={isDark ? "sun" : "moon"} size={18} />
         </button>
@@ -110,7 +89,7 @@ export default function Topbar() {
         {loading && (
           <button
             className="ledgernest-icon-btn"
-            aria-label="Aggiornamento prezzi…"
+            aria-label={tb("updatingPrices")}
             disabled
           >
             <Icon name="refresh" size={16} className="ledgernest-spinner" />

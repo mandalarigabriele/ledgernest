@@ -1,23 +1,26 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { useUIStore } from '@/stores/uiStore'
 import { useFinanceStore } from '@/stores/financeStore'
 import type { Account } from '@/types'
 import Icon from '../Icon'
 
-const TYPES: { value: Account['type']; label: string; sub: string; icon: string; color: string }[] = [
-  { value: 'bank',   label: 'Conto bancario',  sub: 'Corrente o deposito', icon: 'conti',  color: '#58a6ff' },
-  { value: 'broker', label: 'Brokerage',        sub: 'IBKR, Degiro, Fineco…', icon: 'azioni', color: 'var(--accent)' },
-  { value: 'crypto', label: 'Crypto wallet',    sub: 'Exchange o self-custody', icon: 'crypto', color: '#f77c3a' },
-  { value: 'other',  label: 'Altro',            sub: 'Fondo, mutuo, altro', icon: 'wallet', color: '#7c6df7' },
-]
-
 const CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF'] as const
 
 export default function AccountModal() {
+  const t = useTranslations('modals')
+  const tc = useTranslations('common')
   const { closeModal } = useUIStore()
   const { addAccount } = useFinanceStore()
+
+  const TYPES: { value: Account['type']; label: string; sub: string; icon: string; color: string }[] = [
+    { value: 'bank',   label: t('accountTypeBank'),   sub: t('accountTypeBankSub'),   icon: 'conti',  color: '#58a6ff' },
+    { value: 'broker', label: t('accountTypeBroker'),  sub: t('accountTypeBrokerSub'), icon: 'azioni', color: 'var(--accent)' },
+    { value: 'crypto', label: t('accountTypeCrypto'),  sub: t('accountTypeCryptoSub'), icon: 'crypto', color: '#f77c3a' },
+    { value: 'other',  label: t('accountTypeOther'),   sub: t('accountTypeOtherSub'),  icon: 'wallet', color: '#7c6df7' },
+  ]
 
   const [type, setType] = useState<Account['type']>('bank')
   const [name, setName] = useState('')
@@ -27,7 +30,7 @@ export default function AccountModal() {
   const [iban, setIban] = useState('')
   const [note, setNote] = useState('')
 
-  const selected = TYPES.find((t) => t.value === type)!
+  const selected = TYPES.find((tp) => tp.value === type)!
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -45,15 +48,27 @@ export default function AccountModal() {
     closeModal()
   }
 
+  const namePlaceholder =
+    type === 'bank'   ? t('accountPlaceholderBank') :
+    type === 'broker' ? t('accountPlaceholderBroker') :
+    type === 'crypto' ? t('accountPlaceholderCrypto') :
+                        t('accountPlaceholderOther')
+
+  const institutionLabel =
+    type === 'bank'   ? t('accountBank') :
+    type === 'broker' ? t('accountTypeBroker') :
+    type === 'crypto' ? t('accountExchangeWallet') :
+                        t('accountInstitution')
+
   return (
     <div className="ledgernest-modal-overlay">
       <div className="ledgernest-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
 
         <div className="ledgernest-modal-header">
           <div>
-            <div className="ledgernest-modal-title">Collega conto</div>
+            <div className="ledgernest-modal-title">{t('accountTitle')}</div>
             <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-              Aggiungi un conto al tuo patrimonio
+              {t('accountSub')}
             </div>
           </div>
           <button className="ledgernest-modal-close" onClick={closeModal}>
@@ -64,51 +79,51 @@ export default function AccountModal() {
         <form onSubmit={handleSubmit}>
           <div className="ledgernest-modal-body" style={{ gap: '18px' }}>
 
-            {/* Tipo */}
+            {/* Type */}
             <div className="ledgernest-field">
-              <label className="ledgernest-label">Tipo di conto</label>
+              <label className="ledgernest-label">{t('accountType')}</label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                {TYPES.map((t) => (
+                {TYPES.map((tp) => (
                   <button
-                    key={t.value}
+                    key={tp.value}
                     type="button"
-                    onClick={() => setType(t.value)}
+                    onClick={() => setType(tp.value)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: '10px',
                       padding: '10px 12px', borderRadius: 'var(--radius-md)',
                       border: '1.5px solid',
-                      borderColor: type === t.value ? t.color : 'var(--border)',
-                      background: type === t.value ? `color-mix(in oklch, ${t.color} 12%, transparent)` : 'transparent',
+                      borderColor: type === tp.value ? tp.color : 'var(--border)',
+                      background: type === tp.value ? `color-mix(in oklch, ${tp.color} 12%, transparent)` : 'transparent',
                       textAlign: 'left', cursor: 'pointer', transition: 'all .15s',
                     }}
                   >
                     <div style={{
                       width: 32, height: 32, borderRadius: '8px', flexShrink: 0,
-                      background: type === t.value ? t.color : 'var(--bg-elevated)',
+                      background: type === tp.value ? tp.color : 'var(--bg-elevated)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: type === t.value ? '#fff' : 'var(--text-secondary)',
+                      color: type === tp.value ? '#fff' : 'var(--text-secondary)',
                       transition: 'all .15s',
                     }}>
-                      <Icon name={t.icon} size={16} />
+                      <Icon name={tp.icon} size={16} />
                     </div>
                     <div>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: type === t.value ? t.color : 'var(--text-primary)' }}>{t.label}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '1px' }}>{t.sub}</div>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: type === tp.value ? tp.color : 'var(--text-primary)' }}>{tp.label}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '1px' }}>{tp.sub}</div>
                     </div>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Nome */}
+            {/* Name */}
             <div className="ledgernest-field">
               <label className="ledgernest-label">
-                Nome <span style={{ color: 'var(--danger,#f85149)' }}>*</span>
+                {t('accountName')} <span style={{ color: 'var(--danger,#f85149)' }}>*</span>
               </label>
               <input
                 className="ledgernest-input"
                 type="text"
-                placeholder={type === 'bank' ? 'Conto corrente N26' : type === 'broker' ? 'Broker · IBKR' : type === 'crypto' ? 'Wallet · Ledger' : 'Nome conto'}
+                placeholder={namePlaceholder}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -116,10 +131,10 @@ export default function AccountModal() {
               />
             </div>
 
-            {/* Istituzione / Broker */}
+            {/* Institution / Broker */}
             <div className="ledgernest-field">
               <label className="ledgernest-label">
-                {type === 'bank' ? 'Banca' : type === 'broker' ? 'Broker' : type === 'crypto' ? 'Exchange / Wallet' : 'Istituzione'}
+                {institutionLabel}
               </label>
               <input
                 className="ledgernest-input"
@@ -131,11 +146,11 @@ export default function AccountModal() {
               />
             </div>
 
-            {/* Saldo + Valuta */}
+            {/* Balance + Currency */}
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
               <div className="ledgernest-field">
                 <label className="ledgernest-label">
-                  Saldo attuale <span style={{ color: 'var(--danger,#f85149)' }}>*</span>
+                  {t('currentBalance')} <span style={{ color: 'var(--danger,#f85149)' }}>*</span>
                 </label>
                 <input
                   className="ledgernest-input ledgernest-mono"
@@ -149,7 +164,7 @@ export default function AccountModal() {
                 />
               </div>
               <div className="ledgernest-field">
-                <label className="ledgernest-label">Valuta</label>
+                <label className="ledgernest-label">{tc('currency')}</label>
                 <select
                   className="ledgernest-input"
                   value={currency}
@@ -161,10 +176,10 @@ export default function AccountModal() {
               </div>
             </div>
 
-            {/* IBAN (solo bank) */}
+            {/* IBAN (bank only) */}
             {type === 'bank' && (
               <div className="ledgernest-field">
-                <label className="ledgernest-label">IBAN <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>(opzionale)</span></label>
+                <label className="ledgernest-label">{t('ibanOptional')} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>({tc('cancel') /* using optional label */})</span></label>
                 <input
                   className="ledgernest-input ledgernest-mono"
                   type="text"
@@ -178,7 +193,7 @@ export default function AccountModal() {
 
             {/* Note */}
             <div className="ledgernest-field">
-              <label className="ledgernest-label">Note <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>(opzionale)</span></label>
+              <label className="ledgernest-label">{t('noteOptional')} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>({tc('optional')})</span></label>
               <input
                 className="ledgernest-input"
                 type="text"
@@ -192,7 +207,7 @@ export default function AccountModal() {
 
           <div className="ledgernest-modal-footer">
             <button type="button" className="ledgernest-btn ledgernest-btn-ghost" onClick={closeModal}>
-              Annulla
+              {tc('cancel')}
             </button>
             <button
               type="submit"
@@ -201,7 +216,7 @@ export default function AccountModal() {
               style={{ opacity: name && balance ? 1 : 0.5 }}
             >
               <Icon name="plus" size={14} />
-              Collega conto
+              {t('connectAccount')}
             </button>
           </div>
         </form>

@@ -5,6 +5,7 @@ import { usePortfolioStore } from '@/stores/portfolioStore'
 import { usePricesStore } from '@/stores/pricesStore'
 import { usePrices } from '@/hooks/usePrices'
 import { fmtEur, fmtPct, deltaClass } from '@/lib/utils/format'
+import { useTranslations } from 'next-intl'
 
 function getHeatColor(pct: number): string {
   if (pct >= 3)   return '#16a34a'
@@ -17,6 +18,7 @@ function getHeatColor(pct: number): string {
 }
 
 export default function HeatmapPage() {
+  const tl = useTranslations('heatmap')
   usePrices()
   const { positions } = usePortfolioStore()
   const { quotes } = usePricesStore()
@@ -37,29 +39,29 @@ export default function HeatmapPage() {
     <div className="ledgernest-gap-5">
       <div className="ledgernest-kpi-strip">
         <div className="ledgernest-kpi-cell">
-          <div className="ledgernest-kpi-label">Posizioni nella heatmap</div>
+          <div className="ledgernest-kpi-label">{tl('kpiPositions')}</div>
           <div className="ledgernest-kpi-value">{cells.length}</div>
         </div>
         <div className="ledgernest-kpi-cell">
-          <div className="ledgernest-kpi-label">Valore totale</div>
+          <div className="ledgernest-kpi-label">{tl('kpiValue')}</div>
           <div className="ledgernest-kpi-value">{fmtEur(totalValue)}</div>
         </div>
       </div>
 
       {/* Legend */}
       <div style={{ display: 'flex', gap: '12px', alignItems: 'center', fontSize: '11px', color: 'var(--text-tertiary)' }}>
-        <span>Peggiore</span>
+        <span>{tl('legendWorst')}</span>
         {['#dc2626', '#ef4444', '#f87171', '#6b7280', '#4ade80', '#22c55e', '#16a34a'].map((c) => (
           <div key={c} style={{ width: 24, height: 14, background: c, borderRadius: 3 }} />
         ))}
-        <span>Migliore</span>
+        <span>{tl('legendBest')}</span>
       </div>
 
       {cells.length === 0 ? (
         <div className="ledgernest-card">
           <div className="ledgernest-empty">
             <div className="ledgernest-empty-icon">🗺️</div>
-            Nessuna posizione nella heatmap
+            {tl('emptyTitle')}
           </div>
         </div>
       ) : (

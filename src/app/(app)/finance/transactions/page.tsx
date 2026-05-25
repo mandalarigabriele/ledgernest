@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef, useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 import { useFinanceStore } from '@/stores/financeStore'
 import { useUIStore } from '@/stores/uiStore'
 import { fmtEur } from '@/lib/utils/format'
@@ -22,20 +23,20 @@ const labelStyle: React.CSSProperties = {
   letterSpacing: '0.05em', marginBottom: 5,
 }
 
-function DeleteConfirmModal({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void }) {
+function DeleteConfirmModal({ message, onConfirm, onCancel, title, cancelLabel, deleteLabel }: { message: string; onConfirm: () => void; onCancel: () => void; title: string; cancelLabel: string; deleteLabel: string }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
       <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: '28px 32px', width: 380, display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
-        <div style={{ fontSize: 15, fontWeight: 700 }}>Conferma eliminazione</div>
+        <div style={{ fontSize: 15, fontWeight: 700 }}>{title}</div>
         <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{message}</div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button className="ledgernest-btn ledgernest-btn-ghost" onClick={onCancel}>Annulla</button>
+          <button className="ledgernest-btn ledgernest-btn-ghost" onClick={onCancel}>{cancelLabel}</button>
           <button
             className="ledgernest-btn"
             style={{ background: 'var(--danger)', color: 'white', border: 'none', padding: '8px 18px', borderRadius: 9, fontWeight: 700, cursor: 'pointer' }}
             onClick={onConfirm}
           >
-            Elimina
+            {deleteLabel}
           </button>
         </div>
       </div>
@@ -44,6 +45,7 @@ function DeleteConfirmModal({ message, onConfirm, onCancel }: { message: string;
 }
 
 function EditMovementModal({ tx, onClose }: { tx: Transaction; onClose: () => void }) {
+  const tl = useTranslations('movimenti')
   const { updateTransaction, accounts } = useFinanceStore()
   const [date, setDate] = useState(tx.date)
   const [description, setDescription] = useState(tx.description)
@@ -76,25 +78,25 @@ function EditMovementModal({ tx, onClose }: { tx: Transaction; onClose: () => vo
     >
       <div ref={modalRef} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, padding: 28, width: 480, maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>Modifica movimento</div>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>{tl('editTitle')}</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', fontSize: 20, lineHeight: 1 }}>×</button>
         </div>
 
         {/* Type */}
         <div style={{ display: 'flex', gap: 8 }}>
-          {(['expense', 'income', 'transfer'] as const).map((t) => {
+          {(['expense', 'income', 'transfer'] as const).map((typ) => {
             const colors = { expense: 'var(--danger)', income: 'var(--success)', transfer: 'var(--accent)' }
-            const labels = { expense: '− Uscita', income: '+ Entrata', transfer: '⇄ Giroconto' }
-            const c = colors[t]
+            const labels = { expense: tl('typeExpense'), income: tl('typeIncome'), transfer: tl('typeTransfer') }
+            const c = colors[typ]
             return (
-              <button key={t} onClick={() => { setType(t); setCategory('') }} style={{
+              <button key={typ} onClick={() => { setType(typ); setCategory('') }} style={{
                 flex: 1, padding: '9px 0', borderRadius: 10, border: '1px solid',
-                borderColor: type === t ? c : 'var(--border-subtle)',
-                background: type === t ? `color-mix(in oklch, ${c} 15%, transparent)` : 'transparent',
-                color: type === t ? c : 'var(--text-secondary)',
+                borderColor: type === typ ? c : 'var(--border-subtle)',
+                background: type === typ ? `color-mix(in oklch, ${c} 15%, transparent)` : 'transparent',
+                color: type === typ ? c : 'var(--text-secondary)',
                 fontWeight: 700, fontSize: 12, cursor: 'pointer',
               }}>
-                {labels[t]}
+                {labels[typ]}
               </button>
             )
           })}
@@ -102,31 +104,31 @@ function EditMovementModal({ tx, onClose }: { tx: Transaction; onClose: () => vo
 
         {/* Description */}
         <div>
-          <div style={labelStyle}>Descrizione</div>
+          <div style={labelStyle}>{tl('editDescription')}</div>
           <input value={description} onChange={(e) => setDescription(e.target.value)} style={inputStyle} />
         </div>
 
         {/* Merchant */}
         <div>
-          <div style={labelStyle}>Merchant / Controparte</div>
+          <div style={labelStyle}>{tl('editMerchant')}</div>
           <MerchantInput value={merchant} onChange={setMerchant} />
         </div>
 
         {/* Amount + Date */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
-            <div style={labelStyle}>Importo (€)</div>
+            <div style={labelStyle}>{tl('editAmount')}</div>
             <input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} style={inputStyle} />
           </div>
           <div>
-            <div style={labelStyle}>Data</div>
+            <div style={labelStyle}>{tl('editDate')}</div>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inputStyle} />
           </div>
         </div>
 
         {/* Category */}
         <div>
-          <div style={labelStyle}>Categoria</div>
+          <div style={labelStyle}>{tl('editCategory')}</div>
           <CategoryPicker
             value={category}
             onChange={setCategory}
@@ -138,7 +140,7 @@ function EditMovementModal({ tx, onClose }: { tx: Transaction; onClose: () => vo
         {/* Account */}
         {accounts.length > 0 && (
           <div>
-            <div style={labelStyle}>Conto</div>
+            <div style={labelStyle}>{tl('editAccount')}</div>
             <select value={accountId} onChange={(e) => setAccountId(e.target.value)} style={inputStyle}>
               {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
@@ -147,8 +149,8 @@ function EditMovementModal({ tx, onClose }: { tx: Transaction; onClose: () => vo
 
         {/* Note */}
         <div>
-          <div style={labelStyle}>Note</div>
-          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Opzionale" style={inputStyle} />
+          <div style={labelStyle}>{tl('editNote')}</div>
+          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={tl('editOptional')} style={inputStyle} />
         </div>
 
         <button
@@ -157,7 +159,7 @@ function EditMovementModal({ tx, onClose }: { tx: Transaction; onClose: () => vo
           style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}
           disabled={!description.trim()}
         >
-          Salva modifiche
+          {tl('editSave')}
         </button>
       </div>
     </div>
@@ -190,12 +192,12 @@ function fmtGroupDate(dateStr: string): string {
 }
 
 const FREQ_OPTS = [
-  { value: 'daily',     label: 'Giornaliero' },
-  { value: 'weekly',    label: 'Settimanale' },
-  { value: 'biweekly',  label: 'Bisettimanale' },
-  { value: 'monthly',   label: 'Mensile' },
-  { value: 'quarterly', label: 'Trimestrale' },
-  { value: 'yearly',    label: 'Annuale' },
+  { value: 'daily',     labelKey: 'freqDaily' },
+  { value: 'weekly',    labelKey: 'freqWeekly' },
+  { value: 'biweekly',  labelKey: 'freqBiweekly' },
+  { value: 'monthly',   labelKey: 'freqMonthly' },
+  { value: 'quarterly', labelKey: 'freqQuarterly' },
+  { value: 'yearly',    labelKey: 'freqYearly' },
 ]
 
 function nextMonthSameDay(): string {
@@ -207,6 +209,8 @@ function nextMonthSameDay(): string {
 type TxSnap = { id: string; description: string; amount: number; type: string; category: string; accountId: string }
 
 function AddAsRecurringModal({ tx, onClose }: { tx: TxSnap; onClose: () => void }) {
+  const tl = useTranslations('movimenti')
+  const tr = useTranslations('ricorrenti')
   const { addRecurring } = useFinanceStore()
   const [name, setName] = useState(tx.description)
   const [amount, setAmount] = useState(String(tx.amount))
@@ -223,7 +227,7 @@ function AddAsRecurringModal({ tx, onClose }: { tx: TxSnap; onClose: () => void 
     <div className="ledgernest-modal-overlay">
       <div className="ledgernest-modal" onClick={(e) => e.stopPropagation()}>
         <div className="ledgernest-modal-header">
-          <span className="ledgernest-modal-title">Aggiungi come ricorrente</span>
+          <span className="ledgernest-modal-title">{tl('recurringTitle')}</span>
           <button className="ledgernest-modal-close" onClick={onClose}>
             <Icon name="close" size={16} />
           </button>
@@ -231,32 +235,32 @@ function AddAsRecurringModal({ tx, onClose }: { tx: TxSnap; onClose: () => void 
         <form onSubmit={handleSubmit}>
           <div className="ledgernest-modal-body">
             <div className="ledgernest-field">
-              <label className="ledgernest-label">Nome</label>
+              <label className="ledgernest-label">{tl('recurringName')}</label>
               <input className="ledgernest-input" type="text" value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div className="ledgernest-field">
-                <label className="ledgernest-label">Importo (€)</label>
+                <label className="ledgernest-label">{tl('recurringAmount')}</label>
                 <input className="ledgernest-input ledgernest-mono" type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} required />
               </div>
               <div className="ledgernest-field">
-                <label className="ledgernest-label">Frequenza</label>
+                <label className="ledgernest-label">{tl('recurringFrequency')}</label>
                 <select className="ledgernest-input ledgernest-select" value={frequency} onChange={(e) => setFrequency(e.target.value)}>
-                  {FREQ_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  {FREQ_OPTS.map((o) => <option key={o.value} value={o.value}>{tr(o.labelKey as Parameters<typeof tr>[0])}</option>)}
                 </select>
               </div>
             </div>
             <div className="ledgernest-field">
-              <label className="ledgernest-label">Prossima data</label>
+              <label className="ledgernest-label">{tl('recurringNextDate')}</label>
               <input className="ledgernest-input" type="date" value={nextDate} onChange={(e) => setNextDate(e.target.value)} />
             </div>
             <div style={{ padding: '8px 12px', borderRadius: 8, background: 'var(--bg-elevated)', fontSize: 12, color: 'var(--text-secondary)' }}>
-              Categoria: <strong style={{ color: 'var(--text-primary)' }}>{tx.category}</strong>
+              {tl('recurringCategory')} <strong style={{ color: 'var(--text-primary)' }}>{tx.category}</strong>
             </div>
           </div>
           <div className="ledgernest-modal-footer">
-            <button type="button" className="ledgernest-btn ledgernest-btn-ghost" onClick={onClose}>Annulla</button>
-            <button type="submit" className="ledgernest-btn ledgernest-btn-primary">Aggiungi</button>
+            <button type="button" className="ledgernest-btn ledgernest-btn-ghost" onClick={onClose}>{tl('cancel')}</button>
+            <button type="submit" className="ledgernest-btn ledgernest-btn-primary">{tl('recurringAdd')}</button>
           </div>
         </form>
       </div>
@@ -273,6 +277,7 @@ type TxActions = {
 }
 
 function TxRowMenu({ actions }: { actions: TxActions }) {
+  const tl = useTranslations('movimenti')
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState({ top: 0, right: 0 })
   const btnRef = useRef<HTMLButtonElement>(null)
@@ -318,17 +323,17 @@ function TxRowMenu({ actions }: { actions: TxActions }) {
           <button onClick={() => { setOpen(false); actions.onAddRecurring() }} style={{ ...menuItem, color: 'var(--text-primary)' }}
             onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-elevated)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
-            🔁 Imposta come ricorrente
+            {tl('menuRecurring')}
           </button>
           <button onClick={() => { setOpen(false); actions.onEdit() }} style={{ ...menuItem, color: 'var(--text-primary)' }}
             onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-elevated)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
-            <Icon name="edit" size={13} /> Modifica
+            <Icon name="edit" size={13} /> {tl('menuEdit')}
           </button>
           <button onClick={() => { setOpen(false); actions.onDelete() }} style={{ ...menuItem, color: 'var(--danger)' }}
             onMouseEnter={(e) => (e.currentTarget.style.background = 'color-mix(in oklch, var(--danger) 10%, transparent)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
-            <Icon name="trash" size={13} /> Elimina
+            <Icon name="trash" size={13} /> {tl('menuDelete')}
           </button>
         </div>
       )}
@@ -340,19 +345,12 @@ function TxRowMenu({ actions }: { actions: TxActions }) {
 
 type TxFilter = 'all' | 'income' | 'expense' | 'transfer' | 'invest'
 
-const FILTERS: Array<[TxFilter, string]> = [
-  ['all',      'Tutti'],
-  ['income',   'Entrate'],
-  ['expense',  'Uscite'],
-  ['transfer', 'Trasferim.'],
-  ['invest',   'Investim.'],
-]
-
 const INVEST_CATS = new Set(Object.values(ASSET_CAT_ALIAS))
 
 // ── page ──────────────────────────────────────────────────────
 
 export default function MovimentiPage() {
+  const tl = useTranslations('movimenti')
   const { transactions, accounts, budgetCategories, budgetGroups, monthlyIncome, monthlyExpenses, deleteTransaction, merchantLogos } = useFinanceStore()
   const { openModal } = useUIStore()
 
@@ -362,6 +360,14 @@ export default function MovimentiPage() {
   const [editingTx, setEditingTx] = useState<Transaction | null>(null)
   const [deletingTxId, setDeletingTxId] = useState<string | null>(null)
 
+  const FILTERS: Array<[TxFilter, string]> = [
+    ['all',      tl('filterAll')],
+    ['income',   tl('filterIncome')],
+    ['expense',  tl('filterExpense')],
+    ['transfer', tl('filterTransfer')],
+    ['invest',   tl('filterInvest')],
+  ]
+
   const today = new Date().toISOString().slice(0, 10)
   const since = new Date(Date.now() - WINDOW * 86_400_000).toISOString().slice(0, 10)
   const currentMonth = today.slice(0, 7)
@@ -369,26 +375,26 @@ export default function MovimentiPage() {
 
   // ── 28-day window ──────────────────────────────────────────
   const txs28 = useMemo(
-    () => transactions.filter((t) => t.date.slice(0, 10) >= since),
+    () => transactions.filter((tx) => tx.date.slice(0, 10) >= since),
     [transactions, since]
   )
 
   // ── KPIs ───────────────────────────────────────────────────
-  const income28  = useMemo(() => txs28.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0), [txs28])
-  const expense28 = useMemo(() => txs28.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0), [txs28])
+  const income28  = useMemo(() => txs28.filter((tx) => tx.type === 'income').reduce((s, tx) => s + tx.amount, 0), [txs28])
+  const expense28 = useMemo(() => txs28.filter((tx) => tx.type === 'expense').reduce((s, tx) => s + tx.amount, 0), [txs28])
   const saldo28   = income28 - expense28
-  const incCount  = txs28.filter((t) => t.type === 'income').length
-  const expCount  = txs28.filter((t) => t.type === 'expense').length
+  const incCount  = txs28.filter((tx) => tx.type === 'income').length
+  const expCount  = txs28.filter((tx) => tx.type === 'expense').length
 
   const incCats = useMemo(() => {
     const map: Record<string, number> = {}
-    for (const t of txs28) if (t.type === 'income') map[t.category] = (map[t.category] ?? 0) + t.amount
+    for (const tx of txs28) if (tx.type === 'income') map[tx.category] = (map[tx.category] ?? 0) + tx.amount
     return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k]) => k.toLowerCase())
   }, [txs28])
 
   const topCat = useMemo(() => {
     const map: Record<string, number> = {}
-    for (const t of txs28) if (t.type === 'expense') map[t.category] = (map[t.category] ?? 0) + t.amount
+    for (const tx of txs28) if (tx.type === 'expense') map[tx.category] = (map[tx.category] ?? 0) + tx.amount
     const entries = Object.entries(map).sort((a, b) => b[1] - a[1])
     if (!entries.length) return null
     const [name, val] = entries[0]
@@ -408,11 +414,11 @@ export default function MovimentiPage() {
   // ── group breakdown (current month) ────────────────────────
   const catBreakdown = useMemo(() => {
     const map: Record<string, number> = {}
-    for (const t of transactions) {
-      if (t.date.slice(0, 7) !== currentMonth || t.type !== 'expense') continue
-      const cat = budgetCategories.find((c) => c.name === t.category || c.id === t.category)
+    for (const tx of transactions) {
+      if (tx.date.slice(0, 7) !== currentMonth || tx.type !== 'expense') continue
+      const cat = budgetCategories.find((c) => c.name === tx.category || c.id === tx.category)
       const groupId = cat?.group ?? 'other'
-      map[groupId] = (map[groupId] ?? 0) + t.amount
+      map[groupId] = (map[groupId] ?? 0) + tx.amount
     }
     const total = Object.values(map).reduce((s, v) => s + v, 0)
     return Object.entries(map)
@@ -424,33 +430,33 @@ export default function MovimentiPage() {
   }, [transactions, currentMonth, budgetCategories, budgetGroups])
 
   // ── filtered + grouped ────────────────────────────────────
-  const filtered = useMemo(() => txs28.filter((t) => {
+  const filtered = useMemo(() => txs28.filter((tx) => {
     const q = search.toLowerCase()
     if (q) {
-      const inDesc     = t.description.toLowerCase().includes(q)
-      const inMerchant = (t.merchant ?? '').toLowerCase().includes(q)
-      const inCat      = t.category.toLowerCase().includes(q)
+      const inDesc     = tx.description.toLowerCase().includes(q)
+      const inMerchant = (tx.merchant ?? '').toLowerCase().includes(q)
+      const inCat      = tx.category.toLowerCase().includes(q)
       if (!inDesc && !inMerchant && !inCat) return false
     }
-    if (typeFilter === 'income')   return t.type === 'income'
-    if (typeFilter === 'expense')  return t.type === 'expense' && !INVEST_CATS.has(t.category)
-    if (typeFilter === 'transfer') return t.type === 'transfer'
-    if (typeFilter === 'invest')   return t.type === 'expense' && INVEST_CATS.has(t.category)
+    if (typeFilter === 'income')   return tx.type === 'income'
+    if (typeFilter === 'expense')  return tx.type === 'expense' && !INVEST_CATS.has(tx.category)
+    if (typeFilter === 'transfer') return tx.type === 'transfer'
+    if (typeFilter === 'invest')   return tx.type === 'expense' && INVEST_CATS.has(tx.category)
     return true
   }), [txs28, search, typeFilter])
 
   const grouped = useMemo(() => {
     const map: Record<string, typeof filtered> = {}
-    for (const t of filtered) {
-      const key = t.date.slice(0, 10)
+    for (const tx of filtered) {
+      const key = tx.date.slice(0, 10)
       if (!map[key]) map[key] = []
-      map[key].push(t)
+      map[key].push(tx)
     }
     return Object.entries(map).sort(([a], [b]) => b.localeCompare(a))
   }, [filtered])
 
   const accountName = (id: string) => accounts.find((a) => a.id === id)?.name ?? ''
-  const accountCount = new Set(txs28.map((t) => t.accountId)).size
+  const accountCount = new Set(txs28.map((tx) => tx.accountId)).size
 
   return (
     <div className="ledgernest-gap-5">
@@ -460,13 +466,13 @@ export default function MovimentiPage() {
 
         <div className="ledgernest-kpi is-hl" style={{ padding: '18px 20px', gap: 5 }}>
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>
-            ENTRATE ({WINDOW}G)
+            {tl('kpiIncome', { window: WINDOW })}
           </div>
           <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>
             {fmtEur(income28)}
           </div>
           <div style={{ fontSize: 12 }}>
-            <span style={{ fontWeight: 600, color: 'var(--success)' }}>{incCount} movimenti</span>
+            <span style={{ fontWeight: 600, color: 'var(--success)' }}>{incCount} {tl('kpiMovements')}</span>
             {incCats.length > 0 && (
               <span style={{ color: 'var(--text-secondary)' }}> · {incCats.join(' + ')}</span>
             )}
@@ -475,20 +481,20 @@ export default function MovimentiPage() {
 
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: 5 }}>
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>
-            USCITE ({WINDOW}G)
+            {tl('kpiExpense', { window: WINDOW })}
           </div>
           <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>
             {fmtEur(expense28)}
           </div>
           <div style={{ fontSize: 12 }}>
-            <span style={{ fontWeight: 600, color: 'var(--danger)' }}>{expCount} movimenti</span>
-            <span style={{ color: 'var(--text-secondary)' }}> · incl. investimenti</span>
+            <span style={{ fontWeight: 600, color: 'var(--danger)' }}>{expCount} {tl('kpiMovements')}</span>
+            <span style={{ color: 'var(--text-secondary)' }}> · {tl('kpiInclInvest')}</span>
           </div>
         </div>
 
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: 5 }}>
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>
-            SALDO NETTO
+            {tl('kpiBalance')}
           </div>
           <div style={{
             fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em',
@@ -497,14 +503,14 @@ export default function MovimentiPage() {
             {saldo28 >= 0 ? '+' : ''}{fmtEur(saldo28)}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-            <span style={{ fontWeight: 600, color: saldo28 >= 0 ? 'var(--success)' : 'var(--danger)' }}>risparmio</span>
-            {' · '}ultimi {WINDOW} giorni
+            <span style={{ fontWeight: 600, color: saldo28 >= 0 ? 'var(--success)' : 'var(--danger)' }}>{tl('kpiSavings')}</span>
+            {' · '}{tl('kpiLastDays', { window: WINDOW })}
           </div>
         </div>
 
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: 5 }}>
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>
-            TOP CATEGORIA
+            {tl('kpiTopCat')}
           </div>
           <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em' }}>
             {topCat?.name ?? '—'}
@@ -512,10 +518,10 @@ export default function MovimentiPage() {
           {topCat ? (
             <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
               <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{fmtEur(topCat.val)}</span>
-              {' · '}{topCat.pct.toFixed(0)}% delle uscite
+              {' · '}{topCat.pct.toFixed(0)}% {tl('kpiPctExpenses')}
             </div>
           ) : (
-            <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>nessuna uscita</div>
+            <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{tl('kpiNoExpense')}</div>
           )}
         </div>
 
@@ -527,17 +533,17 @@ export default function MovimentiPage() {
         <div className="ledgernest-card" style={{ padding: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>Flusso mensile · 6 mesi</div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>Entrate vs uscite</div>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>{tl('chartTitle')}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{tl('chartSubtitle')}</div>
             </div>
             <div style={{ display: 'flex', gap: 14, fontSize: 12, alignItems: 'center' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--text-secondary)' }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--success)', display: 'inline-block' }} />
-                Entrate
+                {tl('chartIncome')}
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--text-secondary)' }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--danger)', display: 'inline-block' }} />
-                Uscite
+                {tl('chartExpense')}
               </span>
             </div>
           </div>
@@ -546,12 +552,12 @@ export default function MovimentiPage() {
 
         <div className="ledgernest-card" style={{ padding: 20 }}>
           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>
-            Per gruppo · {currentMonthLabel}.
+            {tl('breakdownTitle', { month: currentMonthLabel })}.
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 18 }}>Distribuzione uscite</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 18 }}>{tl('breakdownSubtitle')}</div>
           {catBreakdown.length === 0 ? (
             <div style={{ fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center', paddingTop: 24 }}>
-              Nessuna uscita questo mese
+              {tl('breakdownEmpty')}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
@@ -586,17 +592,17 @@ export default function MovimentiPage() {
         }}>
           <div>
             <div style={{ fontWeight: 700, fontSize: 14 }}>
-              Tutti i movimenti · {filtered.length}
+              {tl('listTitle', { n: filtered.length })}
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
-              Ultimi {WINDOW} giorni · {accountCount} {accountCount === 1 ? 'conto' : 'conti'}
+              {tl('listTitleFiltered', { window: WINDOW, n: accountCount })}
             </div>
           </div>
 
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <input
               className="ledgernest-input"
-              placeholder="Cerca per merchant o categoria..."
+              placeholder={tl('searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{ width: 230, height: 32, padding: '4px 12px', fontSize: 12 }}
@@ -624,14 +630,14 @@ export default function MovimentiPage() {
         {grouped.length === 0 ? (
           <div className="ledgernest-empty" style={{ padding: '48px 20px' }}>
             <div className="ledgernest-empty-icon">📋</div>
-            <div>Nessun movimento trovato</div>
+            <div>{tl('emptyTitle')}</div>
             <button className="ledgernest-btn ledgernest-btn-primary" onClick={() => openModal('movement')}>
-              <Icon name="plus" size={14} /> Aggiungi movimento
+              <Icon name="plus" size={14} /> {tl('emptyAdd')}
             </button>
           </div>
         ) : (
           grouped.map(([date, txs]) => {
-            const daySum = txs.reduce((s, t) => s + (t.type === 'income' ? t.amount : -t.amount), 0)
+            const daySum = txs.reduce((s, tx) => s + (tx.type === 'income' ? tx.amount : -tx.amount), 0)
             return (
               <div key={date}>
                 {/* Date header */}
@@ -712,7 +718,7 @@ export default function MovimentiPage() {
                       {/* Kebab — always visible, always last */}
                       <TxRowMenu actions={{
                         onAddRecurring: () => setAddingRecurring(tx),
-                        onEdit: () => setEditingTx(transactions.find((t) => t.id === tx.id) ?? null),
+                        onEdit: () => setEditingTx(transactions.find((tx2) => tx2.id === tx.id) ?? null),
                         onDelete: () => setDeletingTxId(tx.id),
                       }} />
                     </div>
@@ -733,7 +739,10 @@ export default function MovimentiPage() {
       )}
       {deletingTxId && (
         <DeleteConfirmModal
-          message={`Eliminare il movimento "${transactions.find((t) => t.id === deletingTxId)?.description}"?`}
+          title={tl('deleteTitle')}
+          message={tl('deleteMessage', { description: transactions.find((tx) => tx.id === deletingTxId)?.description ?? '' })}
+          cancelLabel={tl('cancel')}
+          deleteLabel={tl('delete')}
           onConfirm={() => { deleteTransaction(deletingTxId); setDeletingTxId(null) }}
           onCancel={() => setDeletingTxId(null)}
         />

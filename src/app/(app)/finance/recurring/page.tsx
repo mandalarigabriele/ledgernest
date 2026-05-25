@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState, useRef, useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 import { useFinanceStore } from '@/stores/financeStore'
 import { fmtEur } from '@/lib/utils/format'
 import Icon from '@/components/shared/Icon'
@@ -13,22 +14,25 @@ const MULTIPLIERS: Record<string, number> = {
   daily: 30, weekly: 4.33, biweekly: 2.17, monthly: 1, quarterly: 1 / 3, yearly: 1 / 12,
 }
 
-const FREQ_LABEL: Record<string, string> = {
-  daily: 'Giornaliero', weekly: 'Settimanale', biweekly: 'Bisettimanale',
-  monthly: 'Mensile', quarterly: 'Trimestrale', yearly: 'Annuale',
-}
-
-const FREQ_GROUP: Record<string, string> = {
-  daily: 'GIORNALIERO', weekly: 'SETTIMANALE', biweekly: 'BISETTIMANALE',
-  monthly: 'MENSILE', quarterly: 'TRIMESTRALE', yearly: 'ANNUALE',
-}
-
-const IT_MONTHS = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
-  'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre']
-const IT_MONTHS_SHORT = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic']
-const IT_DAYS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom']
-
 // ── Helpers ───────────────────────────────────────────────────────────────
+
+function fmtMonthShort(date: Date): string {
+  return date.toLocaleDateString(undefined, { month: 'short' }).replace('.', '')
+}
+
+function fmtDateShort(dateStr: string): string {
+  const d = new Date(dateStr + 'T12:00:00')
+  return `${String(d.getDate()).padStart(2, '0')} ${fmtMonthShort(d).toLowerCase()}`
+}
+
+function fmtCreatedAt(dateStr: string): string {
+  const d = new Date(dateStr)
+  return `${fmtMonthShort(d)} ${d.getFullYear()}`
+}
+
+function fmtWeekdayShort(date: Date): string {
+  return date.toLocaleDateString(undefined, { weekday: 'short' }).replace('.', '')
+}
 
 function monthlyNorm(item: RecurringItem): number {
   return item.amount * (MULTIPLIERS[item.frequency] ?? 1)
@@ -91,16 +95,6 @@ function getNextOccurrences(item: RecurringItem, fromDate: Date, days: number): 
   return results
 }
 
-function fmtDateShort(dateStr: string): string {
-  const d = new Date(dateStr + 'T12:00:00')
-  return `${String(d.getDate()).padStart(2, '0')} ${IT_MONTHS_SHORT[d.getMonth()].toLowerCase()}`
-}
-
-function fmtCreatedAt(dateStr: string): string {
-  const d = new Date(dateStr)
-  return `${IT_MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`
-}
-
 function toYMD(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
@@ -112,6 +106,15 @@ function getNextOccurrenceDate(item: RecurringItem): string {
   const dates = getNextOccurrences(item, today, 90)
   if (dates.length > 0) return toYMD(dates[0])
   return item.nextDate
+}
+
+// Returns translated label for a frequency key
+function freqLabel(freq: string, tl: ReturnType<typeof useTranslations<'ricorrenti'>>): string {
+  const map: Record<string, Parameters<typeof tl>[0]> = {
+    daily: 'freqDaily', weekly: 'freqWeekly', biweekly: 'freqBiweekly',
+    monthly: 'freqMonthly', quarterly: 'freqQuarterly', yearly: 'freqYearly',
+  }
+  return tl(map[freq] ?? 'freqMonthly')
 }
 
 // ── Category icon square ──────────────────────────────────────────────────
@@ -143,6 +146,7 @@ const labelStyle: React.CSSProperties = {
 }
 
 function AddModal({ onClose }: { onClose: () => void }) {
+  const tl = useTranslations('ricorrenti')
   const { addRecurring, accounts, budgetCategories } = useFinanceStore()
   const [name, setName] = useState('')
   const [amount, setAmount] = useState('')
@@ -152,6 +156,15 @@ function AddModal({ onClose }: { onClose: () => void }) {
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? '')
   const [type, setType] = useState<'income' | 'expense'>('expense')
   const modalRef = useRef<HTMLDivElement>(null)
+
+  const freqOptions: Array<{ value: RecurringItem['frequency']; labelKey: Parameters<typeof tl>[0] }> = [
+    { value: 'daily', labelKey: 'freqDaily' },
+    { value: 'weekly', labelKey: 'freqWeekly' },
+    { value: 'biweekly', labelKey: 'freqBiweekly' },
+    { value: 'monthly', labelKey: 'freqMonthly' },
+    { value: 'quarterly', labelKey: 'freqQuarterly' },
+    { value: 'yearly', labelKey: 'freqYearly' },
+  ]
 
   const selectedCat = budgetCategories.find((c) => c.name === category || c.id === category)
 
@@ -169,7 +182,7 @@ function AddModal({ onClose }: { onClose: () => void }) {
 
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>Nuovo ricorrente</div>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>{tl('addTitle')}</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', fontSize: 20, lineHeight: 1 }}>×</button>
         </div>
 
@@ -183,27 +196,27 @@ function AddModal({ onClose }: { onClose: () => void }) {
               color: type === t ? (t === 'expense' ? 'var(--danger)' : 'var(--success)') : 'var(--text-secondary)',
               fontWeight: 700, fontSize: 13, cursor: 'pointer',
             }}>
-              {t === 'expense' ? '− Uscita' : '+ Entrata'}
+              {t === 'expense' ? tl('addTypeExpense') : tl('addTypeIncome')}
             </button>
           ))}
         </div>
 
         {/* Name */}
         <div>
-          <div style={labelStyle}>Nome</div>
+          <div style={labelStyle}>{tl('addName')}</div>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Es. Affitto, Netflix, Stipendio…" style={inputStyle} />
         </div>
 
         {/* Amount + frequency */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
-            <div style={labelStyle}>Importo (€)</div>
+            <div style={labelStyle}>{tl('addAmount')}</div>
             <input value={amount} onChange={(e) => setAmount(e.target.value)} type="number" placeholder="0,00" style={inputStyle} />
           </div>
           <div>
-            <div style={labelStyle}>Frequenza</div>
+            <div style={labelStyle}>{tl('addFrequency')}</div>
             <select value={frequency} onChange={(e) => setFrequency(e.target.value as RecurringItem['frequency'])} style={inputStyle}>
-              {Object.entries(FREQ_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              {freqOptions.map(({ value, labelKey }) => <option key={value} value={value}>{tl(labelKey)}</option>)}
             </select>
           </div>
         </div>
@@ -211,12 +224,12 @@ function AddModal({ onClose }: { onClose: () => void }) {
         {/* Next date + account */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
-            <div style={labelStyle}>Prima scadenza</div>
+            <div style={labelStyle}>{tl('addFirstDate')}</div>
             <input value={nextDate} onChange={(e) => setNextDate(e.target.value)} type="date" style={inputStyle} />
           </div>
           {accounts.length > 0 && (
             <div>
-              <div style={labelStyle}>Conto</div>
+              <div style={labelStyle}>{tl('addAccount')}</div>
               <select value={accountId} onChange={(e) => setAccountId(e.target.value)} style={inputStyle}>
                 {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
@@ -226,12 +239,12 @@ function AddModal({ onClose }: { onClose: () => void }) {
 
         {/* Category picker */}
         <div>
-          <div style={labelStyle}>Categoria</div>
+          <div style={labelStyle}>{tl('addCategory')}</div>
           <CategoryPicker value={category} onChange={setCategory} typeFilter={type} containerRef={modalRef} />
         </div>
 
         <button onClick={handleSubmit} className="ledgernest-btn ledgernest-btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}>
-          Aggiungi ricorrente
+          {tl('addButton')}
         </button>
       </div>
     </div>
@@ -241,19 +254,20 @@ function AddModal({ onClose }: { onClose: () => void }) {
 // ── Delete Confirm Modal ──────────────────────────────────────────────────
 
 function DeleteConfirmModal({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void }) {
+  const tl = useTranslations('ricorrenti')
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
       <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: '28px 32px', width: 380, display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
-        <div style={{ fontSize: 15, fontWeight: 700 }}>Conferma eliminazione</div>
+        <div style={{ fontSize: 15, fontWeight: 700 }}>{tl('deleteTitle')}</div>
         <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{message}</div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button className="ledgernest-btn ledgernest-btn-ghost" onClick={onCancel}>Annulla</button>
+          <button className="ledgernest-btn ledgernest-btn-ghost" onClick={onCancel}>{tl('cancel')}</button>
           <button
             className="ledgernest-btn"
             style={{ background: 'var(--danger)', color: 'white', border: 'none', padding: '8px 18px', borderRadius: 9, fontWeight: 700, cursor: 'pointer' }}
             onClick={onConfirm}
           >
-            Elimina
+            {tl('delete')}
           </button>
         </div>
       </div>
@@ -264,6 +278,7 @@ function DeleteConfirmModal({ message, onConfirm, onCancel }: { message: string;
 // ── Edit Modal ────────────────────────────────────────────────────────────
 
 function EditRecurringModal({ item, onClose }: { item: RecurringItem; onClose: () => void }) {
+  const tl = useTranslations('ricorrenti')
   const { updateRecurring, accounts, budgetCategories } = useFinanceStore()
   const [name, setName] = useState(item.name)
   const [amount, setAmount] = useState(String(item.amount))
@@ -273,6 +288,15 @@ function EditRecurringModal({ item, onClose }: { item: RecurringItem; onClose: (
   const [accountId, setAccountId] = useState(item.accountId)
   const [type, setType] = useState<'income' | 'expense'>(item.type)
   const modalRef = useRef<HTMLDivElement>(null)
+
+  const freqOptions: Array<{ value: RecurringItem['frequency']; labelKey: Parameters<typeof tl>[0] }> = [
+    { value: 'daily', labelKey: 'freqDaily' },
+    { value: 'weekly', labelKey: 'freqWeekly' },
+    { value: 'biweekly', labelKey: 'freqBiweekly' },
+    { value: 'monthly', labelKey: 'freqMonthly' },
+    { value: 'quarterly', labelKey: 'freqQuarterly' },
+    { value: 'yearly', labelKey: 'freqYearly' },
+  ]
 
   const selectedCat = budgetCategories.find((c) => c.name === category || c.id === category)
 
@@ -290,7 +314,7 @@ function EditRecurringModal({ item, onClose }: { item: RecurringItem; onClose: (
 
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>Modifica ricorrente</div>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>{tl('editTitle')}</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', fontSize: 20, lineHeight: 1 }}>×</button>
         </div>
 
@@ -304,27 +328,27 @@ function EditRecurringModal({ item, onClose }: { item: RecurringItem; onClose: (
               color: type === t ? (t === 'expense' ? 'var(--danger)' : 'var(--success)') : 'var(--text-secondary)',
               fontWeight: 700, fontSize: 13, cursor: 'pointer',
             }}>
-              {t === 'expense' ? '− Uscita' : '+ Entrata'}
+              {t === 'expense' ? tl('addTypeExpense') : tl('addTypeIncome')}
             </button>
           ))}
         </div>
 
         {/* Name */}
         <div>
-          <div style={labelStyle}>Nome</div>
+          <div style={labelStyle}>{tl('addName')}</div>
           <input value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
         </div>
 
         {/* Amount + frequency */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
-            <div style={labelStyle}>Importo (€)</div>
+            <div style={labelStyle}>{tl('addAmount')}</div>
             <input value={amount} onChange={(e) => setAmount(e.target.value)} type="number" style={inputStyle} />
           </div>
           <div>
-            <div style={labelStyle}>Frequenza</div>
+            <div style={labelStyle}>{tl('addFrequency')}</div>
             <select value={frequency} onChange={(e) => setFrequency(e.target.value as RecurringItem['frequency'])} style={inputStyle}>
-              {Object.entries(FREQ_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              {freqOptions.map(({ value, labelKey }) => <option key={value} value={value}>{tl(labelKey)}</option>)}
             </select>
           </div>
         </div>
@@ -332,12 +356,12 @@ function EditRecurringModal({ item, onClose }: { item: RecurringItem; onClose: (
         {/* Next date + account */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
-            <div style={labelStyle}>Prossima scadenza</div>
+            <div style={labelStyle}>{tl('editNextDate')}</div>
             <input value={nextDate} onChange={(e) => setNextDate(e.target.value)} type="date" style={inputStyle} />
           </div>
           {accounts.length > 0 && (
             <div>
-              <div style={labelStyle}>Conto</div>
+              <div style={labelStyle}>{tl('addAccount')}</div>
               <select value={accountId} onChange={(e) => setAccountId(e.target.value)} style={inputStyle}>
                 {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
@@ -347,12 +371,12 @@ function EditRecurringModal({ item, onClose }: { item: RecurringItem; onClose: (
 
         {/* Category picker */}
         <div>
-          <div style={labelStyle}>Categoria</div>
+          <div style={labelStyle}>{tl('addCategory')}</div>
           <CategoryPicker value={category} onChange={setCategory} typeFilter={type} containerRef={modalRef} />
         </div>
 
         <button onClick={handleSave} className="ledgernest-btn ledgernest-btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}>
-          Salva modifiche
+          {tl('editSave')}
         </button>
       </div>
     </div>
@@ -362,6 +386,7 @@ function EditRecurringModal({ item, onClose }: { item: RecurringItem; onClose: (
 // ── Calendar ──────────────────────────────────────────────────────────────
 
 function MonthCalendar({ items, year, month }: { items: RecurringItem[]; year: number; month: number }) {
+  const tl = useTranslations('ricorrenti')
   const today = new Date()
   const todayStr = toYMD(today)
   const daysInMonth = new Date(year, month + 1, 0).getDate()
@@ -383,6 +408,22 @@ function MonthCalendar({ items, year, month }: { items: RecurringItem[]; year: n
     return map
   }, [items, year, month])
 
+  // Build Monday-first weekday headers using locale-aware formatting
+  const weekdayHeaders = useMemo(() => {
+    const headers: string[] = []
+    // 2024-01-01 is a Monday
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(2024, 0, 1 + i)
+      headers.push(fmtWeekdayShort(d))
+    }
+    return headers
+  }, [])
+
+  const calendarMonthLabel = useMemo(() => {
+    const d = new Date(year, month, 1)
+    return d.toLocaleDateString(undefined, { month: 'long' })
+  }, [year, month])
+
   const cells: (number | null)[] = []
   for (let i = 0; i < firstDow; i++) cells.push(null)
   for (let d = 1; d <= daysInMonth; d++) cells.push(d)
@@ -390,10 +431,10 @@ function MonthCalendar({ items, year, month }: { items: RecurringItem[]; year: n
   return (
     <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: 20 }}>
       <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14 }}>
-        Calendario di {IT_MONTHS[month]}
+        {tl('calendarTitle', { month: calendarMonthLabel })}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
-        {IT_DAYS.map((d) => (
+        {weekdayHeaders.map((d) => (
           <div key={d} style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', textAlign: 'center', paddingBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{d}</div>
         ))}
         {cells.map((day, i) => {
@@ -434,6 +475,7 @@ function MonthCalendar({ items, year, month }: { items: RecurringItem[]; year: n
 // ── Upcoming panel ────────────────────────────────────────────────────────
 
 function UpcomingPanel({ items }: { items: RecurringItem[] }) {
+  const tl = useTranslations('ricorrenti')
   const { budgetCategories, accounts } = useFinanceStore()
 
   const upcoming = useMemo(() => {
@@ -458,9 +500,9 @@ function UpcomingPanel({ items }: { items: RecurringItem[] }) {
 
   return (
     <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: 20, display: 'flex', flexDirection: 'column', gap: 0 }}>
-      <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14 }}>Prossimi 14 giorni</div>
+      <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14 }}>{tl('upcomingTitle')}</div>
       {upcoming.length === 0 ? (
-        <div style={{ color: 'var(--text-tertiary)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Nessuna scadenza</div>
+        <div style={{ color: 'var(--text-tertiary)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>{tl('upcomingEmpty')}</div>
       ) : upcoming.map(({ item, date }, idx) => (
         <div key={`${item.id}-${idx}`} style={{
           display: 'grid', gridTemplateColumns: '44px 1fr auto',
@@ -470,7 +512,7 @@ function UpcomingPanel({ items }: { items: RecurringItem[] }) {
         }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', lineHeight: 1 }}>
-              {IT_MONTHS_SHORT[date.getMonth()].toUpperCase()}
+              {fmtMonthShort(date).toUpperCase()}
             </div>
             <div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.1, color: 'var(--text-primary)' }}>
               {date.getDate()}
@@ -497,6 +539,7 @@ function UpcomingPanel({ items }: { items: RecurringItem[] }) {
 // ── Row kebab menu ────────────────────────────────────────────────────────
 
 function RecurringRowMenu({ item, onEdit, onDelete }: { item: RecurringItem; onEdit: (r: RecurringItem) => void; onDelete: (r: RecurringItem) => void }) {
+  const tl = useTranslations('ricorrenti')
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState({ top: 0, right: 0 })
   const btnRef = useRef<HTMLButtonElement>(null)
@@ -542,12 +585,12 @@ function RecurringRowMenu({ item, onEdit, onDelete }: { item: RecurringItem; onE
           <button onClick={() => { setOpen(false); onEdit(item) }} style={{ ...menuItem, color: 'var(--text-primary)' }}
             onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-elevated)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
-            <Icon name="edit" size={13} /> Modifica
+            <Icon name="edit" size={13} /> {tl('menuEdit')}
           </button>
           <button onClick={() => { setOpen(false); onDelete(item) }} style={{ ...menuItem, color: 'var(--danger)' }}
             onMouseEnter={(e) => (e.currentTarget.style.background = 'color-mix(in oklch, var(--danger) 10%, transparent)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
-            <Icon name="trash" size={13} /> Elimina
+            <Icon name="trash" size={13} /> {tl('menuDelete')}
           </button>
         </div>
       )}
@@ -577,6 +620,7 @@ function RecurringTable({
   onEdit: (item: RecurringItem) => void
   onDelete: (item: RecurringItem) => void
 }) {
+  const tl = useTranslations('ricorrenti')
   const { budgetCategories, accounts } = useFinanceStore()
   const today = toYMD(new Date())
 
@@ -599,48 +643,48 @@ function RecurringTable({
     return freqOrder.filter((f) => map[f]?.length).map((f) => ({ freq: f, items: map[f] }))
   }, [filtered])
 
-  const FREQ_CHIPS = [
-    { key: 'all', label: 'Tutte' },
-    { key: 'monthly', label: 'Mensili' },
-    { key: 'yearly', label: 'Annuali' },
-    { key: 'quarterly', label: 'Trimestrali' },
+  const FREQ_CHIPS: Array<{ key: string; labelKey: Parameters<typeof tl>[0] }> = [
+    { key: 'all', labelKey: 'chipAll' },
+    { key: 'monthly', labelKey: 'chipMonthly' },
+    { key: 'yearly', labelKey: 'chipYearly' },
+    { key: 'quarterly', labelKey: 'chipQuarterly' },
   ]
-  const TYPE_CHIPS = [
-    { key: 'all', label: 'Tutti' },
-    { key: 'expense', label: 'Uscite' },
-    { key: 'income', label: 'Entrate' },
+  const TYPE_CHIPS: Array<{ key: string; labelKey: Parameters<typeof tl>[0] }> = [
+    { key: 'all', labelKey: 'typeAll' },
+    { key: 'expense', labelKey: 'typeExpense' },
+    { key: 'income', labelKey: 'typeIncome' },
   ]
 
   return (
     <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 16, overflow: 'hidden' }}>
       {/* Toolbar */}
       <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-        <div style={{ fontWeight: 700, fontSize: 15 }}>Tutte le ricorrenze · {filtered.length}</div>
+        <div style={{ fontWeight: 700, fontSize: 15 }}>{tl('tableTitle', { n: filtered.length })}</div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', gap: 4, background: 'var(--bg-elevated)', borderRadius: 10, padding: 3 }}>
-            {FREQ_CHIPS.map(({ key, label }) => (
+            {FREQ_CHIPS.map(({ key, labelKey }) => (
               <button key={key} onClick={() => onFreqFilter(key)} style={{
                 padding: '4px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
                 background: freqFilter === key ? 'var(--bg-surface)' : 'transparent',
                 color: freqFilter === key ? 'var(--text-primary)' : 'var(--text-tertiary)',
                 fontWeight: freqFilter === key ? 700 : 500, fontSize: 12,
                 boxShadow: freqFilter === key ? '0 1px 3px rgba(0,0,0,0.15)' : 'none',
-              }}>{label}</button>
+              }}>{tl(labelKey)}</button>
             ))}
           </div>
           <div style={{ display: 'flex', gap: 4, background: 'var(--bg-elevated)', borderRadius: 10, padding: 3 }}>
-            {TYPE_CHIPS.map(({ key, label }) => (
+            {TYPE_CHIPS.map(({ key, labelKey }) => (
               <button key={key} onClick={() => onTypeFilter(key)} style={{
                 padding: '4px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
                 background: typeFilter === key ? 'var(--bg-surface)' : 'transparent',
                 color: typeFilter === key ? 'var(--text-primary)' : 'var(--text-tertiary)',
                 fontWeight: typeFilter === key ? 700 : 500, fontSize: 12,
                 boxShadow: typeFilter === key ? '0 1px 3px rgba(0,0,0,0.15)' : 'none',
-              }}>{label}</button>
+              }}>{tl(labelKey)}</button>
             ))}
           </div>
           <button className="ledgernest-btn ledgernest-btn-primary" onClick={onAdd} style={{ gap: 6, padding: '7px 14px' }}>
-            <Icon name="plus" size={13} /> Aggiungi
+            <Icon name="plus" size={13} /> {tl('addButtonShort')}
           </button>
         </div>
       </div>
@@ -648,7 +692,7 @@ function RecurringTable({
       {filtered.length === 0 ? (
         <div className="ledgernest-empty" style={{ padding: '40px 0' }}>
           <div className="ledgernest-empty-icon">🔁</div>
-          Nessun ricorrente
+          {tl('emptyTitle')}
         </div>
       ) : grouped.map(({ freq, items: gItems }) => {
         const groupTotal = gItems.reduce((s, r) => s + (r.type === 'expense' ? -1 : 1) * monthlyNorm(r), 0)
@@ -657,7 +701,7 @@ function RecurringTable({
             {/* Section header */}
             <div style={{ padding: '7px 20px', background: 'var(--bg-elevated)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '0.06em' }}>
-                {FREQ_GROUP[freq]} · {gItems.length} {gItems.length === 1 ? 'VOCE' : 'VOCI'}
+                {freqLabel(freq, tl).toUpperCase()} · {gItems.length} {gItems.length === 1 ? tl('sectionItem') : tl('sectionItems')}
               </div>
               <div style={{ fontSize: 12, fontWeight: 700, color: groupTotal >= 0 ? 'var(--success)' : 'var(--danger)' }}>
                 {groupTotal >= 0 ? '+' : '−'}{fmtEur(Math.abs(groupTotal))}
@@ -667,13 +711,13 @@ function RecurringTable({
             {/* Column headers */}
             <div style={{ display: 'grid', gridTemplateColumns: COL, gap: 12, padding: '6px 20px', borderBottom: '1px solid var(--border-subtle)' }}>
               <div />
-              <div style={colHeaderStyle}>Nome</div>
-              <div style={colHeaderStyle}>Categoria</div>
-              <div style={colHeaderStyle}>Conto</div>
-              <div style={colHeaderStyle}>Frequenza</div>
-              <div style={colHeaderStyle}>Prossimo</div>
-              <div style={colHeaderStyle}>Stato</div>
-              <div style={{ ...colHeaderStyle, textAlign: 'right' }}>Importo</div>
+              <div style={colHeaderStyle}>{tl('colName')}</div>
+              <div style={colHeaderStyle}>{tl('colCategory')}</div>
+              <div style={colHeaderStyle}>{tl('colAccount')}</div>
+              <div style={colHeaderStyle}>{tl('colFrequency')}</div>
+              <div style={colHeaderStyle}>{tl('colNext')}</div>
+              <div style={colHeaderStyle}>{tl('colStatus')}</div>
+              <div style={{ ...colHeaderStyle, textAlign: 'right' }}>{tl('colAmount')}</div>
               <div />
             </div>
 
@@ -699,7 +743,7 @@ function RecurringTable({
                     <div style={{ fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</div>
                     {r.createdAt && (
                       <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 1 }}>
-                        attivo da {fmtCreatedAt(r.createdAt)}
+                        {tl('rowActiveSince', { date: fmtCreatedAt(r.createdAt) })}
                       </div>
                     )}
                   </div>
@@ -718,7 +762,7 @@ function RecurringTable({
 
                   {/* Frequency */}
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                    {FREQ_LABEL[r.frequency]}
+                    {freqLabel(r.frequency, tl)}
                   </div>
 
                   {/* Next date */}
@@ -735,7 +779,7 @@ function RecurringTable({
                     color: isPast ? 'var(--success)' : 'var(--warning)',
                     whiteSpace: 'nowrap', width: 'fit-content',
                   }}>
-                    {isPast ? 'pagato' : 'previsto'}
+                    {isPast ? tl('statusPaid') : tl('statusExpected')}
                   </div>
 
                   {/* Amount */}
@@ -758,6 +802,7 @@ function RecurringTable({
 // ── Page ──────────────────────────────────────────────────────────────────
 
 export default function RicorrentiPage() {
+  const tl = useTranslations('ricorrenti')
   const { recurringItems, deleteRecurring } = useFinanceStore()
   const [showModal, setShowModal] = useState(false)
   const [freqFilter, setFreqFilter] = useState('all')
@@ -797,7 +842,7 @@ export default function RicorrentiPage() {
       {editingItem && <EditRecurringModal item={editingItem} onClose={() => setEditingItem(null)} />}
       {deletingItem && (
         <DeleteConfirmModal
-          message={`Eliminare "${deletingItem.name}"? Questa azione non è reversibile.`}
+          message={tl('deleteMessage', { name: deletingItem.name })}
           onConfirm={() => { deleteRecurring(deletingItem.id); setDeletingItem(null) }}
           onCancel={() => setDeletingItem(null)}
         />
@@ -806,38 +851,38 @@ export default function RicorrentiPage() {
       {/* KPI strip */}
       <div className="ledgernest-kpi-strip">
         <div className="ledgernest-kpi-cell is-accent">
-          <div className="ledgernest-kpi-label">Uscite mensili</div>
+          <div className="ledgernest-kpi-label">{tl('kpiExpenses')}</div>
           <div className="ledgernest-kpi-value" style={{ color: 'var(--danger)' }}>{fmtEur(monthlyExpenses)}</div>
           <div className="ledgernest-kpi-sub">
-            <span style={{ color: 'var(--danger)', fontWeight: 700 }}>{expenseCount} addebiti</span>
-            <span>ricorrenze fisse</span>
+            <span style={{ color: 'var(--danger)', fontWeight: 700 }}>{tl('kpiCharges', { n: expenseCount })}</span>
+            <span>{tl('kpiFixed')}</span>
           </div>
         </div>
         <div className="ledgernest-kpi-cell">
-          <div className="ledgernest-kpi-label">Entrate mensili</div>
+          <div className="ledgernest-kpi-label">{tl('kpiIncome')}</div>
           <div className="ledgernest-kpi-value" style={{ color: 'var(--success)' }}>{fmtEur(monthlyIncome)}</div>
           <div className="ledgernest-kpi-sub">
-            <span style={{ color: 'var(--success)', fontWeight: 700 }}>{incomeCount} fonti</span>
-            <span>stipendio + rimborsi</span>
+            <span style={{ color: 'var(--success)', fontWeight: 700 }}>{tl('kpiSources', { n: incomeCount })}</span>
+            <span>{tl('kpiSalary')}</span>
           </div>
         </div>
         <div className="ledgernest-kpi-cell">
-          <div className="ledgernest-kpi-label">Saldo netto mensile</div>
+          <div className="ledgernest-kpi-label">{tl('kpiBalance')}</div>
           <div className="ledgernest-kpi-value" style={{ color: netMonthly >= 0 ? 'var(--success)' : 'var(--danger)' }}>
             {netMonthly >= 0 ? '+' : ''}{fmtEur(netMonthly)}
           </div>
           <div className="ledgernest-kpi-sub">
             <span style={{ color: netMonthly >= 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 700 }}>
-              {netMonthly >= 0 ? '+' : ''}{incomePct}% del reddito
+              {netMonthly >= 0 ? '+' : ''}{incomePct}% {tl('kpiOfIncome')}
             </span>
           </div>
         </div>
         <div className="ledgernest-kpi-cell">
-          <div className="ledgernest-kpi-label">Annuale (in scadenza)</div>
+          <div className="ledgernest-kpi-label">{tl('kpiYearly')}</div>
           <div className="ledgernest-kpi-value">{fmtEur(yearlyTotal)}</div>
           <div className="ledgernest-kpi-sub">
-            <span style={{ color: 'var(--text-secondary)', fontWeight: 700 }}>{yearlyCount} voci</span>
-            <span>annuali + trimestrali</span>
+            <span style={{ color: 'var(--text-secondary)', fontWeight: 700 }}>{tl('kpiItems', { n: yearlyCount })}</span>
+            <span>{tl('kpiAnnual')}</span>
           </div>
         </div>
       </div>

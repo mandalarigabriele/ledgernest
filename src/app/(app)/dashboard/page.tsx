@@ -1,11 +1,13 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useFinanceStore } from '@/stores/financeStore'
 import { usePricesStore } from '@/stores/pricesStore'
 import { usePrices } from '@/hooks/usePrices'
-import { fmtEur, fmtCompact, fmtDate } from '@/lib/utils/format'
+import { fmtEur, fmtDate } from '@/lib/utils/format'
+import { useFormatters } from '@/hooks/useFormatters'
 import LineChart from '@/components/charts/LineChart'
 import Donut from '@/components/charts/Donut'
 import BarChart from '@/components/charts/BarChart'
@@ -15,14 +17,12 @@ import Treemap from '@/components/charts/Treemap'
 import DivCalendar from '@/components/charts/DivCalendar'
 import Icon from '@/components/shared/Icon'
 
-const fmt0 = (v: number) =>
-  new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v)
 
 const PALETTE = ['#5bc8d0', '#7c6df7', '#f77c3a', '#3fb950', '#f85149', '#d29922']
 const RANGES  = ['1S', '1M', '3M', '6M', '1A', 'MAX'] as const
 
-const HEATMAP_ROWS = ['Azioni', 'ETF', 'Crypto', 'Bond', 'Cash']
-const HEATMAP_COLS = ['Giu','Lug','Ago','Set','Ott','Nov','Dic','Gen','Feb','Mar','Apr','Mag']
+const HEATMAP_ROWS = ['Stocks', 'ETF', 'Crypto', 'Bonds', 'Cash']
+const HEATMAP_COLS = ['Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May']
 
 const RANGE_CFG: Record<string, { days: number; pts: number; startPct: number; noise: number }> = {
   '1S':  { days: 7,   pts: 7,   startPct: 0.997, noise: 0.002 },
@@ -51,7 +51,7 @@ function syntheticSeries(
     d.setDate(d.getDate() - Math.round(i * stepDays))
     const n = (Math.random() - (flat ? 0.5 : 0.42)) * currentValue * noise
     v = Math.max(currentValue * 0.05, v + step + n)
-    const label = d.toLocaleDateString('it-IT', useShortLabel
+    const label = d.toLocaleDateString('en-US', useShortLabel
       ? { day: 'numeric', month: 'short' }
       : { month: 'short', year: '2-digit' })
     result.push({ label, value: v })
@@ -73,6 +73,8 @@ function syntheticHeatmap(): number[][] {
 
 export default function DashboardPage() {
   usePrices()
+  const t = useTranslations('dashboard')
+  const { fmt0, fmtCpt } = useFormatters()
 
   const [range, setRange] = useState<string>('6M')
   const [tab, setTab]     = useState<'totale' | 'inv' | 'cash' | 'spese'>('totale')
@@ -208,64 +210,63 @@ export default function DashboardPage() {
       {/* ── KPI strip ── */}
       <section className="ledgernest-kpis">
         <div className="ledgernest-kpi is-hl">
-          <div className="ledgernest-kpi-label">Patrimonio netto</div>
+          <div className="ledgernest-kpi-label">{t('netWorth')}</div>
           <div className="ledgernest-kpi-value">{fmt0(netWorth)}</div>
           <div className="ledgernest-kpi-foot">
             <span className={`ledgernest-kpi-delta ${dayChangePct >= 0 ? 'is-up' : ''}`}>
               {dayChangePct >= 0 ? '+' : ''}{dayChangePct.toFixed(2)}%
             </span>
-            <span className="ledgernest-kpi-sub">ultimi 30 g</span>
+            <span className="ledgernest-kpi-sub">{t('last30Days')}</span>
           </div>
         </div>
 
         <div className="ledgernest-kpi">
-          <div className="ledgernest-kpi-label">Investimenti</div>
+          <div className="ledgernest-kpi-label">{t('investments')}</div>
           <div className="ledgernest-kpi-value">{fmt0(portfolioValue)}</div>
           <div className="ledgernest-kpi-foot">
             <span className={`ledgernest-kpi-delta ${pnlPct >= 0 ? 'is-up' : ''}`}>
               {pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(2)}%
             </span>
-            <span className="ledgernest-kpi-sub">{netWorth > 0 ? ((portfolioValue / netWorth) * 100).toFixed(0) : 0}% del netto</span>
+            <span className="ledgernest-kpi-sub">{netWorth > 0 ? ((portfolioValue / netWorth) * 100).toFixed(0) : 0}% {t('ofNetWorth')}</span>
           </div>
         </div>
 
         <div className="ledgernest-kpi">
-          <div className="ledgernest-kpi-label">Liquidità</div>
+          <div className="ledgernest-kpi-label">{t('cash')}</div>
           <div className="ledgernest-kpi-value">{fmt0(cash)}</div>
           <div className="ledgernest-kpi-foot">
-            <span className="ledgernest-kpi-delta">{accounts.length} conti</span>
-            <span className="ledgernest-kpi-sub">{netWorth > 0 ? ((cash / netWorth) * 100).toFixed(0) : 0}% del netto</span>
+            <span className="ledgernest-kpi-delta">{accounts.length}</span>
+            <span className="ledgernest-kpi-sub">{netWorth > 0 ? ((cash / netWorth) * 100).toFixed(0) : 0}% {t('ofNetWorth')}</span>
           </div>
         </div>
 
         <div className="ledgernest-kpi">
-          <div className="ledgernest-kpi-label">Risparmio ({new Date().toLocaleString('it-IT', { month: 'short' })})</div>
+          <div className="ledgernest-kpi-label">{t('savings')}</div>
           <div className="ledgernest-kpi-value">{fmt0(savings)}</div>
           <div className="ledgernest-kpi-foot">
             <span className={`ledgernest-kpi-delta ${savings >= 0 ? 'is-up' : ''}`}>
-              {income > 0 ? ((savings / income) * 100).toFixed(0) : 0}% reddito
+              {income > 0 ? ((savings / income) * 100).toFixed(0) : 0}% {t('ofIncome')}
             </span>
-            <span className="ledgernest-kpi-sub">obiettivo {fmt0(income * 0.3)}</span>
+            <span className="ledgernest-kpi-sub">{t('target')} {fmt0(income * 0.3)}</span>
           </div>
         </div>
 
         <div className="ledgernest-kpi">
-          <div className="ledgernest-kpi-label">Spese ({new Date().toLocaleString('it-IT', { month: 'short' })})</div>
+          <div className="ledgernest-kpi-label">{t('expenses')}</div>
           <div className="ledgernest-kpi-value">{fmt0(expenses)}</div>
           <div className="ledgernest-kpi-foot">
             <span className="ledgernest-kpi-delta">—</span>
-            <span className="ledgernest-kpi-sub">vs. mese prec.</span>
           </div>
         </div>
 
         <div className="ledgernest-kpi">
-          <div className="ledgernest-kpi-label">P&amp;L totale</div>
+          <div className="ledgernest-kpi-label">{t('totalPnl')}</div>
           <div className="ledgernest-kpi-value">{fmt0(pnl)}</div>
           <div className="ledgernest-kpi-foot">
             <span className={`ledgernest-kpi-delta ${pnl >= 0 ? 'is-up' : ''}`}>
               {pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(2)}%
             </span>
-            <span className="ledgernest-kpi-sub">rendimento storico</span>
+            <span className="ledgernest-kpi-sub">{t('historicalReturn')}</span>
           </div>
         </div>
       </section>
@@ -274,9 +275,9 @@ export default function DashboardPage() {
       <div className="ledgernest-card" style={{ padding: 0, gap: 0 }}>
         <div className="ledgernest-chart-tabrow" style={{ display: 'flex', alignItems: 'flex-end', borderBottom: '1px solid var(--border-subtle)', padding: '0 18px' }}>
           <div className="ledgernest-chart-tabs" style={{ display: 'flex', flex: 1, overflowX: 'auto' }}>
-            {(['totale', 'inv', 'cash', 'spese'] as const).map((t) => (
-              <button key={t} className={`ledgernest-tab-design${tab === t ? ' is-active' : ''}`} onClick={() => setTab(t)}>
-                {t === 'totale' ? 'Totale' : t === 'inv' ? 'Investimenti' : t === 'cash' ? 'Liquidità' : 'Spese'}
+            {(['totale', 'inv', 'cash', 'spese'] as const).map((tKey) => (
+              <button key={tKey} className={`ledgernest-tab-design${tab === tKey ? ' is-active' : ''}`} onClick={() => setTab(tKey)}>
+                {tKey === 'totale' ? t('tabTotal') : tKey === 'inv' ? t('tabInvestments') : tKey === 'cash' ? t('tabCash') : t('tabExpenses')}
               </button>
             ))}
           </div>
@@ -294,7 +295,7 @@ export default function DashboardPage() {
               <Icon name={tabDelta >= 0 ? 'arrow_up' : 'arrow_down'} size={12} />
               {fmt0(tabDelta)} · {tabDeltaPct >= 0 ? '+' : ''}{tabDeltaPct.toFixed(2)}%
             </span>
-            <span className="ledgernest-bigval-cap">ultimi {range === '1S' ? '7 giorni' : range === '1M' ? '30 giorni' : range === '3M' ? '3 mesi' : range === '6M' ? '6 mesi' : range === '1A' ? '1 anno' : 'tutto'} · aggiornato ora</span>
+            <span className="ledgernest-bigval-cap">{({ '1S': t('range1S'), '1M': t('range1M'), '3M': t('range3M'), '6M': t('range6M'), '1A': t('range1A'), 'MAX': t('rangeMAX') } as Record<string,string>)[range]} · {t('updatedNow')}</span>
           </div>
         </div>
 
@@ -308,19 +309,19 @@ export default function DashboardPage() {
         <div className="ledgernest-card">
           <div className="ledgernest-card-head">
             <div>
-              <div className="ledgernest-card-title">Allocazione del portafoglio</div>
-              <div className="ledgernest-card-sub">{donutData.length} classi · {fmt0(totalAlloc)}</div>
+              <div className="ledgernest-card-title">{t('allocationTitle')}</div>
+              <div className="ledgernest-card-sub">{donutData.length} · {fmt0(totalAlloc)}</div>
             </div>
           </div>
           {donutData.length === 0 ? (
-            <div className="ledgernest-empty"><div className="ledgernest-empty-icon">📊</div>Nessuna posizione</div>
+            <div className="ledgernest-empty"><div className="ledgernest-empty-icon">📊</div>{t('noPositions')}</div>
           ) : (
             <div className="ledgernest-alloc">
               <div className="ledgernest-alloc-chart">
                 <Donut data={donutData} size={200} label="" sublabel="" />
                 <div className="ledgernest-donut-center">
-                  <div className="ledgernest-donut-num">{fmtCompact(totalAlloc)}</div>
-                  <div className="ledgernest-donut-cap">in portafoglio</div>
+                  <div className="ledgernest-donut-num">{fmtCpt(totalAlloc)}</div>
+                  <div className="ledgernest-donut-cap">{t('inPortfolio')}</div>
                 </div>
               </div>
               <ul className="ledgernest-alloc-legend">
@@ -340,12 +341,12 @@ export default function DashboardPage() {
         <div className="ledgernest-card">
           <div className="ledgernest-card-head">
             <div>
-              <div className="ledgernest-card-title">Entrate vs uscite</div>
-              <div className="ledgernest-card-sub">Ultimi 6 mesi</div>
+              <div className="ledgernest-card-title">{t('incomeVsExpenses')}</div>
+              <div className="ledgernest-card-sub">{t('last6Months')}</div>
             </div>
             <div className="ledgernest-legend-row">
-              <span><i style={{ background: 'var(--success)' }} />Entrate</span>
-              <span><i style={{ background: 'var(--danger)' }} />Uscite</span>
+              <span><i style={{ background: 'var(--success)' }} /></span>
+              <span><i style={{ background: 'var(--danger)' }} /></span>
             </div>
           </div>
           <BarChart data={cashflowBars} paired formatValue={fmtEur} height={200} />
@@ -357,25 +358,25 @@ export default function DashboardPage() {
         <div className="ledgernest-card">
           <div className="ledgernest-card-head">
             <div>
-              <div className="ledgernest-card-title">Le tue posizioni</div>
-              <div className="ledgernest-card-sub">{positions.length} posizioni · ordina per valore</div>
+              <div className="ledgernest-card-title">{t('yourPositions')}</div>
+              <div className="ledgernest-card-sub">{positions.length} · {t('sortByValue')}</div>
             </div>
             <button className="ledgernest-btn-ghost">
-              <span>Vedi tutte</span>
+              <span>{t('viewAll')}</span>
               <Icon name="chevron" size={14} />
             </button>
           </div>
           {positions.length === 0 ? (
-            <div className="ledgernest-empty"><div className="ledgernest-empty-icon">📈</div>Nessuna posizione</div>
+            <div className="ledgernest-empty"><div className="ledgernest-empty-icon">📈</div>{t('noPositions')}</div>
           ) : (
             <>
               <div className="ledgernest-thead">
-                <div>Titolo</div>
-                <div>Quantità</div>
-                <div className="ta-r">Prezzo</div>
-                <div className="ta-c">7g</div>
-                <div className="ta-r">Valore</div>
-                <div className="ta-r">Variaz.</div>
+                <div></div>
+                <div></div>
+                <div className="ta-r"></div>
+                <div className="ta-c">7d</div>
+                <div className="ta-r"></div>
+                <div className="ta-r"></div>
               </div>
               {sortedPositions.map((p) => (
                 <div key={p.id} className="ledgernest-trow">
@@ -411,12 +412,12 @@ export default function DashboardPage() {
         <div className="ledgernest-card">
           <div className="ledgernest-card-head">
             <div>
-              <div className="ledgernest-card-title">Movimenti recenti</div>
-              <div className="ledgernest-card-sub">{recentTx.length} negli ultimi 7 giorni</div>
+              <div className="ledgernest-card-title">{t('movements')}</div>
+              <div className="ledgernest-card-sub">{recentTx.length} {t('last7Days')}</div>
             </div>
           </div>
           {recentTx.length === 0 ? (
-            <div className="ledgernest-empty"><div className="ledgernest-empty-icon">📋</div>Nessun movimento</div>
+            <div className="ledgernest-empty"><div className="ledgernest-empty-icon">📋</div>{t('noMovements')}</div>
           ) : (
             <ul className="ledgernest-mov-list">
               {recentTx.map((tx) => {
@@ -455,8 +456,8 @@ export default function DashboardPage() {
         <div className="ledgernest-card">
           <div className="ledgernest-card-head">
             <div>
-              <div className="ledgernest-card-title">Rendimenti per asset class</div>
-              <div className="ledgernest-card-sub">Mensile · ultimi 12 mesi</div>
+              <div className="ledgernest-card-title">{t('returnsByClass')}</div>
+              <div className="ledgernest-card-sub">{t('monthly12Months')}</div>
             </div>
           </div>
           <Heatmap rows={HEATMAP_ROWS} cols={HEATMAP_COLS} data={heatmapData} height={210} />
@@ -465,8 +466,8 @@ export default function DashboardPage() {
         <div className="ledgernest-card">
           <div className="ledgernest-card-head">
             <div>
-              <div className="ledgernest-card-title">Dividendi in arrivo</div>
-              <div className="ledgernest-card-sub">Prossime 12 settimane</div>
+              <div className="ledgernest-card-title">{t('upcomingDividends')}</div>
+              <div className="ledgernest-card-sub">{t('next12Weeks')}</div>
             </div>
           </div>
           <DivCalendar events={divEvents} height={210} />
@@ -475,12 +476,12 @@ export default function DashboardPage() {
         <div className="ledgernest-card">
           <div className="ledgernest-card-head">
             <div>
-              <div className="ledgernest-card-title">Peso delle posizioni</div>
+              <div className="ledgernest-card-title">{t('positionsWeight')}</div>
               <div className="ledgernest-card-sub">Treemap · top {treemapData.length}</div>
             </div>
           </div>
           {treemapData.length === 0 ? (
-            <div className="ledgernest-empty"><div className="ledgernest-empty-icon">🗺️</div>Nessuna posizione</div>
+            <div className="ledgernest-empty"><div className="ledgernest-empty-icon">🗺️</div>{t('noPositions')}</div>
           ) : (
             <Treemap data={treemapData} height={210} />
           )}

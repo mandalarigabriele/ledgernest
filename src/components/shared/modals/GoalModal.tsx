@@ -56,7 +56,7 @@ export default function GoalModal() {
               <input
                 className="ledgernest-input"
                 type="text"
-                placeholder="Es. Vacanza a Bali"
+                placeholder={t('goalNamePlaceholder')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -119,7 +119,7 @@ export default function GoalModal() {
                 />
               </div>
               <div className="ledgernest-field">
-                <label className="ledgernest-label">Già risparmiato (€)</label>
+                <label className="ledgernest-label">{t('alreadySaved')} (€)</label>
                 <input
                   className="ledgernest-input ledgernest-mono"
                   type="number"

@@ -1,71 +1,73 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useUIStore } from '@/stores/uiStore'
 import Icon from '@/components/shared/Icon'
 import type { ModalType } from '@/types'
 
-const ACTIONS: {
-  key: string
-  icon: string
-  iconBg: string
-  iconColor: string
-  title: string
-  subtitle: string
-  modal: ModalType
-  modalProps?: Record<string, unknown>
-}[] = [
-  {
-    key: 'movement',
-    icon: 'movimenti',
-    iconBg: 'color-mix(in oklch, #5bc8d0 18%, #0a1628)',
-    iconColor: '#5bc8d0',
-    title: 'Movimento',
-    subtitle: 'Entrata o uscita manuale',
-    modal: 'movement',
-  },
-  {
-    key: 'stock',
-    icon: 'trending_up',
-    iconBg: 'color-mix(in oklch, #7c6df7 18%, #0a1628)',
-    iconColor: '#7c6df7',
-    title: 'Acquisto azione',
-    subtitle: 'Aggiungi un titolo azionario',
-    modal: 'buy',
-    modalProps: { assetType: 'stock' },
-  },
-  {
-    key: 'etf',
-    icon: 'etf',
-    iconBg: 'color-mix(in oklch, #3b82f6 18%, #0a1628)',
-    iconColor: '#3b82f6',
-    title: 'Acquisto ETF',
-    subtitle: 'Fondo indicizzato o tematico',
-    modal: 'buy',
-    modalProps: { assetType: 'etf' },
-  },
-  {
-    key: 'crypto',
-    icon: 'crypto',
-    iconBg: 'color-mix(in oklch, #f77c3a 18%, #0a1628)',
-    iconColor: '#f77c3a',
-    title: 'Acquisto crypto',
-    subtitle: 'Custody Ledger / Binance',
-    modal: 'buy',
-    modalProps: { assetType: 'crypto' },
-  },
-  {
-    key: 'goal',
-    icon: 'obiettivi',
-    iconBg: 'color-mix(in oklch, #3fb950 18%, #0a1628)',
-    iconColor: '#3fb950',
-    title: 'Obiettivo',
-    subtitle: 'Traguardo di risparmio',
-    modal: 'goal',
-  },
-]
-
 export default function QuickAddModal() {
+  const t = useTranslations('quickAdd')
   const { closeModal, openModal } = useUIStore()
+
+  const ACTIONS: {
+    key: string
+    icon: string
+    iconBg: string
+    iconColor: string
+    title: string
+    subtitle: string
+    modal: ModalType
+    modalProps?: Record<string, unknown>
+  }[] = [
+    {
+      key: 'movement',
+      icon: 'movimenti',
+      iconBg: 'color-mix(in oklch, #5bc8d0 18%, #0a1628)',
+      iconColor: '#5bc8d0',
+      title: t('movement'),
+      subtitle: t('movementSub'),
+      modal: 'movement',
+    },
+    {
+      key: 'stock',
+      icon: 'trending_up',
+      iconBg: 'color-mix(in oklch, #7c6df7 18%, #0a1628)',
+      iconColor: '#7c6df7',
+      title: t('buyStock'),
+      subtitle: t('buyStockSub'),
+      modal: 'buy',
+      modalProps: { assetType: 'stock' },
+    },
+    {
+      key: 'etf',
+      icon: 'etf',
+      iconBg: 'color-mix(in oklch, #3b82f6 18%, #0a1628)',
+      iconColor: '#3b82f6',
+      title: t('buyEtf'),
+      subtitle: t('buyEtfSub'),
+      modal: 'buy',
+      modalProps: { assetType: 'etf' },
+    },
+    {
+      key: 'crypto',
+      icon: 'crypto',
+      iconBg: 'color-mix(in oklch, #f77c3a 18%, #0a1628)',
+      iconColor: '#f77c3a',
+      title: t('buyCrypto'),
+      subtitle: t('buyCryptoSub'),
+      modal: 'buy',
+      modalProps: { assetType: 'crypto' },
+    },
+    {
+      key: 'goal',
+      icon: 'obiettivi',
+      iconBg: 'color-mix(in oklch, #3fb950 18%, #0a1628)',
+      iconColor: '#3fb950',
+      title: t('goal'),
+      subtitle: t('goalSub'),
+      modal: 'goal',
+    },
+  ]
 
   function handleAction(modal: ModalType, props?: Record<string, unknown>) {
     closeModal()
@@ -98,7 +100,7 @@ export default function QuickAddModal() {
           color: 'var(--text-tertiary)', padding: '0 22px 14px',
           textTransform: 'uppercase',
         }}>
-          Cosa vuoi aggiungere?
+          {t('header')}
         </div>
 
         {ACTIONS.map((item) => (

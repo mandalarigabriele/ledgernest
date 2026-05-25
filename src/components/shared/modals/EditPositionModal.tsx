@@ -1,26 +1,29 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useFinanceStore } from '@/stores/financeStore'
 import { useUIStore } from '@/stores/uiStore'
 import type { AssetType, PortfolioPosition } from '@/types'
 import Icon from '../Icon'
 
-const ASSET_TYPES: { value: AssetType; label: string; icon: string }[] = [
-  { value: 'stock',     label: 'Azione',       icon: 'azioni'  },
-  { value: 'etf',       label: 'ETF',          icon: 'etf'     },
-  { value: 'crypto',    label: 'Crypto',       icon: 'crypto'  },
-  { value: 'bond',      label: 'Bond',         icon: 'report'  },
-  { value: 'commodity', label: 'Materia prima', icon: 'globe'   },
-]
-
 export default function EditPositionModal() {
+  const t = useTranslations('modals')
+  const tc = useTranslations('common')
   const { closeModal, modalProps } = useUIStore()
   const { updatePosition } = usePortfolioStore()
   const { accounts } = useFinanceStore()
 
   const pos = modalProps.position as PortfolioPosition | undefined
+
+  const ASSET_TYPES: { value: AssetType; label: string; icon: string }[] = [
+    { value: 'stock',     label: t('stockLabel'),    icon: 'azioni'  },
+    { value: 'etf',       label: 'ETF',              icon: 'etf'     },
+    { value: 'crypto',    label: 'Crypto',           icon: 'crypto'  },
+    { value: 'bond',      label: t('bond'),          icon: 'report'  },
+    { value: 'commodity', label: t('commodityLabel'), icon: 'globe'   },
+  ]
 
   const [name,      setName]      = useState(pos?.name     ?? '')
   const [assetType, setAssetType] = useState<AssetType>(pos?.type ?? 'stock')
@@ -57,9 +60,9 @@ export default function EditPositionModal() {
 
         <div className="ledgernest-modal-header">
           <div>
-            <div className="ledgernest-modal-title">Modifica posizione · {pos.ticker}</div>
+            <div className="ledgernest-modal-title">{t('editPositionTitle')} · {pos.ticker}</div>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>
-              Aggiorna i dati della posizione
+              {t('editPositionSub')}
             </div>
           </div>
           <button className="ledgernest-modal-close" onClick={closeModal}>
@@ -71,12 +74,12 @@ export default function EditPositionModal() {
           <div className="ledgernest-modal-body" style={{ gap: 18 }}>
 
             <div style={{ padding: '10px 14px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', fontSize: 12, color: 'var(--text-secondary)' }}>
-              <strong style={{ color: 'var(--text-primary)' }}>Nota:</strong> questa modifica aggiorna solo la posizione, non crea nuovi trade o movimenti finanziari.
+              <strong style={{ color: 'var(--text-primary)' }}>Nota:</strong> {t('editPositionNote')}
             </div>
 
-            {/* Tipo asset */}
+            {/* Asset type */}
             <div className="ledgernest-field">
-              <label className="ledgernest-label">Tipo asset</label>
+              <label className="ledgernest-label">{t('assetTypeLabel')}</label>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {ASSET_TYPES.map((a) => (
                   <button
@@ -100,9 +103,9 @@ export default function EditPositionModal() {
               </div>
             </div>
 
-            {/* Nome */}
+            {/* Name */}
             <div className="ledgernest-field">
-              <label className="ledgernest-label">Nome</label>
+              <label className="ledgernest-label">{t('nameLabel')}</label>
               <input
                 className="ledgernest-input"
                 type="text"
@@ -113,24 +116,24 @@ export default function EditPositionModal() {
               />
             </div>
 
-            {/* Settore */}
+            {/* Sector */}
             <div className="ledgernest-field">
-              <label className="ledgernest-label">Settore</label>
+              <label className="ledgernest-label">{t('sectorLabel')}</label>
               <input
                 className="ledgernest-input"
                 type="text"
-                placeholder="es. Tecnologia, Finanza…"
+                placeholder={t('sectorPlaceholder')}
                 value={sector}
                 onChange={(e) => setSector(e.target.value)}
                 style={{ height: 44, fontSize: 15 }}
               />
             </div>
 
-            {/* Quantità + Prezzo medio */}
+            {/* Quantity + Avg Price */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div className="ledgernest-field">
                 <label className="ledgernest-label">
-                  Quantità *
+                  {t('quantityLabel')} *
                   {pos.type === 'crypto' && (
                     <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-tertiary)' }}>(es. 0,18)</span>
                   )}
@@ -145,8 +148,8 @@ export default function EditPositionModal() {
               </div>
               <div className="ledgernest-field">
                 <label className="ledgernest-label">
-                  Prezzo medio ({pos.currency}) *
-                  <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-tertiary)' }}>per unità</span>
+                  {t('avgPriceLabel')} ({pos.currency}) *
+                  <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-tertiary)' }}>{t('perUnit')}</span>
                 </label>
                 <input
                   className="ledgernest-input ledgernest-mono"
@@ -158,9 +161,9 @@ export default function EditPositionModal() {
               </div>
             </div>
 
-            {/* Broker / Conto */}
+            {/* Broker / Account */}
             <div className="ledgernest-field">
-              <label className="ledgernest-label">Broker / Conto</label>
+              <label className="ledgernest-label">{t('brokerAccountLabel')}</label>
               {accounts.length > 0 ? (
                 <select
                   className="ledgernest-input"
@@ -168,7 +171,7 @@ export default function EditPositionModal() {
                   onChange={(e) => setBroker(e.target.value)}
                   style={{ height: 44, fontSize: 14 }}
                 >
-                  <option value="">— nessuno —</option>
+                  <option value="">{t('noAccount')}</option>
                   {accounts.map((a) => (
                     <option key={a.id} value={a.name}>{a.name}</option>
                   ))}
@@ -195,11 +198,11 @@ export default function EditPositionModal() {
               borderRadius: 'var(--radius-md)', fontSize: 13,
             }}>
               <div>
-                <div style={{ color: 'var(--text-secondary)', marginBottom: 4 }}>Costo totale stimato</div>
+                <div style={{ color: 'var(--text-secondary)', marginBottom: 4 }}>{t('estTotalCost')}</div>
                 <div style={{ fontWeight: 700 }}>{totalCost.toFixed(2)} {pos.currency}</div>
               </div>
               <div>
-                <div style={{ color: 'var(--text-secondary)', marginBottom: 4 }}>Prezzo per unità</div>
+                <div style={{ color: 'var(--text-secondary)', marginBottom: 4 }}>{t('pricePerUnit')}</div>
                 <div style={{ fontWeight: 700 }}>{price.toFixed(4)} {pos.currency}</div>
               </div>
             </div>
@@ -207,7 +210,7 @@ export default function EditPositionModal() {
 
           <div className="ledgernest-modal-footer">
             <button type="button" className="ledgernest-btn ledgernest-btn-ghost" onClick={closeModal}>
-              Annulla
+              {tc('cancel')}
             </button>
             <button
               type="submit"
@@ -215,7 +218,7 @@ export default function EditPositionModal() {
               disabled={!quantity || !avgPrice || parseFloat(quantity) <= 0}
               style={{ opacity: quantity && avgPrice && parseFloat(quantity) > 0 ? 1 : 0.5 }}
             >
-              Salva modifiche
+              {t('saveChanges')}
             </button>
           </div>
         </form>

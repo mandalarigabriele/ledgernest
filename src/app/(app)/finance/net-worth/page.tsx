@@ -6,6 +6,7 @@ import { usePortfolioStore } from '@/stores/portfolioStore'
 import { usePricesStore } from '@/stores/pricesStore'
 import { fmtEur } from '@/lib/utils/format'
 import Icon from '@/components/shared/Icon'
+import { useTranslations } from 'next-intl'
 import type { Liability } from '@/types'
 
 // ── SVG net-worth chart ────────────────────────────────────────────────────
@@ -60,13 +61,14 @@ function NetWorthChart({
 
 // ── Add liability modal ────────────────────────────────────────────────────
 
-const LiabilityTypes: { key: Liability['type']; label: string }[] = [
-  { key: 'mutuo', label: 'Mutuo' },
-  { key: 'prestito', label: 'Prestito' },
-  { key: 'altro', label: 'Altro' },
+const LiabilityTypes: { key: Liability['type']; labelKey: string }[] = [
+  { key: 'mutuo', labelKey: 'liabilityMortgage' },
+  { key: 'prestito', labelKey: 'liabilityLoan' },
+  { key: 'altro', labelKey: 'liabilityOther' },
 ]
 
 function AddLiabilityModal({ onClose, onAdd }: { onClose: () => void; onAdd: (l: Omit<Liability, 'id' | 'createdAt'>) => void }) {
+  const tl = useTranslations('patrimonio')
   const [name, setName] = useState('')
   const [note, setNote] = useState('')
   const [type, setType] = useState<Liability['type']>('mutuo')
@@ -112,7 +114,7 @@ function AddLiabilityModal({ onClose, onAdd }: { onClose: () => void; onAdd: (l:
         style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, width: 460, boxShadow: '0 32px 80px rgba(0,0,0,0.6)' }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 22px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>Nuova passività</div>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>{tl('liabilityTitle')}</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 6, borderRadius: 8, display: 'flex' }}>
             <Icon name="close" size={18} />
           </button>
@@ -120,7 +122,7 @@ function AddLiabilityModal({ onClose, onAdd }: { onClose: () => void; onAdd: (l:
 
         <div style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 8 }}>TIPO</div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 8 }}>{tl('liabilityType')}</div>
             <div style={{ display: 'flex', gap: 6 }}>
               {LiabilityTypes.map((t) => (
                 <button
@@ -133,7 +135,7 @@ function AddLiabilityModal({ onClose, onAdd }: { onClose: () => void; onAdd: (l:
                     color: type === t.key ? 'var(--accent)' : 'var(--text-secondary)',
                   }}
                 >
-                  {t.label}
+                  {tl(t.labelKey as Parameters<typeof tl>[0])}
                 </button>
               ))}
             </div>
@@ -141,36 +143,36 @@ function AddLiabilityModal({ onClose, onAdd }: { onClose: () => void; onAdd: (l:
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div style={{ gridColumn: '1/-1' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 6 }}>NOME</div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 6 }}>{tl('liabilityName')}</div>
               <input className="ledgernest-input" style={inputStyle} placeholder="Es. Mutuo casa..." value={name} onChange={(e) => setName(e.target.value)} autoFocus />
             </div>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 6 }}>DEBITO RESIDUO (€)</div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 6 }}>{tl('liabilityDebt')}</div>
               <input className="ledgernest-input" style={inputStyle} type="number" placeholder="0" value={residuo} onChange={(e) => setResiduo(e.target.value)} />
             </div>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 6 }}>RATA MENSILE (€)</div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 6 }}>{tl('liabilityInstalment')}</div>
               <input className="ledgernest-input" style={inputStyle} type="number" placeholder="0" value={monthly} onChange={(e) => setMonthly(e.target.value)} />
             </div>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 6 }}>TASSO (%)</div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 6 }}>{tl('liabilityRate')}</div>
               <input className="ledgernest-input" style={inputStyle} type="number" step="0.01" placeholder="0.00" value={rate} onChange={(e) => setRate(e.target.value)} />
             </div>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 6 }}>ANNO FINE</div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 6 }}>{tl('liabilityEndYear')}</div>
               <input className="ledgernest-input" style={inputStyle} type="number" placeholder="2035" value={endYear} onChange={(e) => setEndYear(e.target.value)} />
             </div>
             <div style={{ gridColumn: '1/-1' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 6 }}>NOTE (opzionale)</div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 6 }}>{tl('liabilityNote')}</div>
               <input className="ledgernest-input" style={inputStyle} placeholder="..." value={note} onChange={(e) => setNote(e.target.value)} />
             </div>
           </div>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '0 22px 20px' }}>
-          <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" onClick={onClose}>Annulla</button>
+          <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" onClick={onClose}>{tl('cancel')}</button>
           <button className="ledgernest-btn ledgernest-btn-primary ledgernest-btn-sm" onClick={handleSave} disabled={!name.trim() || !residuo}>
-            <Icon name="plus" size={13} /> Salva
+            <Icon name="plus" size={13} /> {tl('liabilitySave')}
           </button>
         </div>
       </div>
@@ -204,6 +206,7 @@ function CompositionBar({ label, value, total, color }: { label: string; value: 
 // ── Page ───────────────────────────────────────────────────────────────────
 
 export default function PatrimonioPage() {
+  const tl = useTranslations('patrimonio')
   const { accounts, transactions, liabilities, netWorthSnapshots, addLiability, deleteLiability, takeNetWorthSnapshot } = useFinanceStore()
   const { positions } = usePortfolioStore()
   const { quotes } = usePricesStore()
@@ -241,11 +244,11 @@ export default function PatrimonioPage() {
   const bondVal = positions.filter((p) => p.type === 'bond').reduce((s, p) => s + (quotes[p.ticker]?.priceEur ?? quotes[p.ticker]?.price ?? p.avgPrice) * p.quantity, 0)
 
   const compositionItems = [
-    { label: 'Azioni', value: stockVal, color: '#5bc8d0' },
-    { label: 'ETF', value: etfVal, color: '#7c6df7' },
-    { label: 'Crypto', value: cryptoVal, color: '#f77c3a' },
-    { label: 'Obbligazioni', value: bondVal, color: '#d29922' },
-    { label: 'Liquidità', value: cashValue, color: '#3fb950' },
+    { label: tl('compStocks'),      value: stockVal,  color: '#5bc8d0' },
+    { label: 'ETF',                 value: etfVal,    color: '#7c6df7' },
+    { label: 'Crypto',              value: cryptoVal, color: '#f77c3a' },
+    { label: tl('compBonds'),       value: bondVal,   color: '#d29922' },
+    { label: tl('compLiquidity'),   value: cashValue, color: '#3fb950' },
   ].filter((d) => d.value > 0)
 
   const chartData = useMemo(() => {
@@ -263,7 +266,7 @@ export default function PatrimonioPage() {
       d.setDate(1)
       d.setMonth(d.getMonth() - i)
       months.push({
-        label: d.toLocaleDateString('it-IT', { month: 'short' }).replace('.', ''),
+        label: d.toLocaleDateString(undefined, { month: 'short' }).replace('.', ''),
         assets: i === 0 ? totalAssets : 0,
         liabilities: i === 0 ? totalLiabilities : 0,
       })
@@ -275,24 +278,24 @@ export default function PatrimonioPage() {
     if (totalAssets > 0) takeNetWorthSnapshot(portfolioValue)
   }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
-  const liabTypeLabel: Record<string, string> = { mutuo: 'Mutuo', prestito: 'Prestito', altro: 'Altro' }
+  const liabTypeLabel: Record<string, string> = { mutuo: tl('liabMortgage'), prestito: tl('liabLoan'), altro: tl('liabOther') }
   const acctTypeColor: Record<string, string> = { bank: '#58a6ff', broker: '#5bc8d0', crypto: '#f77c3a', other: '#7c6df7' }
-  const acctTypeNameMap: Record<string, string> = { bank: 'conti', broker: 'investimenti', crypto: 'crypto', other: 'altro' }
+  const acctTypeNameMap: Record<string, string> = { bank: tl('acctBank'), broker: tl('acctBroker'), crypto: tl('acctCrypto'), other: tl('acctOther') }
 
   const snap30d = [...netWorthSnapshots].filter((s) => s.date <= thirtyDaysAgoStr).sort((a, b) => b.date.localeCompare(a.date))[0]
   const nwDelta30d = snap30d && snap30d.netWorth !== 0 ? ((netWorth - snap30d.netWorth) / Math.abs(snap30d.netWorth)) * 100 : null
   const acctTypesPresent = Array.from(new Set(accounts.map((a) => a.type))).map((t) => acctTypeNameMap[t]).join(' · ')
-  const liabSubtitle = liabilities.length > 0 ? Array.from(new Set(liabilities.map((l) => l.type))).join(' · ') : 'nessuna passività'
+  const liabSubtitle = liabilities.length > 0 ? Array.from(new Set(liabilities.map((l) => l.type))).join(' · ') : tl('kpiNoLiabilities')
   const bankCount = accounts.filter((a) => a.type === 'bank').length
   const cryptoCount = accounts.filter((a) => a.type === 'crypto').length
-  const liquidSubtitle = [bankCount > 0 && `${bankCount} conti`, cryptoCount > 0 && `${cryptoCount} wallet`].filter(Boolean).join(' · ') || 'nessun conto'
+  const liquidSubtitle = [bankCount > 0 && `${bankCount} ${tl('acctBank')}`, cryptoCount > 0 && `${cryptoCount} wallet`].filter(Boolean).join(' · ') || tl('kpiNoAccounts')
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* ── KPI cards ─────────────────────────────────────────── */}
       <div className="ledgernest-kpi-strip">
         <div className="ledgernest-kpi-cell is-accent">
-          <div className="ledgernest-kpi-label">Patrimonio netto</div>
+          <div className="ledgernest-kpi-label">{tl('kpiNetWorth')}</div>
           <div className="ledgernest-kpi-value" style={{ color: netWorth < 0 ? 'var(--danger)' : undefined }}>{fmtEur(netWorth)}</div>
           <div className="ledgernest-kpi-sub">
             {nwDelta30d !== null && (
@@ -300,21 +303,21 @@ export default function PatrimonioPage() {
                 {nwDelta30d >= 0 ? '+' : ''}{nwDelta30d.toFixed(2)}%
               </span>
             )}
-            <span>ultimi 30 g</span>
+            <span>{tl('kpiLast30Days')}</span>
           </div>
         </div>
         <div className="ledgernest-kpi-cell">
-          <div className="ledgernest-kpi-label">Attività</div>
+          <div className="ledgernest-kpi-label">{tl('kpiAssets')}</div>
           <div className="ledgernest-kpi-value">{fmtEur(totalAssets)}</div>
-          <div className="ledgernest-kpi-sub" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acctTypesPresent || 'nessun conto'}</div>
+          <div className="ledgernest-kpi-sub" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acctTypesPresent || tl('kpiNoAccounts')}</div>
         </div>
         <div className="ledgernest-kpi-cell">
-          <div className="ledgernest-kpi-label">Passività</div>
+          <div className="ledgernest-kpi-label">{tl('kpiLiabilities')}</div>
           <div className="ledgernest-kpi-value" style={{ color: totalLiabilities > 0 ? 'var(--danger)' : undefined }}>{fmtEur(totalLiabilities)}</div>
           <div className="ledgernest-kpi-sub">{liabSubtitle}</div>
         </div>
         <div className="ledgernest-kpi-cell">
-          <div className="ledgernest-kpi-label">Liquidità netta</div>
+          <div className="ledgernest-kpi-label">{tl('kpiLiquidity')}</div>
           <div className="ledgernest-kpi-value">{fmtEur(cashValue)}</div>
           <div className="ledgernest-kpi-sub">{liquidSubtitle}</div>
         </div>
@@ -324,18 +327,18 @@ export default function PatrimonioPage() {
       <div className="ledgernest-card">
         <div className="ledgernest-card-header">
           <div>
-            <div className="ledgernest-card-title">Patrimonio · attività vs passività</div>
-            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>Ultimi 6 mesi</div>
+            <div className="ledgernest-card-title">{tl('chartTitle')}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{tl('chartSubtitle')}</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 20, height: 2, background: '#5bc8d0', borderRadius: 1 }} />
-              <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Attività</span>
+              <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{tl('chartAssets')}</span>
             </div>
             {totalLiabilities > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ width: 20, height: 0, borderTop: '2px dashed #f85149' }} />
-                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Passività</span>
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{tl('chartLiabilities')}</span>
               </div>
             )}
           </div>
@@ -351,11 +354,11 @@ export default function PatrimonioPage() {
         {/* Conti e wallet */}
         <div className="ledgernest-card">
           <div className="ledgernest-card-header">
-            <span className="ledgernest-card-title">Conti e wallet</span>
+            <span className="ledgernest-card-title">{tl('accountsTitle')}</span>
           </div>
           <div style={{ padding: '8px 0 12px' }}>
             {accounts.length === 0 ? (
-              <div className="ledgernest-empty">Nessun conto</div>
+              <div className="ledgernest-empty">{tl('accountsEmpty')}</div>
             ) : (
               accounts.map((a) => {
                 const delta = acctDelta(a.id)
@@ -396,11 +399,11 @@ export default function PatrimonioPage() {
         {/* Composizione netta */}
         <div className="ledgernest-card">
           <div className="ledgernest-card-header">
-            <span className="ledgernest-card-title">Composizione netta</span>
+            <span className="ledgernest-card-title">{tl('compositionTitle')}</span>
           </div>
           <div style={{ padding: '12px 20px 16px' }}>
             {compositionItems.length === 0 ? (
-              <div className="ledgernest-empty">Nessun dato</div>
+              <div className="ledgernest-empty">{tl('compositionEmpty')}</div>
             ) : (
               compositionItems.map((item) => (
                 <CompositionBar key={item.label} {...item} total={totalAssets} />
@@ -413,29 +416,29 @@ export default function PatrimonioPage() {
       {/* ── Passività ─────────────────────────────────────────── */}
       <div className="ledgernest-card">
         <div className="ledgernest-card-header">
-          <span className="ledgernest-card-title">Passività</span>
+          <span className="ledgernest-card-title">{tl('kpiLiabilities')}</span>
           <button
             className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm"
             onClick={() => setShowAddLiability(true)}
             style={{ gap: 6 }}
           >
-            <Icon name="plus" size={13} /> Aggiungi
+            <Icon name="plus" size={13} /> {tl('liabilitiesAdd')}
           </button>
         </div>
 
         {liabilities.length === 0 ? (
           <div className="ledgernest-empty" style={{ padding: '32px 0' }}>
-            Nessuna passività registrata
+            {tl('liabilitiesEmpty')}
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                  {['VOCE', 'TIPO', 'RESIDUO', 'RATA MENSILE', 'TASSO', 'FINO AL', ''].map((h) => (
+                  {[tl('liabilitiesColItem'), tl('liabilitiesColType'), tl('liabilitiesColDebt'), tl('liabilitiesColInstalment'), tl('liabilitiesColRate'), tl('liabilitiesColEnd'), ''].map((h, hi) => (
                     <th key={h} style={{
                       padding: '8px 16px',
-                      textAlign: h === '' || h === 'RESIDUO' || h === 'RATA MENSILE' || h === 'TASSO' ? 'right' : 'left',
+                      textAlign: hi >= 2 ? 'right' : 'left',
                       fontSize: 10, fontWeight: 700, letterSpacing: '0.07em',
                       color: 'var(--text-tertiary)', whiteSpace: 'nowrap',
                     }}>{h}</th>
@@ -477,7 +480,7 @@ export default function PatrimonioPage() {
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '4px 6px', borderRadius: 6, display: 'inline-flex', transition: 'color .1s' }}
                         onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--danger)')}
                         onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-tertiary)')}
-                        title="Elimina"
+                        title={tl('liabilitiesDelete') ?? ''}
                       >
                         <Icon name="trash" size={14} />
                       </button>
@@ -488,7 +491,7 @@ export default function PatrimonioPage() {
               {liabilities.length > 1 && (
                 <tfoot>
                   <tr style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                    <td colSpan={2} style={{ padding: '10px 16px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)' }}>Totale</td>
+                    <td colSpan={2} style={{ padding: '10px 16px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)' }}>{tl('liabilitiesTotal')}</td>
                     <td style={{ padding: '10px 16px', textAlign: 'right', fontWeight: 700, color: 'var(--danger)', fontVariantNumeric: 'tabular-nums' }}>
                       {fmtEur(totalLiabilities)}
                     </td>

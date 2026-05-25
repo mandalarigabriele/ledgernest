@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { usePricesStore } from '@/stores/pricesStore'
 import { usePrices } from '@/hooks/usePrices'
-import { fmtEur, fmtUsd, fmtPct, fmtNum, deltaClass, fmtDelta } from '@/lib/utils/format'
+import { fmtEur, fmtPct, fmtNum, deltaClass, fmtDelta } from '@/lib/utils/format'
 import Sparkline from '@/components/charts/Sparkline'
 import Icon from '@/components/shared/Icon'
 import { useUIStore } from '@/stores/uiStore'
@@ -37,6 +38,7 @@ function makeSpark(seed: number, positive: boolean, n = 22): number[] {
 import type { PortfolioPosition, Quote } from '@/types'
 
 function PositionRowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
+  const tl = useTranslations('azioni')
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState({ top: 0, right: 0 })
   const btnRef = useRef<HTMLButtonElement>(null)
@@ -79,12 +81,12 @@ function PositionRowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: (
           <button onClick={() => { setOpen(false); onEdit() }} style={{ ...item, color: 'var(--text-primary)' }}
             onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-elevated)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
-            <Icon name="edit" size={13} /> Modifica
+            <Icon name="edit" size={13} /> {tl('menuEdit')}
           </button>
           <button onClick={() => { setOpen(false); onDelete() }} style={{ ...item, color: 'var(--danger)' }}
             onMouseEnter={(e) => (e.currentTarget.style.background = 'color-mix(in oklch, var(--danger) 10%, transparent)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
-            <Icon name="trash" size={13} /> Elimina
+            <Icon name="trash" size={13} /> {tl('menuDelete')}
           </button>
         </div>
       )}
@@ -125,6 +127,7 @@ function PortfolioChart({
   quotes: Record<string, Quote>
   eurUsd: number
 }) {
+  const tl = useTranslations('azioni')
   const { trades } = usePortfolioStore()
   const [chartPts, setChartPts] = useState<{ date: string; value: number }[]>([])
   const [loading, setLoading] = useState(false)
@@ -136,8 +139,8 @@ function PortfolioChart({
   const earliestDate = useMemo(() => {
     let min = new Date().toISOString().slice(0, 10)
     for (const p of positions) {
-      const t = trades.filter(t => t.positionId === p.id && t.type === 'buy').sort((a, b) => a.date.localeCompare(b.date))[0]
-      const d = t?.date ?? p.createdAt.slice(0, 10)
+      const tr = trades.filter(tr => tr.positionId === p.id && tr.type === 'buy').sort((a, b) => a.date.localeCompare(b.date))[0]
+      const d = tr?.date ?? p.createdAt.slice(0, 10)
       if (d < min) min = d
     }
     return min
@@ -179,8 +182,8 @@ function PortfolioChart({
     setLoading(true)
     const pParam = positions.map((p) => {
       const currency = quotes[p.ticker]?.currency ?? 'USD'
-      const t = trades.filter(t => t.positionId === p.id && t.type === 'buy').sort((a, b) => a.date.localeCompare(b.date))[0]
-      const purchaseDate = t?.date ?? p.createdAt.slice(0, 10)
+      const tr = trades.filter(tr => tr.positionId === p.id && tr.type === 'buy').sort((a, b) => a.date.localeCompare(b.date))[0]
+      const purchaseDate = tr?.date ?? p.createdAt.slice(0, 10)
       return `${p.ticker}:${p.quantity}:${purchaseDate}:${currency}`
     }).join(',')
     fetch(`/api/portfolio-chart?p=${encodeURIComponent(pParam)}&days=${days}&eurUsd=${eurUsd}`)
@@ -202,7 +205,7 @@ function PortfolioChart({
     return (
       <div style={{ width: '100%', height: H, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
         <div className="ledgernest-spinner" style={{ width: 20, height: 20, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%' }} />
-        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Caricamento dati storici…</span>
+        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{tl('chartLoading')}</span>
       </div>
     )
   }
@@ -211,14 +214,14 @@ function PortfolioChart({
     return (
       <div style={{ width: '100%', height: H, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-          {period === '1G' ? 'Prezzi non ancora caricati' : 'Dati insufficienti per il periodo selezionato'}
+          {period === '1G' ? tl('chartNoData') : tl('chartInsufficient')}
         </span>
       </div>
     )
   }
 
   const values = pts.map((p) => p.value)
-  const labels = period === '1G' ? ['Ieri', 'Oggi'] : buildChartLabels(pts)
+  const labels = period === '1G' ? [tl('chartYesterday'), tl('chartToday')] : buildChartLabels(pts)
 
   const n = values.length
   const minV = Math.min(...values) * 0.986
@@ -267,7 +270,7 @@ function PortfolioChart({
         const tDays = pts.length >= 2
           ? (new Date(pts.at(-1)!.date).getTime() - new Date(pts[0].date).getTime()) / 86_400_000
           : 1
-        const dateLabel = period === '1G' ? (hoverIdx === 0 ? 'Ieri' : 'Oggi') : fmtChartLabel(pts[hoverIdx].date, tDays)
+        const dateLabel = period === '1G' ? (hoverIdx === 0 ? tl('chartYesterday') : tl('chartToday')) : fmtChartLabel(pts[hoverIdx].date, tDays)
         const tw = 110, th = 38
         const tx = Math.max(P.l, Math.min(W - P.r - tw, hx - tw / 2))
         const ty = Math.max(P.t + 4, hy - th - 10)
@@ -285,22 +288,23 @@ function PortfolioChart({
   )
 }
 
-function useAgo(ts: number | null) {
+function useAgo(ts: number | null, tl: ReturnType<typeof useTranslations<'azioni'>>) {
   if (!ts) return ''
   const sec = Math.floor((Date.now() - ts) / 1000)
-  if (sec < 10) return 'adesso'
-  if (sec < 60) return `${sec}s fa`
+  if (sec < 10) return tl('agoNow')
+  if (sec < 60) return tl('agoSec', { sec })
   const min = Math.floor(sec / 60)
-  return min < 60 ? `${min} min fa` : `${Math.floor(min / 60)}h fa`
+  return min < 60 ? tl('agoMin', { min }) : tl('agoHour', { h: Math.floor(min / 60) })
 }
 
 export default function AzioniPage() {
+  const tl = useTranslations('azioni')
   const { refetch } = usePrices()
   const { positions, updatePosition, deletePosition } = usePortfolioStore()
   const { quotes, eurUsd, lastUpdated, loading } = usePricesStore()
   const { openModal } = useUIStore()
   const [search, setSearch] = useState('')
-  const [sectorFilter, setSectorFilter] = useState('Tutte')
+  const [sectorFilter, setSectorFilter] = useState('all')
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('1M')
   const [, setTick] = useState(0)
   const [deletingPositionId, setDeletingPositionId] = useState<string | null>(null)
@@ -308,11 +312,19 @@ export default function AzioniPage() {
   const [editingTickerVal, setEditingTickerVal] = useState('')
 
   useEffect(() => {
-    const t = setInterval(() => setTick((n) => n + 1), 15_000)
-    return () => clearInterval(t)
+    const timer = setInterval(() => setTick((n) => n + 1), 15_000)
+    return () => clearInterval(timer)
   }, [])
 
-  const ago = useAgo(lastUpdated)
+  const ago = useAgo(lastUpdated, tl)
+
+  const PERIOD_LABELS: Record<ChartPeriod, string> = {
+    '1G': tl('period1D'),
+    '1S': tl('period1W'),
+    '1M': tl('period1M'),
+    '1A': tl('period1Y'),
+    'MAX': tl('periodAll'),
+  }
 
   useEffect(() => {
     const missing = positions.filter((p) => p.type === 'stock' && !p.sector)
@@ -364,8 +376,8 @@ export default function AzioniPage() {
   const gainers = [...withQ].sort((a, b) => (b.q!.changePct) - (a.q!.changePct)).slice(0, 3)
   const losers  = [...withQ].sort((a, b) => (a.q!.changePct) - (b.q!.changePct)).slice(0, 3)
 
-  const sectors = ['Tutte', ...Array.from(new Set(rows.map((r) => r.sector).filter((s): s is string => !!s)))]
-  const filtered = (sectorFilter === 'Tutte' ? rows : rows.filter((r) => r.sector === sectorFilter))
+  const sectors = ['all', ...Array.from(new Set(rows.map((r) => r.sector).filter((s): s is string => !!s)))]
+  const filtered = (sectorFilter === 'all' ? rows : rows.filter((r) => r.sector === sectorFilter))
     .filter((r) => !search || r.ticker.toLowerCase().includes(search.toLowerCase()) || r.name.toLowerCase().includes(search.toLowerCase()))
 
   if (stocks.length === 0) {
@@ -373,9 +385,9 @@ export default function AzioniPage() {
       <div className="ledgernest-card">
         <div className="ledgernest-empty">
           <div className="ledgernest-empty-icon">📈</div>
-          <div style={{ fontWeight: 600, marginBottom: 6 }}>Nessuna azione nel portafoglio</div>
+          <div style={{ fontWeight: 600, marginBottom: 6 }}>{tl('emptyTitle')}</div>
           <button className="ledgernest-btn ledgernest-btn-primary" onClick={() => openModal('buy', { assetType: 'stock' })}>
-            <Icon name="plus" size={14} /> Aggiungi la prima posizione
+            <Icon name="plus" size={14} /> {tl('emptyAdd')}
           </button>
         </div>
       </div>
@@ -406,28 +418,28 @@ export default function AzioniPage() {
       {/* KPI strip */}
       <div className="ledgernest-port-kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px' }}>
         <div className="ledgernest-kpi is-hl" style={{ padding: '18px 20px', gap: '6px' }}>
-          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>TOTALE AZIONI</div>
+          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiTotal')}</div>
           <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmtEur(totalValue)}</div>
           <div style={{ fontSize: '12px', fontWeight: 500, color: totalDayChg >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-            {totalDayChg >= 0 ? '+' : ''}{fmtEur(totalDayChg)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>oggi · {stocks.length} posizioni</span>
+            {totalDayChg >= 0 ? '+' : ''}{fmtEur(totalDayChg)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{tl('kpiTodayPositions', { n: stocks.length })}</span>
           </div>
         </div>
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: '6px' }}>
-          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>P&L TOTALE</div>
+          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiPnl')}</div>
           <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', color: totalPnl >= 0 ? 'var(--success)' : 'var(--danger)' }}>{fmtDelta(totalPnl)}</div>
           <div style={{ fontSize: '12px', fontWeight: 500, color: totalPnl >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-            {fmtPct(totalPnlPct)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>prezzo medio vs attuale</span>
+            {fmtPct(totalPnlPct)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{tl('kpiAvgPrice')}</span>
           </div>
         </div>
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: '6px' }}>
-          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>SETTORI</div>
+          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiSectors')}</div>
           <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em' }}>{Object.keys(sectorMap).length}</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>settori diversificati</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{tl('kpiDiversified')}</div>
         </div>
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: '6px' }}>
-          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>COSTO STORICO</div>
+          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiCost')}</div>
           <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmtEur(totalCost)}</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>capitale investito</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{tl('kpiCapital')}</div>
         </div>
       </div>
 
@@ -436,20 +448,19 @@ export default function AzioniPage() {
         <div className="ledgernest-card" style={{ padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
             <div>
-              <div style={{ fontWeight: 700, fontSize: '14px' }}>Andamento azioni</div>
+              <div style={{ fontWeight: 700, fontSize: '14px' }}>{tl('chartTitle')}</div>
               <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                Valore complessivo ·{' '}
-                {chartPeriod === '1G' ? '1 giorno' : chartPeriod === '1S' ? '1 settimana' : chartPeriod === '1M' ? '1 mese' : chartPeriod === '1A' ? '1 anno' : 'da inizio'}
+                {tl('chartSubtitle', { period: PERIOD_LABELS[chartPeriod] })}
               </div>
             </div>
             <div style={{ display: 'flex', gap: '2px', background: 'var(--bg-elevated)', borderRadius: '8px', padding: '3px' }}>
-              {CHART_PERIODS.map((t) => (
-                <button key={t} onClick={() => setChartPeriod(t)} style={{
+              {CHART_PERIODS.map((cp) => (
+                <button key={cp} onClick={() => setChartPeriod(cp)} style={{
                   padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
                   border: 'none', cursor: 'pointer', transition: 'all .15s',
-                  background: chartPeriod === t ? 'var(--accent)' : 'transparent',
-                  color: chartPeriod === t ? '#fff' : 'var(--text-secondary)',
-                }}>{t}</button>
+                  background: chartPeriod === cp ? 'var(--accent)' : 'transparent',
+                  color: chartPeriod === cp ? '#fff' : 'var(--text-secondary)',
+                }}>{cp}</button>
               ))}
             </div>
           </div>
@@ -457,8 +468,8 @@ export default function AzioniPage() {
         </div>
 
         <div className="ledgernest-card" style={{ padding: '20px' }}>
-          <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '2px' }}>Per settore</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '18px' }}>{Object.keys(sectorMap).length} settori</div>
+          <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '2px' }}>{tl('sectorTitle')}</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '18px' }}>{tl('sectorCount', { n: Object.keys(sectorMap).length })}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '13px' }}>
             {Object.entries(sectorMap).sort((a, b) => b[1] - a[1]).map(([sector, value]) => {
               const pct = totalValue > 0 ? (value / totalValue) * 100 : 0
@@ -486,8 +497,8 @@ export default function AzioniPage() {
       {withQ.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           {[
-            { title: 'Top in salita · oggi', items: gainers, isGainer: true },
-            { title: 'Top in discesa · oggi', items: losers, isGainer: false },
+            { title: tl('moversUp'), items: gainers, isGainer: true },
+            { title: tl('moversDown'), items: losers, isGainer: false },
           ].map(({ title, items, isGainer }) => {
             const avgChg = items.length ? items.reduce((s, r) => s + r.q!.changePct, 0) / items.length : 0
             return (
@@ -499,7 +510,7 @@ export default function AzioniPage() {
                     background: isGainer ? 'var(--success-dim)' : 'var(--danger-dim)',
                     color: isGainer ? 'var(--success)' : 'var(--danger)',
                   }}>
-                    {avgChg >= 0 ? '+' : ''}{avgChg.toFixed(1)}% medio
+                    {avgChg >= 0 ? '+' : ''}{avgChg.toFixed(1)}% {tl('moversAvg', { avg: '' }).replace('% ', '')}
                   </span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -535,8 +546,8 @@ export default function AzioniPage() {
       <div className="ledgernest-card ledgernest-port-table-card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', flexWrap: 'wrap', gap: '10px' }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: '14px' }}>Tutte le azioni · {stocks.length}</div>
-            {ago && <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>Aggiornato {ago}</div>}
+            <div style={{ fontWeight: 700, fontSize: '14px' }}>{tl('tableTitle', { n: stocks.length })}</div>
+            {ago && <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>{tl('tableUpdated', { ago })}</div>}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', gap: '2px', background: 'var(--bg-elevated)', borderRadius: '10px', padding: '3px' }}>
@@ -548,11 +559,11 @@ export default function AzioniPage() {
                   color: sectorFilter === s ? 'var(--text-primary)' : 'var(--text-secondary)',
                   boxShadow: sectorFilter === s ? '0 1px 4px rgba(0,0,0,.25)' : 'none',
                 }}>
-                  {s === 'Tutte' ? 'Tutte' : (s.length > 9 ? s.slice(0, 8) + '.' : s)}
+                  {s === 'all' ? tl('filterAll') : (s.length > 9 ? s.slice(0, 8) + '.' : s)}
                 </button>
               ))}
             </div>
-            <input className="ledgernest-input" placeholder="Cerca..." value={search}
+            <input className="ledgernest-input" placeholder={tl('searchPlaceholder')} value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{ width: '120px', height: '32px', padding: '4px 10px', fontSize: '12px' }} />
             <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm"
@@ -561,7 +572,7 @@ export default function AzioniPage() {
             </button>
             <button className="ledgernest-btn ledgernest-btn-primary ledgernest-btn-sm"
               onClick={() => openModal('buy', { assetType: 'stock' })}>
-              <Icon name="plus" size={13} /> Compra
+              <Icon name="plus" size={13} /> {tl('buyButton')}
             </button>
           </div>
         </div>
@@ -570,23 +581,23 @@ export default function AzioniPage() {
         <table className="ledgernest-table">
           <thead>
             <tr>
-              <th>Titolo</th>
-              <th>Settore</th>
-              <th>Broker</th>
-              <th className="num">Qty</th>
-              <th className="num">Prezzo medio</th>
-              <th className="num">Prezzo</th>
-              <th className="num" title="Pre-Market / After-Hours">PM/AH</th>
-              <th className="num">Var. %</th>
-              <th style={{ paddingLeft: '12px' }}>Trend</th>
-              <th className="num">Valore</th>
-              <th className="num">P&L</th>
+              <th>{tl('colStock')}</th>
+              <th>{tl('colSector')}</th>
+              <th>{tl('colBroker')}</th>
+              <th className="num">{tl('colQty')}</th>
+              <th className="num">{tl('colAvgPrice')}</th>
+              <th className="num">{tl('colPrice')}</th>
+              <th className="num" title={tl('colPmAhTitle')}>{tl('colPmAh')}</th>
+              <th className="num">{tl('colChange')}</th>
+              <th style={{ paddingLeft: '12px' }}>{tl('colTrend')}</th>
+              <th className="num">{tl('colValue')}</th>
+              <th className="num">{tl('colPnl')}</th>
               <th />
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan={12} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-secondary)' }}>Nessuna posizione trovata</td></tr>
+              <tr><td colSpan={12} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-secondary)' }}>{tl('emptyTable')}</td></tr>
             ) : filtered.map((r) => (
               <tr key={r.id}>
                 <td>
@@ -679,10 +690,10 @@ export default function AzioniPage() {
             ))}
           </tbody>
         </table>
-        </div>{/* overflow-x scroll wrapper */}
+        </div>
       </div>
 
-      {/* Disclaimer ultimo aggiornamento prezzi */}
+      {/* Price disclaimer */}
       <div style={{
         padding: '8px 16px',
         display: 'flex',
@@ -693,8 +704,8 @@ export default function AzioniPage() {
       }}>
         <span style={{ opacity: 0.5 }}>●</span>
         {lastUpdated
-          ? <>Prezzi aggiornati {ago} · Fonte: Yahoo Finance · I prezzi potrebbero non essere in tempo reale</>
-          : <>Prezzi non ancora caricati</>
+          ? tl('disclaimerUpdated', { ago })
+          : tl('disclaimerNotLoaded')
         }
       </div>
 
@@ -704,18 +715,18 @@ export default function AzioniPage() {
           <div className="ledgernest-modal-overlay" onClick={() => setDeletingPositionId(null)}>
             <div className="ledgernest-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
               <div className="ledgernest-modal-header">
-                <div className="ledgernest-modal-title">Elimina posizione · {pos?.ticker}</div>
+                <div className="ledgernest-modal-title">{tl('deleteTitle', { ticker: pos?.ticker ?? '' })}</div>
               </div>
               <div className="ledgernest-modal-body">
                 <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 14 }}>
-                  Elimini la posizione <strong>{pos?.name ?? pos?.ticker}</strong> e tutti i movimenti finanziari correlati (acquisti, vendite, dividendi).
+                  {tl('deleteBody')}
                 </p>
               </div>
               <div className="ledgernest-modal-footer">
-                <button className="ledgernest-btn ledgernest-btn-ghost" onClick={() => setDeletingPositionId(null)}>Annulla</button>
+                <button className="ledgernest-btn ledgernest-btn-ghost" onClick={() => setDeletingPositionId(null)}>{tl('cancel')}</button>
                 <button className="ledgernest-btn" style={{ background: 'var(--danger)', color: '#fff' }}
                   onClick={() => { deletePosition(deletingPositionId); setDeletingPositionId(null) }}>
-                  Elimina
+                  {tl('delete')}
                 </button>
               </div>
             </div>

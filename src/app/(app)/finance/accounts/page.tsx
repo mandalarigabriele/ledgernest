@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState, useRef, useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 import { useFinanceStore } from '@/stores/financeStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useUIStore } from '@/stores/uiStore'
@@ -8,23 +9,6 @@ import { fmtEur } from '@/lib/utils/format'
 import Icon from '@/components/shared/Icon'
 import Sparkline from '@/components/charts/Sparkline'
 import type { Account } from '@/types'
-
-const TYPE_CONFIG: Record<Account['type'], {
-  label: string; group: string; icon: string; color: string; bg: string
-}> = {
-  bank:   { label: 'Conto bancario', group: 'CONTO BANCARIO', icon: 'conti',  color: '#58a6ff', bg: 'rgba(88,166,255,.15)' },
-  broker: { label: 'Brokerage',      group: 'BROKERAGE',      icon: 'azioni', color: '#2dd4bf', bg: 'rgba(45,212,191,.15)' },
-  crypto: { label: 'Crypto wallet',  group: 'CRYPTO WALLET',  icon: 'crypto', color: '#f77c3a', bg: 'rgba(247,124,58,.15)' },
-  other:  { label: 'Altro',          group: 'ALTRO',          icon: 'wallet', color: '#7c6df7', bg: 'rgba(124,109,247,.15)' },
-}
-
-const FILTER_TABS = [
-  { key: 'all',    label: 'Tutti' },
-  { key: 'bank',   label: 'Conti' },
-  { key: 'broker', label: 'Broker' },
-  { key: 'crypto', label: 'Crypto' },
-  { key: 'other',  label: 'Altro' },
-] as const
 
 // Deterministic synthetic sparkline (no random each render)
 function buildSparkline(seed: number, positive: boolean): number[] {
@@ -46,20 +30,20 @@ const labelStyle: React.CSSProperties = {
   letterSpacing: '0.05em', marginBottom: 5,
 }
 
-function DeleteConfirmModal({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void }) {
+function DeleteConfirmModal({ message, onConfirm, onCancel, title, cancelLabel, deleteLabel }: { message: string; onConfirm: () => void; onCancel: () => void; title: string; cancelLabel: string; deleteLabel: string }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
       <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: '28px 32px', width: 380, display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
-        <div style={{ fontSize: 15, fontWeight: 700 }}>Conferma eliminazione</div>
+        <div style={{ fontSize: 15, fontWeight: 700 }}>{title}</div>
         <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{message}</div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button className="ledgernest-btn ledgernest-btn-ghost" onClick={onCancel}>Annulla</button>
+          <button className="ledgernest-btn ledgernest-btn-ghost" onClick={onCancel}>{cancelLabel}</button>
           <button
             className="ledgernest-btn"
             style={{ background: 'var(--danger)', color: 'white', border: 'none', padding: '8px 18px', borderRadius: 9, fontWeight: 700, cursor: 'pointer' }}
             onClick={onConfirm}
           >
-            Elimina
+            {deleteLabel}
           </button>
         </div>
       </div>
@@ -68,6 +52,7 @@ function DeleteConfirmModal({ message, onConfirm, onCancel }: { message: string;
 }
 
 function EditAccountModal({ account, onClose }: { account: Account; onClose: () => void }) {
+  const t = useTranslations('conti')
   const { updateAccount } = useFinanceStore()
   const [name, setName] = useState(account.name)
   const [type, setType] = useState<Account['type']>(account.type)
@@ -76,6 +61,13 @@ function EditAccountModal({ account, onClose }: { account: Account; onClose: () 
   const [broker, setBroker] = useState(account.broker ?? '')
   const [iban, setIban] = useState(account.iban ?? '')
   const [note, setNote] = useState(account.note ?? '')
+
+  const TYPE_CONFIG_LOCAL: Record<Account['type'], { label: string; color: string; bg: string }> = {
+    bank:   { label: t('typeBankLabel'),   color: '#58a6ff', bg: 'rgba(88,166,255,.15)' },
+    broker: { label: t('typeBrokerLabel'), color: '#2dd4bf', bg: 'rgba(45,212,191,.15)' },
+    crypto: { label: t('typeCryptoLabel'), color: '#f77c3a', bg: 'rgba(247,124,58,.15)' },
+    other:  { label: t('typeOtherLabel'),  color: '#7c6df7', bg: 'rgba(124,109,247,.15)' },
+  }
 
   function handleSave() {
     if (!name.trim()) return
@@ -98,23 +90,23 @@ function EditAccountModal({ account, onClose }: { account: Account; onClose: () 
     >
       <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, padding: 28, width: 480, maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>Modifica conto</div>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>{t('editTitle')}</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', fontSize: 20, lineHeight: 1 }}>×</button>
         </div>
 
         {/* Type */}
         <div>
-          <div style={labelStyle}>Tipo</div>
+          <div style={labelStyle}>{t('editType')}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
-            {(['bank', 'broker', 'crypto', 'other'] as Account['type'][]).map((t) => (
-              <button key={t} onClick={() => setType(t)} style={{
+            {(['bank', 'broker', 'crypto', 'other'] as Account['type'][]).map((tp) => (
+              <button key={tp} onClick={() => setType(tp)} style={{
                 padding: '8px 4px', borderRadius: 9, fontSize: 12, fontWeight: 600,
-                border: `1.5px solid ${type === t ? TYPE_CONFIG[t].color : 'var(--border-subtle)'}`,
-                background: type === t ? TYPE_CONFIG[t].bg : 'transparent',
-                color: type === t ? TYPE_CONFIG[t].color : 'var(--text-secondary)',
+                border: `1.5px solid ${type === tp ? TYPE_CONFIG_LOCAL[tp].color : 'var(--border-subtle)'}`,
+                background: type === tp ? TYPE_CONFIG_LOCAL[tp].bg : 'transparent',
+                color: type === tp ? TYPE_CONFIG_LOCAL[tp].color : 'var(--text-secondary)',
                 cursor: 'pointer', transition: 'all .12s',
               }}>
-                {TYPE_CONFIG[t].label}
+                {TYPE_CONFIG_LOCAL[tp].label}
               </button>
             ))}
           </div>
@@ -122,18 +114,18 @@ function EditAccountModal({ account, onClose }: { account: Account; onClose: () 
 
         {/* Name */}
         <div>
-          <div style={labelStyle}>Nome</div>
+          <div style={labelStyle}>{t('editName')}</div>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Es. Fineco, Banca Sella…" style={inputStyle} />
         </div>
 
         {/* Balance + Currency */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
-            <div style={labelStyle}>Saldo</div>
+            <div style={labelStyle}>{t('editBalance')}</div>
             <input type="number" step="0.01" value={balance} onChange={(e) => setBalance(e.target.value)} style={inputStyle} />
           </div>
           <div>
-            <div style={labelStyle}>Valuta</div>
+            <div style={labelStyle}>{t('editCurrency')}</div>
             <select value={currency} onChange={(e) => setCurrency(e.target.value as 'EUR' | 'USD')} style={inputStyle}>
               <option value="EUR">EUR</option>
               <option value="USD">USD</option>
@@ -144,19 +136,19 @@ function EditAccountModal({ account, onClose }: { account: Account; onClose: () 
         {/* Broker / IBAN */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
-            <div style={labelStyle}>Istituto</div>
+            <div style={labelStyle}>{t('editInstitution')}</div>
             <input value={broker} onChange={(e) => setBroker(e.target.value)} placeholder="Es. Fineco, DeGiro…" style={inputStyle} />
           </div>
           <div>
-            <div style={labelStyle}>IBAN</div>
+            <div style={labelStyle}>{t('editIban')}</div>
             <input value={iban} onChange={(e) => setIban(e.target.value)} placeholder="IT60 …" style={inputStyle} />
           </div>
         </div>
 
         {/* Note */}
         <div>
-          <div style={labelStyle}>Note</div>
-          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Opzionale" style={inputStyle} />
+          <div style={labelStyle}>{t('editNote')}</div>
+          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('editOptional')} style={inputStyle} />
         </div>
 
         <button
@@ -165,7 +157,7 @@ function EditAccountModal({ account, onClose }: { account: Account; onClose: () 
           style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}
           disabled={!name.trim()}
         >
-          Salva modifiche
+          {t('editSave')}
         </button>
       </div>
     </div>
@@ -173,6 +165,15 @@ function EditAccountModal({ account, onClose }: { account: Account; onClose: () 
 }
 
 function AccountCard({ account, onEdit, onDelete }: { account: Account; onEdit: () => void; onDelete: () => void }) {
+  const t = useTranslations('conti')
+  const TYPE_CONFIG: Record<Account['type'], {
+    label: string; icon: string; color: string; bg: string
+  }> = {
+    bank:   { label: t('typeBankLabel'),   icon: 'conti',  color: '#58a6ff', bg: 'rgba(88,166,255,.15)' },
+    broker: { label: t('typeBrokerLabel'), icon: 'azioni', color: '#2dd4bf', bg: 'rgba(45,212,191,.15)' },
+    crypto: { label: t('typeCryptoLabel'), icon: 'crypto', color: '#f77c3a', bg: 'rgba(247,124,58,.15)' },
+    other:  { label: t('typeOtherLabel'),  icon: 'wallet', color: '#7c6df7', bg: 'rgba(124,109,247,.15)' },
+  }
   const cfg = TYPE_CONFIG[account.type]
   const seed = account.id.charCodeAt(0) + account.id.charCodeAt(1)
   const positive = account.balance >= 0
@@ -234,7 +235,7 @@ function AccountCard({ account, onEdit, onDelete }: { account: Account; onEdit: 
                 onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-elevated)')}
                 onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
               >
-                <Icon name="edit" size={13} /> Modifica
+                <Icon name="edit" size={13} /> {t('cardEdit')}
               </button>
               <button
                 onClick={() => { setMenuOpen(false); onDelete() }}
@@ -242,7 +243,7 @@ function AccountCard({ account, onEdit, onDelete }: { account: Account; onEdit: 
                 onMouseEnter={(e) => (e.currentTarget.style.background = 'color-mix(in oklch, var(--danger) 12%, transparent)')}
                 onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
               >
-                <Icon name="trash" size={13} /> Elimina
+                <Icon name="trash" size={13} /> {t('cardDelete')}
               </button>
             </div>
           )}
@@ -273,10 +274,10 @@ function AccountCard({ account, onEdit, onDelete }: { account: Account; onEdit: 
       }}>
         <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" style={{ justifyContent: 'center', fontSize: '12px', gap: '5px' }}>
           <Icon name="refresh" size={13} />
-          Trasferisci
+          {t('cardTransfer')}
         </button>
         <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" style={{ justifyContent: 'center', fontSize: '12px', gap: '4px' }}>
-          Dettagli
+          {t('cardDetails')}
           <span style={{ display: 'inline-flex', transform: 'rotate(-90deg)', lineHeight: 1 }}>
             <Icon name="chevron" size={13} />
           </span>
@@ -330,12 +331,30 @@ function PatrimonioChart({ totalAssets }: { totalAssets: number }) {
 }
 
 export default function ContiPage() {
+  const t = useTranslations('conti')
   const { accounts, deleteAccount } = useFinanceStore()
   const { positions } = usePortfolioStore()
   const { openModal } = useUIStore()
   const [filter, setFilter] = useState<'all' | Account['type']>('all')
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
   const [deletingAccountId, setDeletingAccountId] = useState<string | null>(null)
+
+  const TYPE_CONFIG: Record<Account['type'], {
+    label: string; group: string; icon: string; color: string; bg: string
+  }> = {
+    bank:   { label: t('typeBankLabel'),   group: t('typeBankGroup'),   icon: 'conti',  color: '#58a6ff', bg: 'rgba(88,166,255,.15)' },
+    broker: { label: t('typeBrokerLabel'), group: t('typeBrokerGroup'), icon: 'azioni', color: '#2dd4bf', bg: 'rgba(45,212,191,.15)' },
+    crypto: { label: t('typeCryptoLabel'), group: t('typeCryptoGroup'), icon: 'crypto', color: '#f77c3a', bg: 'rgba(247,124,58,.15)' },
+    other:  { label: t('typeOtherLabel'),  group: t('typeOtherGroup'),  icon: 'wallet', color: '#7c6df7', bg: 'rgba(124,109,247,.15)' },
+  }
+
+  const FILTER_TABS = [
+    { key: 'all',    label: t('filterAll') },
+    { key: 'bank',   label: t('filterBank') },
+    { key: 'broker', label: t('filterBroker') },
+    { key: 'crypto', label: t('filterCrypto') },
+    { key: 'other',  label: t('filterOther') },
+  ] as const
 
   const bankAccounts   = accounts.filter((a) => a.type === 'bank')
   const brokerAccounts = accounts.filter((a) => a.type === 'broker')
@@ -356,9 +375,9 @@ export default function ContiPage() {
       map[g].push(a)
     }
     return map
-  }, [filtered])
+  }, [filtered]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const groupOrder = ['CONTO BANCARIO', 'BROKERAGE', 'CRYPTO WALLET', 'ALTRO']
+  const groupOrder = [t('typeBankGroup'), t('typeBrokerGroup'), t('typeCryptoGroup'), t('typeOtherGroup')]
   const deletingAccount = accounts.find((a) => a.id === deletingAccountId)
 
   return (
@@ -367,29 +386,29 @@ export default function ContiPage() {
       {/* KPI strip — 4 cards */}
       <div className="ledgernest-fin-kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px' }}>
         <div className="ledgernest-kpi is-hl" style={{ padding: '18px 20px', gap: '6px' }}>
-          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>PATRIMONIO NETTO</div>
+          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>{t('kpiNetWorth')}</div>
           <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmtEur(totalAssets)}</div>
-          <div style={{ fontSize: '12px', color: 'var(--success)', fontWeight: 500 }}>+2.34% <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>ultimi 30 giorni</span></div>
+          <div style={{ fontSize: '12px', color: 'var(--success)', fontWeight: 500 }}>+2.34% <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{t('kpiLast30Days')}</span></div>
         </div>
 
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: '6px' }}>
-          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>LIQUIDITÀ DISPONIBILE</div>
+          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>{t('kpiLiquidity')}</div>
           <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmtEur(totalCash)}</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{bankAccounts.length} {bankAccounts.length === 1 ? 'conto' : 'conti'}</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{bankAccounts.length} {bankAccounts.length === 1 ? t('kpiAccount') : t('kpiAccounts')}</div>
         </div>
 
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: '6px' }}>
-          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>INVESTITO</div>
+          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>{t('kpiInvested')}</div>
           <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmtEur(totalBroker + totalCrypto)}</div>
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-            {brokerAccounts.length} broker · {cryptoAccounts.length} wallet
+            {brokerAccounts.length} {t('kpiBroker')} · {cryptoAccounts.length} {t('kpiWallet')}
           </div>
         </div>
 
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: '6px' }}>
-          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>POSIZIONI</div>
+          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>{t('kpiPositions')}</div>
           <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em' }}>{positions.length}</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>titoli in portafoglio</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{t('kpiSecurities')}</div>
         </div>
       </div>
 
@@ -397,12 +416,12 @@ export default function ContiPage() {
       <div className="ledgernest-card" style={{ padding: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: '15px' }}>Patrimonio · attività vs passività</div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>Ultimi 6 mesi · netto in crescita</div>
+            <div style={{ fontWeight: 700, fontSize: '15px' }}>{t('chartTitle')}</div>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>{t('chartSubtitle')}</div>
           </div>
           <div style={{ display: 'flex', gap: '14px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ width: 10, height: 3, background: '#2dd4bf', borderRadius: 2, display: 'inline-block' }} />Attività</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ width: 10, height: 3, background: '#f85149', borderRadius: 2, display: 'inline-block' }} />Passività</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ width: 10, height: 3, background: '#2dd4bf', borderRadius: 2, display: 'inline-block' }} />{t('chartAssets')}</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ width: 10, height: 3, background: '#f85149', borderRadius: 2, display: 'inline-block' }} />{t('chartLiabilities')}</span>
           </div>
         </div>
         <PatrimonioChart totalAssets={totalAssets} />
@@ -411,8 +430,8 @@ export default function ContiPage() {
       {/* Header + filters */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <div style={{ fontWeight: 700, fontSize: '17px' }}>Conti e wallet · {accounts.length}</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>Gestiti manualmente</div>
+          <div style={{ fontWeight: 700, fontSize: '17px' }}>{t('sectionTitle', { n: accounts.length })}</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>{t('sectionManual')}</div>
         </div>
         <div className="ledgernest-conti-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{ display: 'flex', gap: '2px', background: 'var(--bg-elevated)', borderRadius: '10px', padding: '3px' }}>
@@ -438,7 +457,7 @@ export default function ContiPage() {
             style={{ gap: '6px', height: '36px', fontSize: '13px' }}
           >
             <Icon name="plus" size={13} />
-            Collega conto
+            {t('sectionConnect')}
           </button>
         </div>
       </div>
@@ -448,13 +467,13 @@ export default function ContiPage() {
         <div className="ledgernest-card">
           <div className="ledgernest-empty">
             <div className="ledgernest-empty-icon">🏦</div>
-            <div style={{ fontWeight: 600, marginBottom: '6px' }}>Nessun conto collegato</div>
+            <div style={{ fontWeight: 600, marginBottom: '6px' }}>{t('emptyTitle')}</div>
             <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-              Aggiungi i tuoi conti bancari, broker e wallet per tracciare il patrimonio
+              {t('emptyDesc')}
             </div>
             <button className="ledgernest-btn ledgernest-btn-primary" onClick={() => openModal('account')}>
               <Icon name="plus" size={14} />
-              Collega il primo conto
+              {t('emptyButton')}
             </button>
           </div>
         </div>
@@ -470,7 +489,7 @@ export default function ContiPage() {
                   {group}
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                  {items.length} {items.length === 1 ? 'voce' : 'voci'} · {fmtEur(groupTotal)}
+                  {items.length} {items.length === 1 ? t('groupItem') : t('groupItems')} · {fmtEur(groupTotal)}
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px' }}>
@@ -493,7 +512,10 @@ export default function ContiPage() {
       )}
       {deletingAccountId && deletingAccount && (
         <DeleteConfirmModal
-          message={`Eliminare il conto "${deletingAccount.name}"? Questa azione non è reversibile.`}
+          title={t('deleteTitle')}
+          message={t('deleteMessage', { name: deletingAccount.name })}
+          cancelLabel={t('cancel')}
+          deleteLabel={t('delete')}
           onConfirm={() => { deleteAccount(deletingAccountId); setDeletingAccountId(null) }}
           onCancel={() => setDeletingAccountId(null)}
         />
