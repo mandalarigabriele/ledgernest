@@ -54,8 +54,8 @@ export function useServerSync() {
           if (data) {
             usePortfolioStore.getState().hydrate(data)
           } else {
-            const { positions, trades, dividends } = usePortfolioStore.getState()
-            syncPut('portfolio', { positions, trades, dividends })
+            const { positions, trades, dividends, dividendsLastSyncedAt } = usePortfolioStore.getState()
+            syncPut('portfolio', { positions, trades, dividends, dividendsLastSyncedAt })
           }
         }
 
@@ -108,8 +108,8 @@ export function useServerSync() {
       if (!hydratedRef.current) return
       clearTimeout(timeout)
       timeout = setTimeout(() => {
-        const { positions, trades, dividends } = state
-        syncPut('portfolio', { positions, trades, dividends })
+        const { positions, trades, dividends, dividendsLastSyncedAt } = state
+        syncPut('portfolio', { positions, trades, dividends, dividendsLastSyncedAt })
       }, 1500)
     })
     return () => { unsub(); clearTimeout(timeout) }

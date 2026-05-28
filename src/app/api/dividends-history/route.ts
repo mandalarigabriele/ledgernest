@@ -15,10 +15,9 @@ export async function GET(req: NextRequest) {
     const json = await res.json() as {
       chart: {
         result: Array<{
-          meta: { currency?: string; symbol?: string }
+          meta: { currency?: string }
           events?: { dividends?: Record<string, { amount: number; date: number }> }
         }> | null
-        error?: unknown
       }
     }
 
@@ -31,11 +30,9 @@ export async function GET(req: NextRequest) {
     const dividends = Object.values(rawDivs)
       .map(({ amount, date }) => {
         const exDate = new Date(date * 1000).toISOString().slice(0, 10)
-        // Pay date is typically 2-4 weeks after ex-date
         const pay = new Date(date * 1000)
         pay.setDate(pay.getDate() + 21)
-        const payDate = pay.toISOString().slice(0, 10)
-        return { exDate, payDate, amount: Math.round(amount * 10000) / 10000, currency }
+        return { exDate, payDate: pay.toISOString().slice(0, 10), amount: Math.round(amount * 10000) / 10000, currency }
       })
       .sort((a, b) => a.exDate.localeCompare(b.exDate))
 

@@ -4,7 +4,7 @@
 
 **Personal finance dashboard — portfolio, budget, net worth and cashflow in one place.**
 
-![Version](https://img.shields.io/badge/version-0.3.0-blue)
+![Version](https://img.shields.io/badge/version-0.3.2-blue)
 ![Next.js](https://img.shields.io/badge/Next.js-14-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.5-blue)
 ![License](https://img.shields.io/badge/license-private-lightgrey)
@@ -254,6 +254,9 @@ npm run db:reset     # ⚠️ FULL RESET (deletes all data)
 ---
 
 ## 📝 Changelog
+
+### v0.3.1 (May 2026)
+- **Dividends loading state** — show progress bar and spinner while auto-import runs; previously the page showed the empty screen with no feedback during the ~10s import
 
 ### v0.3.0 (May 2026)
 - **CSV import wizard** — multi-step wizard with ticker validation against Yahoo Finance/CoinGecko, bulk update detection, and ticker search input

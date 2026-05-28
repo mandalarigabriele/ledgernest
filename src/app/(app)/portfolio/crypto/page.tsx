@@ -565,7 +565,14 @@ export default function CryptoPage() {
                   <td className="num ledgernest-mono" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                     {fmt(r.avgPriceEur)}
                   </td>
-                  <td className="num ledgernest-mono" style={{ fontSize: 13, fontWeight: 600 }}>{fmt(r.price)}</td>
+                  <td className="num ledgernest-mono" style={{ fontSize: 13, fontWeight: 600 }}>
+                    {fmt(r.price)}
+                    {r.q?.price > 0 && (
+                      <div style={{ fontSize: 10, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', marginTop: 1 }}>
+                        ${r.q.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                    )}
+                  </td>
                   <td style={{ width: 90, padding: '6px 12px' }}>
                     <Sparkline data={r.spark} height={28} positive={r.dayChangePct >= 0} responsive />
                   </td>

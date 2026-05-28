@@ -79,6 +79,7 @@ interface PortfolioStore {
   positions: PortfolioPosition[]
   trades: Trade[]
   dividends: Dividend[]
+  dividendsLastSyncedAt: number
 
   addPosition: (pos: Omit<PortfolioPosition, 'id' | 'createdAt' | 'updatedAt'>) => void
   updatePosition: (id: string, patch: Partial<PortfolioPosition>) => void
@@ -91,13 +92,14 @@ interface PortfolioStore {
   addDividend: (div: Omit<Dividend, 'id'>) => void
   importDividend: (div: Omit<Dividend, 'id'>) => void
   deleteDividend: (id: string) => void
+  setDividendsLastSyncedAt: (ts: number) => void
 
   totalValue: (prices: Record<string, number>) => number
   totalCost: () => number
   byType: () => Record<AssetType, PortfolioPosition[]>
   backfillMovements: () => void
 
-  hydrate: (data: Partial<Pick<PortfolioStore, 'positions' | 'trades' | 'dividends'>>) => void
+  hydrate: (data: Partial<Pick<PortfolioStore, 'positions' | 'trades' | 'dividends' | 'dividendsLastSyncedAt'>>) => void
 }
 
 export const usePortfolioStore = create<PortfolioStore>()(
@@ -106,6 +108,7 @@ export const usePortfolioStore = create<PortfolioStore>()(
       positions: [],
       trades: [],
       dividends: [],
+      dividendsLastSyncedAt: 0,
 
       addPosition: (pos) => {
         const now = new Date().toISOString()
@@ -192,6 +195,7 @@ export const usePortfolioStore = create<PortfolioStore>()(
       },
 
       deleteDividend: (id) => set((s) => ({ dividends: s.dividends.filter((d) => d.id !== id) })),
+      setDividendsLastSyncedAt: (ts) => set({ dividendsLastSyncedAt: ts }),
 
       totalValue: (prices) => {
         const { positions } = get()

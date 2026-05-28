@@ -36,12 +36,14 @@ interface DivRow {
   freq: string
   freqMonths: number
   nextDate: string | null
+  lastDivAmtEur: number   // most recent dividend amount in EUR (qty-adjusted) for upcoming estimate
   status: 'confermato' | 'stimato' | 'reinvestito'
 }
 
 function computeDivRows(
   positions: PortfolioPosition[],
   dividends: Dividend[],
+  trades: import('@/types').Trade[],
   eurUsd: number
 ): DivRow[] {
   const now = new Date(); now.setHours(0, 0, 0, 0)
@@ -61,28 +63,27 @@ function computeDivRows(
         yieldPct: 0, freq: 'acc', freqMonths: 0, nextDate: null, status: 'reinvestito',
       }
 
+      // Purchase date: earliest buy trade, or position creation
+      const posTrades = trades.filter(t => t.positionId === pos.id && t.type === 'buy')
+      const purchaseDate = posTrades.length > 0
+        ? [...posTrades].sort((a, b) => a.date.localeCompare(b.date))[0].date
+        : pos.createdAt.slice(0, 10)
+
       const posDivs = dividends.filter(d => d.positionId === pos.id)
-      const recentDivs = posDivs.filter(d => new Date(d.payDate) >= oneYearAgo)
-
-      const toEur = (d: Dividend) => d.currency === 'EUR' ? d.amount : d.amount / eurUsd
-      const annualIncome = recentDivs.reduce((s, d) => s + toEur(d), 0)
-      const perShareAnnual = pos.quantity > 0 ? annualIncome / pos.quantity : 0
-      const posValEur = pos.currency === 'EUR'
-        ? pos.avgPrice * pos.quantity
-        : pos.avgPrice * pos.quantity / eurUsd
-      const yieldPct = posValEur > 0 ? (annualIncome / posValEur) * 100 : 0
-
-      // Frequency from payment count last 12 months
-      const n = recentDivs.length
-      let freq = 'ann'; let freqMonths = 12
-      if (n >= 10) { freq = 'mens'; freqMonths = 1 }
-      else if (n >= 3) { freq = 'trim'; freqMonths = 3 }
-      else if (n >= 2) { freq = 'sem'; freqMonths = 6 }
-
-      // Next date
       const sortedAll = [...posDivs].sort((a, b) => b.payDate.localeCompare(a.payDate))
       const lastDiv = sortedAll[0]
 
+      // Frequency: use 2-year window so quarterly stocks aren't misread as annual
+      // when the most recent 12 months happen to have no YF data
+      const twoYearsAgo = addMonths(now, -24)
+      const last2y = posDivs.filter(d => new Date(d.payDate) >= twoYearsAgo)
+      const nPerYear = Math.round(last2y.length / 2) // average payments per year
+      let freq = 'ann'; let freqMonths = 12
+      if (nPerYear >= 10) { freq = 'mens'; freqMonths = 1 }
+      else if (nPerYear >= 3) { freq = 'trim'; freqMonths = 3 }
+      else if (nPerYear >= 2) { freq = 'sem'; freqMonths = 6 }
+
+      // Next projected date (from full history pattern)
       let nextDate: string | null = null
       let status: DivRow['status'] = 'stimato'
 
@@ -92,7 +93,7 @@ function computeDivRows(
         nextDate = toYMD(next)
       }
 
-      // Override with confirmed future dividend if any
+      // Override with confirmed future dividend if any (regardless of purchase date)
       const futureDivs = posDivs.filter(d => new Date(d.payDate) > now)
       if (futureDivs.length > 0) {
         const nearest = futureDivs.sort((a, b) => a.payDate.localeCompare(b.payDate))[0]
@@ -100,9 +101,45 @@ function computeDivRows(
         status = 'confermato'
       }
 
-      return { pos, recentDivs, annualIncome, perShareAnnual, yieldPct, freq, freqMonths, nextDate, status }
+      // Received = dividends with exDate on/after purchase AND payDate in the past (actually paid)
+      const receivedDivs = posDivs.filter(d => d.exDate >= purchaseDate && new Date(d.payDate) <= now)
+      const recentDivs = receivedDivs.filter(d => new Date(d.payDate) >= oneYearAgo)
+
+      const toEur = (d: Dividend) => d.currency === 'EUR' ? d.amount : d.amount / eurUsd
+
+      // Annual income:
+      // 1. Use received dividends in last 12 months if any
+      // 2. Else take last N payments from full history (N = payments/year) as estimate
+      //    — covers positions bought after the last ex-date, or when YF data is stale
+      let annualIncome: number
+      if (recentDivs.length > 0) {
+        annualIncome = recentDivs.reduce((s, d) => s + toEur(d), 0)
+      } else {
+        const paymentsPerYear = freqMonths > 0 ? Math.round(12 / freqMonths) : 1
+        const histSlice = sortedAll.slice(0, Math.max(paymentsPerYear, 1))
+        annualIncome = histSlice.reduce((s, d) => s + toEur(d), 0)
+      }
+      const perShareAnnual = pos.quantity > 0 ? annualIncome / pos.quantity : 0
+      const posValEur = pos.currency === 'EUR'
+        ? pos.avgPrice * pos.quantity
+        : pos.avgPrice * pos.quantity / eurUsd
+      const yieldPct = posValEur > 0 ? (annualIncome / posValEur) * 100 : 0
+
+      // Amount for the next coupon: use confirmed future dividend if present,
+      // otherwise fall back to the most recent historical payment
+      const confirmedFuture = futureDivs.length > 0
+        ? futureDivs.sort((a, b) => a.payDate.localeCompare(b.payDate))[0]
+        : null
+      const lastHistorical = posDivs
+        .filter(d => new Date(d.payDate) <= now)
+        .sort((a, b) => b.payDate.localeCompare(a.payDate))[0]
+      const nextCouponDiv = confirmedFuture ?? lastHistorical
+      const lastDivAmtEur = nextCouponDiv ? toEur(nextCouponDiv) : 0
+
+      return { pos, recentDivs, annualIncome, perShareAnnual, yieldPct, freq, freqMonths, nextDate, lastDivAmtEur, status }
     })
-    .filter(r => r.recentDivs.length > 0 || r.status === 'reinvestito')
+    // Show if received dividends in last year OR has a future coupon projected/confirmed
+    .filter(r => r.recentDivs.length > 0 || r.nextDate !== null || r.status === 'reinvestito')
 }
 
 // ── monthly bar chart ────────────────────────────────────────
@@ -226,9 +263,9 @@ function CalendarHeatmap({ events }: { events: { date: string; ticker: string }[
 function StatusBadge({ status }: { status: 'confermato' | 'stimato' | 'reinvestito' }) {
   const tl = useTranslations('dividendi')
   const map = {
-    confermato:  { bg: 'rgba(63,185,80,0.14)',   color: '#3fb950',  key: 'statusConfirmed' as const },
-    stimato:     { bg: 'rgba(230,162,0,0.18)',   color: '#e6a200',  key: 'statusEstimated' as const },
-    reinvestito: { bg: 'rgba(91,200,208,0.18)',  color: '#5bc8d0',  key: 'statusReinvested' as const },
+    confermato:  { bg: 'rgba(63,185,80,0.14)',  color: '#3fb950',  key: 'statusConfirmed'  as const },
+    stimato:     { bg: 'rgba(230,162,0,0.18)',  color: '#e6a200',  key: 'statusEstimated'  as const },
+    reinvestito: { bg: 'rgba(91,200,208,0.18)', color: '#5bc8d0',  key: 'statusReinvested' as const },
   }
   const s = map[status]
   return (
@@ -249,7 +286,7 @@ interface ImportState {
 }
 
 function useAutoImport() {
-  const { positions, dividends, trades, importDividend } = usePortfolioStore()
+  const { positions, dividends, importDividend, dividendsLastSyncedAt, setDividendsLastSyncedAt } = usePortfolioStore()
   const [state, setState] = useState<ImportState>({ status: 'idle', current: '', done: 0, total: 0 })
   const ran = useRef(false)
 
@@ -270,12 +307,6 @@ function useAutoImport() {
       const pos = toImport[i]
       setState(s => ({ ...s, current: pos.ticker, done: i }))
 
-      // Find the earliest buy trade date for this position to use as purchase date
-      const positionTrades = trades.filter(t => t.positionId === pos.id && t.type === 'buy')
-      const purchaseDate = positionTrades.length > 0
-        ? positionTrades.sort((a, b) => a.date.localeCompare(b.date))[0].date
-        : pos.createdAt.slice(0, 10)
-
       try {
         const res = await fetch(`/api/dividends-history?ticker=${encodeURIComponent(pos.ticker)}`)
         if (res.ok) {
@@ -283,37 +314,36 @@ function useAutoImport() {
             dividends: { exDate: string; payDate: string; amount: number; currency: string }[]
           }
           for (const d of data.dividends) {
-            // Only import dividends with ex-date on or after the purchase date
-            if (d.exDate >= purchaseDate) {
-              importDividend({
-                ticker: pos.ticker,
-                positionId: pos.id,
-                amount: Math.round(d.amount * pos.quantity * 100) / 100,
-                payDate: d.payDate,
-                exDate: d.exDate,
-                currency: d.currency as 'EUR' | 'USD',
-              })
-            }
+            importDividend({
+              ticker: pos.ticker,
+              positionId: pos.id,
+              amount: Math.round(d.amount * pos.quantity * 100) / 100,
+              payDate: d.payDate,
+              exDate: d.exDate,
+              currency: d.currency as 'EUR' | 'USD',
+            })
           }
         }
       } catch { /* skip */ }
       await new Promise(r => setTimeout(r, 300))
     }
+    setDividendsLastSyncedAt(Date.now())
     setState(s => ({ ...s, status: 'done', done: s.total }))
-  }, [positions, dividends, trades, importDividend])
+  }, [positions, dividends, importDividend, setDividendsLastSyncedAt])
 
   useEffect(() => {
     if (ran.current) return
+    if (positions.length === 0) return  // wait for store to hydrate before locking
     ran.current = true
     run()
-  }, [run])
+  }, [run, positions])
 
   return state
 }
 
 export default function DividendiPage() {
   const tl = useTranslations('dividendi')
-  const { dividends, positions } = usePortfolioStore()
+  const { dividends, positions, trades } = usePortfolioStore()
   const { eurUsd } = usePricesStore()
   const { fmt } = useFormatters()
   const importState = useAutoImport()
@@ -322,8 +352,8 @@ export default function DividendiPage() {
   const thisYear = now.getFullYear().toString()
 
   const divRows = useMemo(
-    () => computeDivRows(positions, dividends, eurUsd),
-    [positions, dividends, eurUsd]
+    () => computeDivRows(positions, dividends, trades, eurUsd),
+    [positions, dividends, trades, eurUsd]
   )
 
   // ── KPI: 12-month total ──
@@ -411,7 +441,7 @@ export default function DividendiPage() {
           day: nd.getDate().toString().padStart(2, '0'),
           month: fmtMonthShort(nd).toUpperCase(),
           weekday: fmtWeekdayShort(nd),
-          payAmt: r.annualIncome > 0 && r.freqMonths > 0 ? r.annualIncome * r.freqMonths / 12 : 0,
+          payAmt: r.lastDivAmtEur,
         }
       })
   , [divRows])
@@ -419,16 +449,20 @@ export default function DividendiPage() {
   const payingCount = divRows.filter(r => r.status !== 'reinvestito').length
   const yoyLabel = `${yoyPct >= 0 ? '+' : ''}${yoyPct.toFixed(0)}% YoY`
 
-  if (divRows.length === 0 && dividends.length === 0) {
+  const eligiblePositions = positions.filter(p =>
+    p.type !== 'crypto' &&
+    !ACC_TICKERS.has(p.ticker) &&
+    !p.name?.toLowerCase().includes(' acc')
+  )
+
+  if (eligiblePositions.length === 0) {
     return (
       <div className="ledgernest-gap-5">
         <div className="ledgernest-card">
           <div className="ledgernest-empty">
             <div className="ledgernest-empty-icon">💰</div>
             <div style={{ fontWeight: 600, marginBottom: 6 }}>{tl('emptyTitle')}</div>
-            <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-              {tl('emptyDesc')}
-            </div>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{tl('emptyDesc')}</div>
           </div>
         </div>
       </div>
@@ -438,33 +472,25 @@ export default function DividendiPage() {
   return (
     <div className="ledgernest-gap-5">
 
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>{tl('headerTitle')}</h1>
-          <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 3 }}>
-            {tl('headerPositions', { n: payingCount })}
-            {upcoming[0] ? ` · ${tl('headerNextCoupon', { day: upcoming[0].day, month: fmtMonthShort(new Date(upcoming[0].nextDate!)) })}` : ''}
-          </div>
+      {/* Import status chip — fixed bottom-right, non-intrusive */}
+      {(importState.status === 'running' || (importState.status === 'done' && importState.total > 0)) && (
+        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 50,
+          display: 'flex', alignItems: 'center', gap: 8, padding: '7px 13px', borderRadius: 20,
+          background: importState.status === 'done' ? 'rgba(63,185,80,0.15)' : 'var(--bg-elevated)',
+          border: `1px solid ${importState.status === 'done' ? 'rgba(63,185,80,0.35)' : 'var(--border-subtle)'}`,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.3)', fontSize: 11, color: importState.status === 'done' ? '#3fb950' : 'var(--text-secondary)',
+          pointerEvents: 'none' }}>
+          {importState.status === 'running' && (
+            <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%',
+              background: 'var(--accent)', animation: 'pulse 1s infinite', flexShrink: 0 }} />
+          )}
+          <span>
+            {importState.status === 'running'
+              ? tl('importRunning', { ticker: importState.current, done: importState.done, total: importState.total })
+              : tl('importDone', { total: importState.total })}
+          </span>
         </div>
-        {importState.status === 'running' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderRadius: 10,
-            background: 'color-mix(in oklch, var(--accent) 12%, var(--bg-surface))',
-            border: '1px solid color-mix(in oklch, var(--accent) 30%, transparent)',
-            fontSize: 12, color: 'var(--text-secondary)' }}>
-            <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%',
-              background: 'var(--accent)', animation: 'pulse 1s infinite' }} />
-            {tl('importRunning', { ticker: importState.current, done: importState.done, total: importState.total })}
-          </div>
-        )}
-        {importState.status === 'done' && importState.total > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 10,
-            background: 'rgba(63,185,80,0.1)', border: '1px solid rgba(63,185,80,0.3)',
-            fontSize: 12, color: '#3fb950' }}>
-            {tl('importDone', { total: importState.total })}
-          </div>
-        )}
-      </div>
+      )}
 
       {/* KPI strip */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>

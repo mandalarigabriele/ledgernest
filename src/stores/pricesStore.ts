@@ -28,9 +28,16 @@ export const usePricesStore = create<PricesStore>()(
       error: null,
 
       setQuotes: (quotes, eurUsd) => {
-        const map: Record<string, Quote> = {}
-        for (const q of quotes) map[q.ticker] = q
-        set({ quotes: map, eurUsd, lastUpdated: Date.now(), loading: false, error: null })
+        // Merge into existing quotes so a failed crypto fetch doesn't wipe BTC/ETH prices
+        const incoming: Record<string, Quote> = {}
+        for (const q of quotes) incoming[q.ticker] = q
+        set((s) => ({
+          quotes: { ...s.quotes, ...incoming },
+          eurUsd,
+          lastUpdated: Date.now(),
+          loading: false,
+          error: null,
+        }))
       },
 
       setLoading: (loading) => set({ loading }),

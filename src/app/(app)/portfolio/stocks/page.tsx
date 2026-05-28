@@ -703,7 +703,14 @@ export default function AzioniPage() {
                 <td style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{r.broker || '—'}</td>
                 <td className="num ledgernest-mono" style={{ fontSize: '13px' }}>{fmtNum(r.quantity)}</td>
                 <td className="num ledgernest-mono" style={{ fontSize: '13px' }}>{fmt(r.avgPriceEur)}</td>
-                <td className="num ledgernest-mono" style={{ fontSize: '13px', fontWeight: 600 }}>{fmt(r.price)}</td>
+                <td className="num ledgernest-mono" style={{ fontSize: '13px', fontWeight: 600 }}>
+                  {fmt(r.price)}
+                  {r.q?.currency === 'USD' && r.q.price > 0 && (
+                    <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', marginTop: 1 }}>
+                      ${r.q.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                  )}
+                </td>
                 <td className="num">
                   {r.extPrice ? (
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
