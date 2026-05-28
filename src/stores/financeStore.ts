@@ -9,6 +9,8 @@ interface BudgetMonthPlan {
   categories: Record<string, number>       // categoryId → monthly budget amount
   groupBudgets?: Record<string, number>    // groupKey → total group budget (envelope)
   assetAllocation: Record<string, number>  // assetType key → target %
+  investPct?: number                       // % of income to allocate to investments
+  investCatAlloc?: Record<string, number>  // catId → % share of invest quota (should sum to 100)
 }
 
 interface FinanceStore {
@@ -47,6 +49,7 @@ interface FinanceStore {
   setMonthPlanIncome: (month: string, income: number) => void
   setMonthPlanCategory: (month: string, catId: string, amount: number) => void
   setMonthPlanAssetAllocation: (month: string, allocation: Record<string, number>) => void
+  setMonthPlanInvestConfig: (month: string, investPct: number, investCatAlloc: Record<string, number>) => void
   setMonthPlanIncomeSources: (month: string, sources: Record<string, number>) => void
   setGroupBudget: (month: string, groupKey: string, amount: number) => void
   resetMonthPlan: (month: string) => void
@@ -297,6 +300,12 @@ export const useFinanceStore = create<FinanceStore>()(
         budgetPlans: {
           ...s.budgetPlans,
           [month]: { ...(s.budgetPlans[month] ?? { income: 0, categories: {}, assetAllocation: {} }), assetAllocation: allocation },
+        },
+      })),
+      setMonthPlanInvestConfig: (month, investPct, investCatAlloc) => set((s) => ({
+        budgetPlans: {
+          ...s.budgetPlans,
+          [month]: { ...(s.budgetPlans[month] ?? { income: 0, categories: {}, assetAllocation: {} }), investPct, investCatAlloc },
         },
       })),
       setMonthPlanIncomeSources: (month, sources) => set((s) => {

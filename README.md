@@ -264,6 +264,8 @@ npm run db:reset     # ⚠️ FULL RESET (deletes all data)
 - **P&L currency fix** — EUR/USD exchange-rate correction applied to `avgPrice` when computing cost basis for USD-denominated positions
 - **Budget "copia dai ricorrenti"** — fixed parent-category resolution (falls back to first leaf child) and added date filter (skips items whose next occurrence is after the target month)
 - **Portfolio snapshot store** — `clearSnapshots()` wired to full portfolio reset
+- **Cross-device sync** — portfolio snapshots and settings now synced to server DB; charts and preferences available on all devices
+- **Budget investment configurator** — set a % of income to invest, split it across investment categories (ETF, Stocks, Crypto…) with auto-proportioning, then apply to budgets in one click
 
 ### v0.2.0 (May 2026)
 - **Full internationalisation** — EN/IT via next-intl; zero hardcoded strings in components

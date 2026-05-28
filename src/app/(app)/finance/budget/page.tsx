@@ -141,7 +141,7 @@ export default function BudgetPage() {
   const {
     budgetCategories, budgetGroups, transactions, goals, updateGoal, recurringItems,
     budgetPlans, setMonthPlanIncome, setMonthPlanCategory, setGroupBudget,
-    setMonthPlanAssetAllocation, setMonthPlanIncomeSources, resetMonthPlan,
+    setMonthPlanAssetAllocation, setMonthPlanIncomeSources, setMonthPlanInvestConfig, resetMonthPlan,
   } = useFinanceStore()
 
   const expenseBudgetGroups = useMemo(
@@ -281,6 +281,55 @@ export default function BudgetPage() {
       others.forEach((a) => { updated[a.key] = share })
     }
     setMonthPlanAssetAllocation(month, updated)
+  }
+
+  // ── invest configurator ──────────────────────────────────
+  const investLeafCats = leafExpenseCats.filter((c) => c.group === 'investments')
+  const investPct = plan.investPct ?? 0
+  const defaultInvestCatAlloc = useMemo(() => {
+    if (investLeafCats.length === 0) return {} as Record<string, number>
+    const base = Math.floor(100 / investLeafCats.length)
+    const alloc: Record<string, number> = {}
+    investLeafCats.forEach((c, i) => {
+      alloc[c.id] = i === investLeafCats.length - 1 ? 100 - base * (investLeafCats.length - 1) : base
+    })
+    return alloc
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [investLeafCats.map((c) => c.id).join(',')])
+  const investCatAlloc: Record<string, number> =
+    plan.investCatAlloc && Object.keys(plan.investCatAlloc).length > 0
+      ? plan.investCatAlloc
+      : defaultInvestCatAlloc
+  const investTotalPct = investLeafCats.reduce((s, c) => s + (investCatAlloc[c.id] ?? 0), 0)
+
+  function adjustInvestAlloc(catId: string, newPct: number) {
+    const clamped = Math.max(0, Math.min(100, Math.round(newPct)))
+    const others = investLeafCats.filter((c) => c.id !== catId)
+    const rem = 100 - clamped
+    const otherTotal = others.reduce((s, c) => s + (investCatAlloc[c.id] ?? 0), 0)
+    const updated: Record<string, number> = { ...investCatAlloc, [catId]: clamped }
+    if (otherTotal > 0) {
+      let distributed = 0
+      others.forEach((c, i) => {
+        const share = i === others.length - 1
+          ? rem - distributed
+          : Math.round(((investCatAlloc[c.id] ?? 0) / otherTotal) * rem)
+        updated[c.id] = share
+        distributed += share
+      })
+    } else if (others.length > 0) {
+      const share = Math.floor(rem / others.length)
+      others.forEach((c) => { updated[c.id] = share })
+    }
+    setMonthPlanInvestConfig(month, investPct, updated)
+  }
+
+  function applyInvestConfig() {
+    const investAmt = income * investPct / 100
+    investLeafCats.forEach((cat) => {
+      const pct = investCatAlloc[cat.id] ?? 0
+      setMonthPlanCategory(month, cat.id, Math.round(investAmt * pct / 100))
+    })
   }
 
   // ── init from recurring ───────────────────────────────────
@@ -976,6 +1025,81 @@ export default function BudgetPage() {
                     <div style={{ position: 'relative', height: 5, background: 'var(--bg-surface)', borderRadius: 99, overflow: 'visible' }}>
                       <div style={{ height: '100%', width: `${Math.min(100, savingsPct)}%`, background: savingsPct >= 20 ? '#4ade80' : savingsPct >= 10 ? '#d29922' : 'var(--danger)', borderRadius: 99, transition: 'width .3s' }} />
                       <div style={{ position: 'absolute', top: -3, bottom: -3, left: '20%', width: 2, background: 'rgba(255,255,255,0.35)', borderRadius: 1 }} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Configuratore investimenti */}
+                {income > 0 && investLeafCats.length > 0 && (
+                  <div style={{ padding: '14px 16px', borderRadius: 12, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 12, textTransform: 'uppercase' }}>{tl('investCardTitle')}</div>
+
+                    {/* % del reddito */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, padding: '8px 10px', borderRadius: 9, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+                      <span style={{ fontSize: 12, color: 'var(--text-secondary)', flex: 1 }}>{tl('investPctLabel')}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: 'var(--bg-elevated)', borderRadius: 7, padding: '3px 8px', border: '1px solid var(--border-subtle)' }}>
+                        <input
+                          type="number" min={0} max={100} step={1} value={investPct}
+                          onChange={(e) => setMonthPlanInvestConfig(month, Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)), investCatAlloc)}
+                          style={{ width: 36, background: 'transparent', border: 'none', outline: 'none', fontSize: 13, fontWeight: 700, textAlign: 'right', color: 'var(--text-primary)' }}
+                        />
+                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>%</span>
+                      </div>
+                      {investPct > 0 && (
+                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                          {fmt(income * investPct / 100)}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Ripartizione per categoria */}
+                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 10, textTransform: 'uppercase' }}>{tl('investSplitLabel')}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
+                      {investLeafCats.map((cat) => {
+                        const pct = investCatAlloc[cat.id] ?? 0
+                        const amt = Math.round(income * investPct / 100 * pct / 100)
+                        return (
+                          <div key={cat.id}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
+                              <span style={{ fontSize: 14, flexShrink: 0 }}>{cat.emoji}</span>
+                              <span style={{ fontSize: 12, fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cat.name}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: 'var(--bg-surface)', borderRadius: 6, padding: '2px 7px', border: '1px solid var(--border-subtle)', flexShrink: 0 }}>
+                                <input
+                                  type="number" min={0} max={100} step={1} value={pct}
+                                  onChange={(e) => adjustInvestAlloc(cat.id, parseFloat(e.target.value) || 0)}
+                                  style={{ width: 38, background: 'transparent', border: 'none', outline: 'none', fontSize: 13, fontWeight: 700, textAlign: 'right', color: 'var(--text-primary)' }}
+                                />
+                                <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>%</span>
+                              </div>
+                              <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0, minWidth: 54, textAlign: 'right' }}>
+                                {investPct > 0 ? fmt(amt) : '—'}
+                              </span>
+                            </div>
+                            <div style={{ height: 3, background: 'var(--bg-surface)', borderRadius: 99, overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${pct}%`, background: cat.color || 'var(--accent)', borderRadius: 99, transition: 'width .2s' }} />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* Totale % + bottone Applica */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: investTotalPct === 100 ? '#4ade80' : 'var(--warning)' }}>
+                        {investTotalPct === 100 ? tl('investTotalOk') : tl('investTotalWarn', { pct: investTotalPct })}
+                      </span>
+                      <button
+                        onClick={applyInvestConfig}
+                        disabled={investTotalPct !== 100 || investPct === 0}
+                        style={{
+                          background: investTotalPct === 100 && investPct > 0 ? 'var(--accent)' : 'var(--bg-surface)',
+                          color: investTotalPct === 100 && investPct > 0 ? 'var(--text-on-accent)' : 'var(--text-tertiary)',
+                          border: '1px solid var(--border-subtle)', borderRadius: 9, padding: '6px 16px', fontSize: 12, fontWeight: 700,
+                          cursor: investTotalPct === 100 && investPct > 0 ? 'pointer' : 'default',
+                        }}
+                      >
+                        {tl('investApplyBtn')}
+                      </button>
                     </div>
                   </div>
                 )}
