@@ -104,11 +104,11 @@ const defaultCategories: BudgetCategory[] = [
   { id: 'sub-rendite', name: 'Rendite',  emoji: '📈', color: '#5bc8d0', monthlyBudget: 0, group: 'income', type: 'income' },
   // ── ENTRATE — Lavoro ─────────────────────────────────────────
   { id: 'inc-1', name: 'Stipendio',     emoji: '💼', color: '#4ade80', monthlyBudget: 0, group: 'income', type: 'income', parentId: 'sub-lavoro' },
-  { id: 'inc-4', name: 'Bonus / Extra', emoji: '🎁', color: '#f77c3a', monthlyBudget: 0, group: 'income', type: 'income', variable: true, parentId: 'sub-lavoro' },
+  { id: 'inc-4', name: 'Bonus / Extra', emoji: '🎁', color: '#f77c3a', monthlyBudget: 0, group: 'income', type: 'income', parentId: 'sub-lavoro' },
   // ── ENTRATE — Rendite ────────────────────────────────────────
-  { id: 'inc-3', name: 'Dividendi',     emoji: '📈', color: '#5bc8d0', monthlyBudget: 0, group: 'income', type: 'income', variable: true, parentId: 'sub-rendite' },
-  { id: 'inc-2', name: 'Rimborsi',      emoji: '🔄', color: '#86efac', monthlyBudget: 0, group: 'income', type: 'income', variable: true, parentId: 'sub-rendite' },
-  { id: 'inc-5', name: 'Altro',         emoji: '💰', color: '#a78bfa', monthlyBudget: 0, group: 'income', type: 'income', variable: true, parentId: 'sub-rendite' },
+  { id: 'inc-3', name: 'Dividendi',     emoji: '📈', color: '#5bc8d0', monthlyBudget: 0, group: 'income', type: 'income', parentId: 'sub-rendite' },
+  { id: 'inc-2', name: 'Rimborsi',      emoji: '🔄', color: '#86efac', monthlyBudget: 0, group: 'income', type: 'income', parentId: 'sub-rendite' },
+  { id: 'inc-5', name: 'Altro',         emoji: '💰', color: '#a78bfa', monthlyBudget: 0, group: 'income', type: 'income', parentId: 'sub-rendite' },
   // ── NECESSITÀ — subcategorie ────────────────────────────────
   { id: 'sub-casa',  name: 'Casa',            emoji: '🏠', color: '#7c6df7', monthlyBudget: 0, group: 'needs', type: 'expense' },
   { id: 'sub-trasp', name: 'Trasporti',       emoji: '🚗', color: '#58a6ff', monthlyBudget: 0, group: 'needs', type: 'expense' },

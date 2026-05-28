@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Gabriele\\\\OneDrive\\\\Coding\\\\Portfolio\\\\financehub\" -Force -Recurse -Depth 3)",
+      "Bash(Select-Object FullName)",
+      "Bash(Head -100)",
+      "WebFetch(domain:api.anthropic.com)",
+      "Read(//c/Users/Gabriele/.claude/projects/c--Users-Gabriele-OneDrive-Coding-Portfolio-financehub/7065997a-0c1a-4a0a-884d-57b673561564/tool-results/design_extracted/portfolio-e-spese/project/**)",
+      "Read(//tmp/design_bundle/portfolio-e-spese/project/**)",
+      "Bash(find /tmp/design_bundle -name \"*.jsx\" | sort)",
+      "Read(//tmp/**)",
+      "Bash(npm run *)",
+      "Bash(cmd.exe /c \"taskkill /PID 19648 /F\")",
+      "Bash(curl -s \"http://localhost:3000/api/prices?tickers=AAPL,MSFT\")",
+      "Bash(node -e \"const d=require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\); try { const j=JSON.parse\\(d\\); console.log\\('quotes count:', j.quotes?.length\\); console.log\\('first quote:', JSON.stringify\\(j.quotes?.[0]?.ticker\\), j.quotes?.[0]?.price\\); console.log\\('eurUsd:', j.eurUsd\\) } catch\\(e\\) { console.log\\('raw:', d.slice\\(0,300\\)\\) }\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" --max-time 10 http://localhost:3000/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" --max-time 15 http://localhost:3000/)"
+    ]
+  }
+}

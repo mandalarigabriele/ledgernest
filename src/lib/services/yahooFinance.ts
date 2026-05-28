@@ -164,6 +164,23 @@ export async function fetchHourlyHistory(ticker: string): Promise<Map<string, nu
   return map
 }
 
+export async function fetchDividendHistory(ticker: string): Promise<{ date: string; amount: number }[]> {
+  try {
+    const url = `${BASE}/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=2y&events=div`
+    const res = await fetch(url, { headers: HEADERS, next: { revalidate: 0 } })
+    if (!res.ok) return []
+    const json = await res.json() as {
+      chart: { result: Array<{ events?: { dividends?: Record<string, { date: number; amount: number }> } }> | null }
+    }
+    const divs = json.chart?.result?.[0]?.events?.dividends ?? {}
+    return Object.values(divs)
+      .map((d) => ({ date: new Date(d.date * 1000).toISOString().slice(0, 10), amount: d.amount }))
+      .sort((a, b) => a.date.localeCompare(b.date))
+  } catch {
+    return []
+  }
+}
+
 export async function fetchEurUsd(): Promise<number> {
   try {
     const result = await fetchChart('EURUSD=X', '5d', '1d')

@@ -42,15 +42,25 @@ export function usePortfolioChart(timeframe: Timeframe, filter: AssetFilter = 'a
 
     const points: ChartPoint[] = filtered.map(s => {
       let value: number
-      if (filter === 'stocks') value = s.stocks || 0
-      else if (filter === 'etf') value = s.etf || 0
-      else if (filter === 'crypto') value = s.crypto || 0
-      else value = s.value || 0
+      let invested: number
+      if (filter === 'stocks') {
+        value    = s.stocks || 0
+        invested = (s.stocksInvested ?? s.stocks) || 0
+      } else if (filter === 'etf') {
+        value    = s.etf || 0
+        invested = (s.etfInvested ?? s.etf) || 0
+      } else if (filter === 'crypto') {
+        value    = s.crypto || 0
+        invested = (s.cryptoInvested ?? s.crypto) || 0
+      } else {
+        value    = s.value || 0
+        invested = s.invested || 0
+      }
 
       return {
         date: new Date(s.ts).toISOString(),
         value,
-        invested: s.invested || 0,
+        invested,
       }
     }).filter(p => p.value > 0) // skip zero-value points (incomplete old data)
 

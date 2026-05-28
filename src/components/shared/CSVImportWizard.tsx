@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useFinanceStore } from '@/stores/financeStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import {
@@ -10,7 +10,6 @@ import {
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useFormatters } from '@/hooks/useFormatters'
 import { usePrices } from '@/hooks/usePrices'
-import { CG_ID_MAP } from '@/lib/services/coinGecko'
 import { CategoryPicker } from '@/components/shared/CategoryPicker'
 import MerchantInput from '@/components/shared/MerchantInput'
 
@@ -33,6 +32,151 @@ const FORMAT_LABEL: Record<DetectedFormat, string> = {
 }
 
 // use ParsedRow directly; casts applied at mutation sites
+
+// ── TickerSearchInput ─────────────────────────────────────────
+
+interface TickerResult { ticker: string; name: string; exchange?: string; quoteType?: string }
+
+function TickerSearchInput({
+  value, onChange, assetType, required,
+}: {
+  value: string
+  onChange: (ticker: string, result?: TickerResult) => void
+  assetType: string
+  required?: boolean
+}) {
+  const [query, setQuery]         = useState(value)
+  const [results, setResults]     = useState<TickerResult[]>([])
+  const [open, setOpen]           = useState(false)
+  const [loading, setLoading]     = useState(false)
+  const [activeIdx, setActiveIdx] = useState(-1)
+  const [confirmed, setConfirmed] = useState(!!value)
+  const [dropPos, setDropPos]     = useState<{ top: number; left: number; width: number } | null>(null)
+  const debounce  = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const inputRef  = useRef<HTMLInputElement>(null)
+
+  // Close on outside click
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      const target = e.target as Node
+      if (!inputRef.current?.contains(target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  function openDropdown() {
+    if (!inputRef.current) return
+    const r = inputRef.current.getBoundingClientRect()
+    setDropPos({ top: r.bottom + 4, left: r.left, width: Math.max(r.width, 280) })
+    setOpen(true)
+  }
+
+  function search(q: string) {
+    if (!q.trim()) { setResults([]); setLoading(false); return }
+    setLoading(true)
+    const type = assetType === 'crypto' ? 'crypto' : 'stock'
+    fetch(`/api/ticker-search?q=${encodeURIComponent(q)}&type=${type}`)
+      .then((r) => r.json())
+      .then((data: TickerResult[]) => {
+        setResults(data.slice(0, 7))
+        setLoading(false)
+        if (data.length > 0) openDropdown()
+      })
+      .catch(() => setLoading(false))
+  }
+
+  function handleInput(v: string) {
+    setQuery(v)
+    setConfirmed(false)
+    setActiveIdx(-1)
+    if (debounce.current) clearTimeout(debounce.current)
+    debounce.current = setTimeout(() => search(v), 300)
+    onChange(v.toUpperCase())
+  }
+
+  function select(r: TickerResult) {
+    setQuery(r.ticker)
+    setConfirmed(true)
+    setOpen(false)
+    setResults([])
+    onChange(r.ticker, r)
+  }
+
+  function handleKey(e: React.KeyboardEvent) {
+    if (!open || results.length === 0) return
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIdx((i) => Math.min(i + 1, results.length - 1)) }
+    if (e.key === 'ArrowUp')   { e.preventDefault(); setActiveIdx((i) => Math.max(i - 1, 0)) }
+    if (e.key === 'Enter' && activeIdx >= 0) { e.preventDefault(); select(results[activeIdx]) }
+    if (e.key === 'Escape') setOpen(false)
+  }
+
+  const isEmpty   = !query.trim()
+  const borderCol = confirmed           ? 'var(--success, #3fb950)'
+                  : required && isEmpty ? '#f85149'
+                  : 'var(--border-subtle)'
+
+  return (
+    <div style={{ position: 'relative', width: 160 }}>
+      <input
+        ref={inputRef}
+        value={query}
+        onChange={(e) => handleInput(e.target.value)}
+        onKeyDown={handleKey}
+        onFocus={() => { if (results.length > 0) openDropdown() }}
+        placeholder={assetType === 'crypto' ? 'es. BTC' : 'es. NVDA'}
+        style={{
+          width: '100%', padding: '5px 28px 5px 8px', borderRadius: 6,
+          border: `1.5px solid ${borderCol}`,
+          background: 'var(--bg-elevated)', color: 'var(--text-primary)',
+          fontSize: 12, fontFamily: 'monospace', outline: 'none',
+          boxSizing: 'border-box',
+        }}
+      />
+      <span style={{
+        position: 'absolute', right: 7, top: '50%', transform: 'translateY(-50%)',
+        fontSize: 11, color: loading ? 'var(--text-tertiary)' : confirmed ? 'var(--success, #3fb950)' : 'transparent',
+        pointerEvents: 'none',
+      }}>
+        {loading ? '…' : confirmed ? '✓' : ''}
+      </span>
+
+      {/* Dropdown rendered via fixed positioning to escape table overflow:hidden */}
+      {open && results.length > 0 && dropPos && (
+        <div style={{
+          position: 'fixed',
+          top: dropPos.top,
+          left: dropPos.left,
+          width: dropPos.width,
+          zIndex: 99999,
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 8,
+          boxShadow: '0 8px 32px rgba(0,0,0,.65)',
+          overflow: 'hidden',
+        }}>
+          {results.map((r, i) => (
+            <div
+              key={r.ticker}
+              onMouseDown={(e) => { e.preventDefault(); select(r) }}
+              onMouseEnter={() => setActiveIdx(i)}
+              style={{
+                padding: '8px 12px', cursor: 'pointer', fontSize: 12.5,
+                background: i === activeIdx ? 'var(--accent-dim)' : 'transparent',
+                display: 'flex', alignItems: 'center', gap: 10,
+                borderBottom: i < results.length - 1 ? '1px solid var(--border-subtle)' : 'none',
+              }}
+            >
+              <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent)', minWidth: 72, fontSize: 12 }}>{r.ticker}</span>
+              <span style={{ color: 'var(--text-primary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12 }}>{r.name}</span>
+              {r.exchange && <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>{r.exchange}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 // ── props ─────────────────────────────────────────────────────
 
@@ -60,10 +204,6 @@ export default function CSVImportWizard({ onClose }: Props) {
   const [creatingAccount, setCreatingAccount] = useState(false)
   const [newName, setNewName]                 = useState('')
   const [newType, setNewType]                 = useState<'bank' | 'broker' | 'crypto'>('bank')
-  const [lookingUp, setLookingUp]             = useState<Record<string, boolean>>({})
-  // sourceId → 'loading' | 'valid' | 'invalid' | ''
-  const [tickerVal, setTickerVal]             = useState<Record<string, string>>({})
-  const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   // Date filter (applied to all rows before review)
   const [filterFromDate, setFilterFromDate] = useState('')
@@ -204,74 +344,10 @@ export default function CSVImportWizard({ onClose }: Props) {
     e.target.value = ''
   }, [readFile])
 
-  // ── ISIN → ticker lookup via Yahoo Finance ────────────────────
-
-  const lookupISIN = useCallback(async (isin: string, idx: number, sourceId: string) => {
-    if (!isin) return
-    setLookingUp((p) => ({ ...p, [isin]: true }))
-    setTickerVal((p) => ({ ...p, [sourceId]: 'loading' }))
-    try {
-      const res = await fetch(`/api/ticker-search?q=${encodeURIComponent(isin)}`)
-      const results: Array<{ ticker: string; name: string }> = await res.json()
-      if (results.length > 0) {
-        setRows((prev) => prev.map((r, i) => i === idx ? { ...r, ticker: results[0].ticker } as ParsedRow : r))
-        setTickerVal((p) => ({ ...p, [sourceId]: 'valid' }))
-      } else {
-        setTickerVal((p) => ({ ...p, [sourceId]: 'invalid' }))
-      }
-    } catch {
-      setTickerVal((p) => ({ ...p, [sourceId]: 'invalid' }))
-    } finally {
-      setLookingUp((p) => { const n = { ...p }; delete n[isin]; return n })
-    }
-  }, [])
-
-  // ── manual ticker validation (debounced, 500 ms) ──────────────
-
-  const validateTicker = useCallback(async (ticker: string, sourceId: string, assetType: string) => {
-    if (!ticker.trim()) { setTickerVal((p) => ({ ...p, [sourceId]: '' })); return }
-    setTickerVal((p) => ({ ...p, [sourceId]: 'loading' }))
-    if (assetType === 'crypto') {
-      // Instant lookup against local CoinGecko ID map — no API call needed
-      const valid = ticker.toUpperCase() in CG_ID_MAP
-      setTickerVal((p) => ({ ...p, [sourceId]: valid ? 'valid' : 'invalid' }))
-      return
-    }
-    try {
-      const res = await fetch(`/api/ticker-search?q=${encodeURIComponent(ticker)}`)
-      const results: Array<{ ticker: string }> = await res.json()
-      const exact = results.some((r) => r.ticker.toUpperCase() === ticker.toUpperCase())
-      setTickerVal((p) => ({ ...p, [sourceId]: exact ? 'valid' : 'invalid' }))
-    } catch {
-      setTickerVal((p) => ({ ...p, [sourceId]: 'invalid' }))
-    }
-  }, [])
-
-  function onTickerChange(ticker: string, sourceId: string, rowIdx: number) {
-    patchRow(rowIdx, { ticker: ticker.toUpperCase() })
-    setTickerVal((p) => ({ ...p, [sourceId]: '' }))
-    clearTimeout(debounceTimers.current[sourceId])
-    if (ticker.trim()) {
-      const row = rows[rowIdx]
-      const assetType = row.kind === 'trade' ? (row as ParsedTrade).assetType : 'stock'
-      debounceTimers.current[sourceId] = setTimeout(() => validateTicker(ticker.toUpperCase(), sourceId, assetType), 500)
-    }
-  }
-
   // ── step navigation ───────────────────────────────────────────
 
   const goToStep2 = () => {
     if (!fileName) return
-    // Validate all trade tickers upfront: lookup missing ISINs and validate pre-filled tickers
-    tradeRows.forEach((r) => {
-      const globalIdx = rows.indexOf(r)
-      if (!r.ticker && r.isin) {
-        lookupISIN(r.isin, globalIdx, r.sourceId)
-      } else if (r.ticker) {
-        validateTicker(r.ticker, r.sourceId, r.assetType)
-      }
-    })
-    // Default to first account
     if (!accountId && accounts.length > 0) setAccountId(accounts[0].id)
     setStep(2)
   }
@@ -709,7 +785,6 @@ export default function CSVImportWizard({ onClose }: Props) {
                       <tbody>
                         {tradeRows.map((trade) => {
                           const idx = rows.indexOf(trade)
-                          const isLoading = !!lookingUp[trade.isin]
                           return (
                             <tr key={trade.sourceId} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                               <td style={{ padding: '8px 12px', fontWeight: 500 }}>{trade.name}</td>
@@ -732,49 +807,15 @@ export default function CSVImportWizard({ onClose }: Props) {
                                 {trade.amount > 0 ? fmt(trade.amount) : '—'}
                               </td>
                               <td style={{ padding: '8px 12px' }}>
-                                {isLoading ? (
-                                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Ricerca…</span>
+                                {trade.isFreeReceipt ? (
+                                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>—</span>
                                 ) : (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <div style={{ position: 'relative' }}>
-                                      <input
-                                        value={trade.ticker}
-                                        onChange={(e) => onTickerChange(e.target.value, trade.sourceId, idx)}
-                                        placeholder="es. NVDA"
-                                        style={{
-                                          padding: '4px 26px 4px 8px', borderRadius: 6,
-                                          border: `1px solid ${
-                                            tickerVal[trade.sourceId] === 'valid'   ? 'var(--success, #3fb950)' :
-                                            tickerVal[trade.sourceId] === 'invalid' ? '#f85149' :
-                                            !trade.ticker && !trade.isFreeReceipt   ? '#f85149' :
-                                            'var(--border-subtle)'
-                                          }`,
-                                          background: 'var(--bg-elevated)', color: 'var(--text-primary)',
-                                          fontSize: 12, fontFamily: 'monospace', width: 100, outline: 'none',
-                                        }}
-                                      />
-                                      {/* Validation badge */}
-                                      <span style={{
-                                        position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
-                                        fontSize: 12, lineHeight: 1,
-                                        color: tickerVal[trade.sourceId] === 'valid'   ? 'var(--success, #3fb950)' :
-                                               tickerVal[trade.sourceId] === 'invalid' ? '#f85149' :
-                                               tickerVal[trade.sourceId] === 'loading' ? 'var(--text-tertiary)' : 'transparent',
-                                      }}>
-                                        {tickerVal[trade.sourceId] === 'loading' ? '…' :
-                                         tickerVal[trade.sourceId] === 'valid'   ? '✓' :
-                                         tickerVal[trade.sourceId] === 'invalid' ? '✗' : ''}
-                                      </span>
-                                    </div>
-                                    {trade.isin && !trade.ticker && (
-                                      <button
-                                        onClick={() => lookupISIN(trade.isin, idx, trade.sourceId)}
-                                        style={{ fontSize: 10.5, padding: '3px 8px', borderRadius: 5, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', cursor: 'pointer', color: 'var(--accent)' }}
-                                      >
-                                        Cerca
-                                      </button>
-                                    )}
-                                  </div>
+                                  <TickerSearchInput
+                                    value={trade.ticker}
+                                    assetType={trade.assetType}
+                                    required={!trade.isFreeReceipt}
+                                    onChange={(ticker) => patchRow(idx, { ticker })}
+                                  />
                                 )}
                               </td>
                             </tr>
@@ -974,14 +1015,13 @@ export default function CSVImportWizard({ onClose }: Props) {
           {step === 2 && (
             <>
               <button className="ledgernest-btn ledgernest-btn-ghost" onClick={() => setStep(1)}>← Indietro</button>
-              {Object.values(tickerVal).some((v) => v === 'invalid') && (
-                <span style={{ fontSize: 11.5, color: '#f85149', marginLeft: 8 }}>Alcuni ticker non trovati su Yahoo Finance</span>
+              {tradeRows.some((t) => !t.isFreeReceipt && !t.ticker.trim()) && (
+                <span style={{ fontSize: 11.5, color: '#f85149', marginLeft: 8 }}>Alcuni ticker mancanti</span>
               )}
               <button
                 className="ledgernest-btn"
                 disabled={
                   (!accountId && !(creatingAccount && newName.trim())) ||
-                  Object.values(tickerVal).some((v) => v === 'loading') ||
                   tradeRows.some((t) => !t.isFreeReceipt && !t.ticker.trim())
                 }
                 onClick={goToStep3}

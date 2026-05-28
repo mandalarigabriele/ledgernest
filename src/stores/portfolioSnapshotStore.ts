@@ -8,6 +8,9 @@ export interface PortfolioSnapshot {
   stocks: number   // stocks value
   etf: number      // etf value
   crypto: number   // crypto value
+  stocksInvested?: number
+  etfInvested?: number
+  cryptoInvested?: number
 }
 
 interface PortfolioSnapshotStore {

@@ -54,7 +54,6 @@ export interface BudgetCategory {
   parentId?: string
   type?: 'income' | 'expense' | 'transfer'
   iconName?: string
-  variable?: boolean
 }
 
 export interface RecurringItem {

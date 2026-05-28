@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { $p = Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue; \"PID=$\\($_.OwningProcess\\) $\\($p.Name\\)\" })",
+      "Bash(curl -s -w \"\\\\n%{http_code}\\\\n%{time_total}s\" --max-time 60 http://localhost:3000/)",
+      "Bash(npx tsc *)",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:3000\" -TimeoutSec 60 -UseBasicParsing; $r.StatusCode } catch { $_.Exception.Message })",
+      "PowerShell(Stop-Process -Id 41552 -Force)",
+      "PowerShell($job = Start-Process -FilePath \"cmd.exe\" -ArgumentList \"/c\", \"cd /d `\"c:\\\\Users\\\\Gabriele\\\\OneDrive\\\\Coding\\\\Portfolio\\\\financehub`\" && npm run dev > `\"C:\\\\Users\\\\Gabriele\\\\AppData\\\\Local\\\\Temp\\\\nextjs-dev.log`\" 2>&1\" -PassThru -WindowStyle Hidden; Start-Sleep -Seconds 3; Write-Host \"PID: $\\($job.Id\\)\")",
+      "Bash(curl -s -w \"\\\\n%{http_code}\" --max-time 30 http://localhost:3000/api/ticker-info?ticker=AAPL)",
+      "PowerShell(Test-NetConnection -ComputerName localhost -Port 3000 -InformationLevel Quiet)",
+      "Bash(npx next *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" --max-time 5 http://localhost:3000/)",
+      "PowerShell(Get-Process node -ErrorAction SilentlyContinue)",
+      "PowerShell(Stop-Process -Name node -Force -ErrorAction SilentlyContinue)",
+      "Bash(NEXT_TELEMETRY_DISABLED=1 npm run build)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\Gabriele\\\\source\\\\repos\\\\financehub\" -Recurse -Force | Select-Object FullName | ForEach-Object { $_.FullName -replace [regex]::Escape\\(\"c:\\\\Users\\\\Gabriele\\\\source\\\\repos\\\\financehub\"\\), \".\" } | Select-Object -First 150)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Gabriele\\\\source\\\\repos\\\\financehub\\\\src\" -Name)",
+      "Bash(node -e ' *)"
+    ]
+  }
+}

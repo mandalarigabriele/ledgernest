@@ -671,9 +671,6 @@ export default function BudgetPage() {
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <div style={{ width: 26, height: 26, borderRadius: 7, background: `${cat.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, flexShrink: 0 }}>{cat.emoji}</div>
                                 <span className="ledgernest-budget-cat-name" style={{ fontWeight: 600, fontSize: 13 }}>{cat.name}</span>
-                                {cat.variable && (
-                                  <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', color: 'var(--text-tertiary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 4, padding: '1px 5px' }}>{tl('badgeVariable')}</span>
-                                )}
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg-elevated)', borderRadius: 8, padding: '3px 8px', border: '1px solid var(--border-subtle)' }}>
@@ -714,9 +711,6 @@ export default function BudgetPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <div style={{ width: 28, height: 28, borderRadius: 7, background: `${cat.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>{cat.emoji}</div>
                           <span className="ledgernest-budget-cat-name" style={{ fontWeight: 600, fontSize: 13 }}>{cat.name}</span>
-                          {cat.variable && (
-                            <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', color: 'var(--text-tertiary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 4, padding: '1px 5px' }}>VARIABILE</span>
-                          )}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg-elevated)', borderRadius: 8, padding: '3px 8px', border: '1px solid var(--border-subtle)' }}>

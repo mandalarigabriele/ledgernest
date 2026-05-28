@@ -19,7 +19,9 @@ export function usePortfolioSnapshot() {
     const lastTs = snapshots.length > 0 ? snapshots[snapshots.length - 1].ts : 0
     if (Date.now() - lastTs < MIN_INTERVAL_MS) return
 
-    let value = 0, invested = 0, stocks = 0, etf = 0, crypto = 0
+    let value = 0, invested = 0
+    let stocks = 0, etf = 0, crypto = 0
+    let stocksInvested = 0, etfInvested = 0, cryptoInvested = 0
 
     for (const p of positions) {
       const priceEur = getPriceEur(p.ticker) ?? (p.avgPrice / (p.currency === 'USD' ? eurUsd : 1))
@@ -27,14 +29,14 @@ export function usePortfolioSnapshot() {
       const avgEur = p.currency === 'USD' ? p.avgPrice / eurUsd : p.avgPrice
       const posCost = avgEur * p.quantity
 
-      value += posValue
+      value    += posValue
       invested += posCost
 
-      if (p.type === 'stock') stocks += posValue
-      else if (p.type === 'etf') etf += posValue
-      else if (p.type === 'crypto') crypto += posValue
+      if (p.type === 'stock')       { stocks += posValue;  stocksInvested += posCost }
+      else if (p.type === 'etf')    { etf    += posValue;  etfInvested    += posCost }
+      else if (p.type === 'crypto') { crypto += posValue;  cryptoInvested += posCost }
     }
 
-    if (value > 0) addSnapshot({ value, invested, stocks, etf, crypto })
+    if (value > 0) addSnapshot({ value, invested, stocks, etf, crypto, stocksInvested, etfInvested, cryptoInvested })
   }, [lastUpdated]) // eslint-disable-line react-hooks/exhaustive-deps
 }

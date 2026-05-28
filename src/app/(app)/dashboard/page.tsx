@@ -3,12 +3,14 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { usePortfolioStore } from '@/stores/portfolioStore'
+import { usePortfolioSnapshotStore } from '@/stores/portfolioSnapshotStore'
 import { useFinanceStore } from '@/stores/financeStore'
 import { usePricesStore } from '@/stores/pricesStore'
 import { usePrices } from '@/hooks/usePrices'
 import { fmtDate } from '@/lib/utils/format'
 import { useFormatters } from '@/hooks/useFormatters'
 import Donut from '@/components/charts/Donut'
+import type { DivEvent } from '@/components/charts/DivCalendar'
 import BarChart from '@/components/charts/BarChart'
 import Sparkline from '@/components/charts/Sparkline'
 import Heatmap from '@/components/charts/Heatmap'
@@ -28,7 +30,8 @@ export default function DashboardPage() {
   const { fmt, fmt0, fmtCpt } = useFormatters()
 
   const { positions } = usePortfolioStore()
-  const { accounts, transactions, monthlyExpenses, monthlyIncome, totalCash, budgetCategories, merchantLogos } = useFinanceStore()
+  const { snapshots } = usePortfolioSnapshotStore()
+  const { accounts, transactions, monthlyExpenses, monthlyIncome, totalCash, budgetCategories, merchantLogos, budgetPlans } = useFinanceStore()
   const { quotes, eurUsd } = usePricesStore()
 
   const currentMonth = new Date().toISOString().slice(0, 7)
@@ -51,9 +54,13 @@ export default function DashboardPage() {
   const pnl     = portfolioValue - cost
   const pnlPct  = cost > 0 ? (pnl / cost) * 100 : 0
 
-  const income   = monthlyIncome(currentMonth)
-  const expenses = monthlyExpenses(currentMonth)
-  const savings  = income - expenses
+  const income      = monthlyIncome(currentMonth)
+  const expenses    = monthlyExpenses(currentMonth)
+  const savings     = income - expenses
+  // Use budget planned income as denominator when actual income hasn't arrived yet
+  const budgetIncome = budgetPlans[currentMonth]?.income ?? 0
+  const refIncome    = budgetIncome > income ? budgetIncome : income
+  const savingsRate  = refIncome > 0 ? (savings / refIncome) * 100 : 0
 
   const dayChange = useMemo(() =>
     positions.reduce((sum, p) => {
@@ -71,8 +78,18 @@ export default function DashboardPage() {
       d.setMonth(d.getMonth() - i)
       months.push(d.toISOString().slice(0, 7))
     }
-    return months.map((m) => ({ label: m.slice(5), income: monthlyIncome(m), expense: monthlyExpenses(m) }))
-  }, [transactions]) // eslint-disable-line react-hooks/exhaustive-deps
+    return months.map((m) => {
+      const plannedIncome = budgetPlans[m]?.income
+      const actualIncome  = monthlyIncome(m)
+      return {
+        label: m.slice(5),
+        income: actualIncome,
+        expense: monthlyExpenses(m),
+        // show ghost bar only when budget is set and actual < expected
+        budgetIncome: plannedIncome != null && plannedIncome > actualIncome ? plannedIncome : undefined,
+      }
+    })
+  }, [transactions, budgetPlans]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ─── Allocation ─── */
   const byType = useMemo(() => {
@@ -113,34 +130,99 @@ export default function DashboardPage() {
     })),
   [sortedPositions])
 
-  /* ─── Heatmap (real data from API) ─── */
-  const [heatmapData, setHeatmapData]     = useState<number[][]>([[], [], []])
-  const [heatmapMonths, setHeatmapMonths] = useState<string[]>([])
+  /* ─── Heatmap — intra-month % per asset class ─── */
+  // Current month  → live unrealized P&L % from positions + quotes (no snapshot needed)
+  // Past months    → (last_snapshot / first_snapshot - 1) per class; 0 if no data yet
+  const { heatmapData, heatmapMonths } = useMemo(() => {
+    const IT_M = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic']
+    const now  = new Date()
+    const currentYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+
+    const keys: string[] = []
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      keys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+    }
+
+    // First and last snapshot per calendar month
+    type Snap = typeof snapshots[0]
+    const firstByMonth: Record<string, Snap> = {}
+    const lastByMonth:  Record<string, Snap> = {}
+    for (const snap of snapshots) {
+      const ym = new Date(snap.ts).toISOString().slice(0, 7)
+      if (!firstByMonth[ym] || snap.ts < firstByMonth[ym].ts) firstByMonth[ym] = snap
+      if (!lastByMonth[ym]  || snap.ts > lastByMonth[ym].ts)  lastByMonth[ym]  = snap
+    }
+
+    // Live unrealized P&L % for the current month (works even with 0 historical snapshots)
+    function liveReturn(type: string): number {
+      let cur = 0, cost = 0
+      for (const p of positions) {
+        if (p.type !== type) continue
+        const q          = quotes[p.ticker]
+        const priceEur   = q?.priceEur ?? (q?.price != null ? (p.currency === 'USD' ? q.price / eurUsd : q.price) : (p.currency === 'USD' ? p.avgPrice / eurUsd : p.avgPrice))
+        const avgPriceEur = p.currency === 'USD' ? p.avgPrice / eurUsd : p.avgPrice
+        cur  += priceEur   * p.quantity
+        cost += avgPriceEur * p.quantity
+      }
+      return cost > 0 ? +((cur / cost - 1) * 100).toFixed(1) : 0
+    }
+
+    const stockR: number[]  = []
+    const etfR:   number[]  = []
+    const cryptoR: number[] = []
+    const months: string[]  = []
+
+    for (const ym of keys) {
+      const [, m] = ym.split('-').map(Number)
+      months.push(IT_M[m - 1])
+
+      if (ym === currentYM) {
+        stockR.push(liveReturn('stock'))
+        etfR.push(liveReturn('etf'))
+        cryptoR.push(liveReturn('crypto'))
+        continue
+      }
+
+      const first = firstByMonth[ym]
+      const last  = lastByMonth[ym]
+      if (first && last && first.ts !== last.ts && (first.stocks ?? 0) > 0) {
+        stockR.push( +((last.stocks  / first.stocks  - 1) * 100).toFixed(1))
+        etfR.push(   first.etf    > 0 ? +((last.etf    / first.etf    - 1) * 100).toFixed(1) : 0)
+        cryptoR.push(first.crypto > 0 ? +((last.crypto / first.crypto - 1) * 100).toFixed(1) : 0)
+      } else {
+        stockR.push(0); etfR.push(0); cryptoR.push(0)
+      }
+    }
+
+    return { heatmapData: [stockR, etfR, cryptoR], heatmapMonths: months }
+  }, [snapshots, positions, quotes, eurUsd])
+
+  /* ─── Sparklines — real 10-day closes per ticker ─── */
+  const [sparkData, setSparkData] = useState<Record<string, number[]>>({})
 
   useEffect(() => {
     if (positions.length === 0) return
-    const body = { positions: positions.map((p) => ({ ticker: p.ticker, type: p.type, quantity: p.quantity, currency: p.currency })) }
-    fetch('/api/portfolio/heatmap', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    const tickers = positions.map((p) => p.ticker).join(',')
+    fetch(`/api/sparklines?tickers=${encodeURIComponent(tickers)}`)
       .then((r) => r.json())
-      .then(({ data, months }: { data: number[][]; months: string[] }) => {
-        setHeatmapData(data)
-        setHeatmapMonths(months)
-      })
+      .then((data: Record<string, number[]>) => setSparkData(data))
       .catch(() => {})
-  }, [positions])
+  }, [positions.map((p) => p.ticker).join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* ─── Dividend calendar (synthetic from positions) ─── */
-  const divEvents = useMemo(() => {
-    const events: { week: number; day: number; ticker: string }[] = []
-    positions
+  /* ─── Dividend calendar — predicted upcoming ex-div dates ─── */
+  const [divEvents, setDivEvents] = useState<DivEvent[]>([])
+
+  useEffect(() => {
+    const divTickers = positions
       .filter((p) => p.type === 'stock' || p.type === 'etf')
-      .forEach((p, pi) => {
-        const baseWeek = (pi * 3) % 12
-        events.push({ week: baseWeek, day: pi % 5, ticker: p.ticker })
-        if (baseWeek + 4 < 12) events.push({ week: baseWeek + 4, day: (pi + 1) % 5, ticker: p.ticker })
-      })
-    return events
-  }, [positions])
+      .map((p) => p.ticker)
+    if (divTickers.length === 0) { setDivEvents([]); return }
+    fetch(`/api/dividends?tickers=${encodeURIComponent(divTickers.join(','))}`)
+      .then((r) => r.json())
+      .then(({ events }: { events: DivEvent[] }) => setDivEvents(events))
+      .catch(() => {})
+  }, [positions.filter((p) => p.type === 'stock' || p.type === 'etf').map((p) => p.ticker).join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const recentTx = transactions.slice(0, 7)
 
@@ -185,9 +267,13 @@ export default function DashboardPage() {
           <div className="ledgernest-kpi-value">{fmt0(savings)}</div>
           <div className="ledgernest-kpi-foot">
             <span className={`ledgernest-kpi-delta ${savings >= 0 ? 'is-up' : ''}`}>
-              {income > 0 ? ((savings / income) * 100).toFixed(0) : 0}% {t('ofIncome')}
+              {refIncome > 0 ? savingsRate.toFixed(0) : '0'}% {t('ofIncome')}
             </span>
-            <span className="ledgernest-kpi-sub">{t('target')} {fmt0(income * 0.3)}</span>
+            {budgetIncome > income ? (
+              <span className="ledgernest-kpi-sub">{fmt0(income)} / {fmt0(budgetIncome)} incassati</span>
+            ) : (
+              <span className="ledgernest-kpi-sub">{t('target')} {fmt0(refIncome * 0.3)}</span>
+            )}
           </div>
         </div>
 
@@ -248,21 +334,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Cashflow ── */}
-      <div className="ledgernest-card">
-        <div className="ledgernest-card-head">
-          <div>
-            <div className="ledgernest-card-title">{t('incomeVsExpenses')}</div>
-            <div className="ledgernest-card-sub">{t('last6Months')}</div>
-          </div>
-          <div className="ledgernest-legend-row">
-            <span><i style={{ background: 'var(--success)' }} /></span>
-            <span><i style={{ background: 'var(--danger)' }} /></span>
-          </div>
-        </div>
-        <BarChart data={cashflowBars} paired formatValue={fmt} height={160} />
-      </div>
-
       {/* ── Positions + Movements ── */}
       <div className="ledgernest-grid ledgernest-grid--7-5">
         <div className="ledgernest-card">
@@ -301,7 +372,7 @@ export default function DashboardPage() {
                   <div className="ta-r">{fmt(p.price)}</div>
                   <div className="ta-c">
                     <Sparkline
-                      data={Array.from({ length: 10 }, (_, i) => p.price * (1 + Math.sin(i * 0.8 + p.id.charCodeAt(0)) * 0.015))}
+                      data={sparkData[p.ticker] ?? []}
                       positive={p.chgPct >= 0}
                       width={80}
                       height={28}
@@ -361,8 +432,45 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Heatmap + Dividends calendar + Treemap ── */}
-      <div className="ledgernest-grid ledgernest-grid--row ledgernest-grid--3col">
+      {/* ── Cashflow + Treemap side by side ── */}
+      <div style={{ display: 'flex', gap: 16, alignItems: 'stretch' }}>
+        <div className="ledgernest-card" style={{ flex: '3 1 0', minWidth: 0 }}>
+          <div className="ledgernest-card-head">
+            <div>
+              <div className="ledgernest-card-title">{t('incomeVsExpenses')}</div>
+              <div className="ledgernest-card-sub">{t('last6Months')}</div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: 'var(--success)', display: 'inline-block' }} />
+                Entrate
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: 'var(--danger)', display: 'inline-block' }} />
+                Uscite
+              </span>
+            </div>
+          </div>
+          <BarChart data={cashflowBars} paired formatValue={fmt} height={180} />
+        </div>
+
+        <div className="ledgernest-card" style={{ flex: '2 1 0', minWidth: 0 }}>
+          <div className="ledgernest-card-head">
+            <div>
+              <div className="ledgernest-card-title">{t('positionsWeight')}</div>
+              <div className="ledgernest-card-sub">Treemap · top {treemapData.length}</div>
+            </div>
+          </div>
+          {treemapData.length === 0 ? (
+            <div className="ledgernest-empty"><div className="ledgernest-empty-icon">🗺️</div>{t('noPositions')}</div>
+          ) : (
+            <Treemap data={treemapData} height={180} />
+          )}
+        </div>
+      </div>
+
+      {/* ── Heatmap + Dividends calendar ── */}
+      <div className="ledgernest-grid ledgernest-grid--row">
         <div className="ledgernest-card">
           <div className="ledgernest-card-head">
             <div>
@@ -381,20 +489,6 @@ export default function DashboardPage() {
             </div>
           </div>
           <DivCalendar events={divEvents} height={210} />
-        </div>
-
-        <div className="ledgernest-card">
-          <div className="ledgernest-card-head">
-            <div>
-              <div className="ledgernest-card-title">{t('positionsWeight')}</div>
-              <div className="ledgernest-card-sub">Treemap · top {treemapData.length}</div>
-            </div>
-          </div>
-          {treemapData.length === 0 ? (
-            <div className="ledgernest-empty"><div className="ledgernest-empty-icon">🗺️</div>{t('noPositions')}</div>
-          ) : (
-            <Treemap data={treemapData} height={210} />
-          )}
         </div>
       </div>
 
