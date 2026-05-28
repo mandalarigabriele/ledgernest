@@ -379,18 +379,19 @@ export default function AzioniPage() {
 
   const rows = useMemo(() => stocks.map((p) => {
     const q = quotes[p.ticker]
-    const price = q?.priceEur ?? q?.price ?? p.avgPrice
+    const price = q?.priceEur ?? q?.price ?? p.avgPrice        // regular close — for display
+    const extPrice = q?.preMarketEur ?? q?.postMarketEur        // PM/AH — if present
+    const extLabel = q?.preMarketEur != null ? 'PM' : q?.postMarketEur != null ? 'AH' : null
+    const extChangePct = extPrice != null && price > 0 ? (extPrice / price - 1) * 100 : undefined
+    const effectivePrice = extPrice ?? price                    // best available price for P&L
     const avgPriceEur = p.currency === 'USD' ? p.avgPrice / eurUsd : p.avgPrice
-    const value = price * p.quantity
+    const value = effectivePrice * p.quantity
     const cost = avgPriceEur * p.quantity
     const pnl = value - cost
     const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0
     const dayChangePct = q?.changePct ?? 0
     const seed = p.ticker.charCodeAt(0) + (p.ticker.charCodeAt(1) ?? 0)
     const spark = makeSpark(seed, dayChangePct >= 0)
-    const extPrice = q?.preMarketEur ?? q?.postMarketEur
-    const extLabel = q?.preMarketEur != null ? 'PM' : q?.postMarketEur != null ? 'AH' : null
-    const extChangePct = extPrice != null && price > 0 ? (extPrice / price - 1) * 100 : undefined
     return { ...p, q, price, avgPriceEur, value, cost, pnl, pnlPct, dayChangePct, spark, extPrice, extLabel, extChangePct }
   }), [stocks, quotes, eurUsd])
 
