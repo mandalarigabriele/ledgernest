@@ -5,6 +5,7 @@ import { useSettingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
 import { useFinanceStore } from '@/stores/financeStore'
 import { useServerSync } from '@/hooks/useServerSync'
+import { usePortfolioSnapshot } from '@/hooks/usePortfolioSnapshot'
 import Sidebar from '@/components/layout/Sidebar'
 import Topbar from '@/components/layout/Topbar'
 import BottomNav from '@/components/layout/BottomNav'
@@ -18,6 +19,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { accounts } = useFinanceStore()
   const [mounted, setMounted] = useState(false)
   useServerSync()
+  usePortfolioSnapshot()
 
   useEffect(() => { setMounted(true) }, [])
 

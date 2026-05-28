@@ -14,7 +14,7 @@ const defaultSettings: AppSettings = {
   theme: 'dark',
   locale: 'it',
   currency: 'EUR',
-  refreshInterval: 60,
+  refreshInterval: 600,
   showPrePostMarket: true,
   accentColor: '#5bc8d0',
   density: 'normal',

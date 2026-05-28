@@ -66,7 +66,9 @@ const PERIOD_DAYS: Record<Exclude<ChartPeriod, 'MAX'>, number> = {
 const IT_M = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic']
 
 function fmtChartLabel(dateStr: string, totalDays: number): string {
-  const d = new Date(dateStr + 'T12:00:00')
+  const isDatetime = dateStr.length > 10
+  const d = isDatetime ? new Date(dateStr + ':00Z') : new Date(dateStr + 'T12:00:00')
+  if (isDatetime) return d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', timeZone: 'UTC' })
   if (totalDays <= 35)  return `${d.getDate()} ${IT_M[d.getMonth()]}`
   if (totalDays <= 400) return `${IT_M[d.getMonth()]} '${d.getFullYear().toString().slice(2)}`
   return d.getFullYear().toString()
@@ -82,15 +84,17 @@ function buildChartLabels(pts: { date: string }[], n = 5): string[] {
 }
 
 function EtfChart({
-  positions, period, quotes, eurUsd,
+  positions, period, quotes, eurUsd, pnl,
 }: {
   positions: PortfolioPosition[]
   period: ChartPeriod
   quotes: Record<string, Quote>
   eurUsd: number
+  pnl: number
 }) {
   const tl = useTranslations('etf')
   const tlAzioni = useTranslations('azioni')
+  const { fmt } = useFormatters()
   const { trades } = usePortfolioStore()
   const [chartPts, setChartPts] = useState<ChartPoint[]>([])
   const [loading, setLoading] = useState(false)
@@ -102,7 +106,7 @@ function EtfChart({
     let min = new Date().toISOString().slice(0, 10)
     for (const p of positions) {
       const t = trades.filter(t => t.positionId === p.id && t.type === 'buy').sort((a, b) => a.date.localeCompare(b.date))[0]
-      const d = t?.date ?? p.createdAt.slice(0, 10)
+      const d = p.purchaseDate ?? t?.date ?? new Date().toISOString().slice(0, 10)
       if (d < min) min = d
     }
     return min
@@ -145,7 +149,7 @@ function EtfChart({
     const pParam = positions.map((p) => {
       const currency = quotes[p.ticker]?.currency ?? 'USD'
       const t = trades.filter(t => t.positionId === p.id && t.type === 'buy').sort((a, b) => a.date.localeCompare(b.date))[0]
-      const purchaseDate = t?.date ?? p.createdAt.slice(0, 10)
+      const purchaseDate = p.purchaseDate ?? t?.date ?? new Date().toISOString().slice(0, 10)
       return `${p.ticker}:${p.quantity}:${purchaseDate}:${currency}`
     }).join(',')
     fetch(`/api/portfolio-chart?p=${encodeURIComponent(pParam)}&days=${days}&eurUsd=${eurUsd}`)
@@ -161,7 +165,7 @@ function EtfChart({
   const isLoading = period === '1G' ? false : loading
 
   const W = 500; const H = 160
-  const P = { t: 16, r: 8, b: 26, l: 8 }
+  const P = { t: 16, r: 8, b: 4, l: 8 }
 
   if (isLoading) {
     return (
@@ -185,67 +189,95 @@ function EtfChart({
   const values = pts.map((p) => p.value)
   const labels = period === '1G' ? [tlAzioni('chartYesterday'), tlAzioni('chartToday')] : buildChartLabels(pts)
   const n = values.length
-  const minV = Math.min(...values) * 0.986
-  const maxV = Math.max(...values) * 1.006
+  const minV = Math.min(...values)
+  const maxV = Math.max(...values)
+  const vRange = maxV - minV || 1
+  const yMin = minV - vRange * 0.15
+  const yMax = maxV + vRange * 0.08
   const xS = (i: number) => P.l + (i / (n - 1)) * (W - P.l - P.r)
-  const yS = (v: number) => P.t + (1 - (v - minV) / (maxV - minV)) * (H - P.t - P.b)
+  const yS = (v: number) => P.t + (1 - (v - yMin) / (yMax - yMin)) * (H - P.t - P.b)
 
-  const linePts = values.map((v, i) => `${i === 0 ? 'M' : 'L'}${xS(i).toFixed(1)},${yS(v).toFixed(1)}`).join(' ')
+  const chartColor = pnl >= 0 ? '#22c55e' : '#ef4444'
+
+  let linePts = `M${xS(0).toFixed(1)},${yS(values[0]).toFixed(1)}`
+  for (let i = 1; i < n; i++) {
+    const cpx = ((xS(i - 1) + xS(i)) / 2).toFixed(1)
+    linePts += ` C${cpx},${yS(values[i - 1]).toFixed(1)} ${cpx},${yS(values[i]).toFixed(1)} ${xS(i).toFixed(1)},${yS(values[i]).toFixed(1)}`
+  }
   const area = `${linePts} L${xS(n - 1).toFixed(1)},${(H - P.b).toFixed(1)} L${xS(0).toFixed(1)},${(H - P.b).toFixed(1)} Z`
 
-  const dotRows = 4; const dotCols = 18
-  const dots = Array.from({ length: dotRows }, (_, r) =>
-    Array.from({ length: dotCols }, (_, c) => ({
-      x: P.l + (c / (dotCols - 1)) * (W - P.l - P.r),
-      y: P.t + (r / (dotRows - 1)) * (H - P.t - P.b),
-    }))
-  ).flat()
+  const hoverInfo = hoverIdx !== null ? (() => {
+    const hx = xS(hoverIdx), hy = yS(values[hoverIdx])
+    const tDays = pts.length >= 2
+      ? (new Date(pts.at(-1)!.date).getTime() - new Date(pts[0].date).getTime()) / 86_400_000
+      : 1
+    const dateLabel = period === '1G' ? (hoverIdx === 0 ? tlAzioni('chartYesterday') : tlAzioni('chartToday')) : fmtChartLabel(pts[hoverIdx].date, tDays)
+    return { hx, hy, dateLabel }
+  })() : null
 
   return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      style={{ width: '100%', height: H, display: 'block', cursor: 'crosshair' }}
-      onMouseMove={(e) => {
-        const rect = e.currentTarget.getBoundingClientRect()
-        const x = ((e.clientX - rect.left) / rect.width) * W
-        const idx = Math.max(0, Math.min(n - 1, Math.round((x - P.l) / (W - P.l - P.r) * (n - 1))))
-        setHoverIdx(idx)
-      }}
-      onMouseLeave={() => setHoverIdx(null)}
-    >
-      <defs>
-        <linearGradient id="eg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#5bc8d0" stopOpacity="0.38" />
-          <stop offset="100%" stopColor="#5bc8d0" stopOpacity="0.02" />
-        </linearGradient>
-      </defs>
-      {dots.map((d, i) => <circle key={i} cx={d.x.toFixed(1)} cy={d.y.toFixed(1)} r="0.9" fill="rgba(255,255,255,0.07)" />)}
-      <path d={area} fill="url(#eg)" />
-      <path d={linePts} fill="none" stroke="#5bc8d0" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-      {labels.map((m, i) => (
-        <text key={i} x={(P.l + (i / (labels.length - 1)) * (W - P.l - P.r)).toFixed(1)} y={H - 6}
-          textAnchor="middle" fontSize="11" fill="var(--text-secondary)" fontFamily="inherit">{m}</text>
-      ))}
-      {hoverIdx !== null && (() => {
-        const hx = xS(hoverIdx), hy = yS(values[hoverIdx])
-        const tDays = pts.length >= 2
-          ? (new Date(pts.at(-1)!.date).getTime() - new Date(pts[0].date).getTime()) / 86_400_000
-          : 1
-        const dateLabel = period === '1G' ? (hoverIdx === 0 ? tlAzioni('chartYesterday') : tlAzioni('chartToday')) : fmtChartLabel(pts[hoverIdx].date, tDays)
-        const tw = 110, th = 38
-        const tx = Math.max(P.l, Math.min(W - P.r - tw, hx - tw / 2))
-        const ty = Math.max(P.t + 4, hy - th - 10)
-        return (
+    <div style={{ position: 'relative', width: '100%' }}>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        preserveAspectRatio="none"
+        style={{ width: '100%', height: H, display: 'block', cursor: 'crosshair' }}
+        onMouseMove={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect()
+          const x = ((e.clientX - rect.left) / rect.width) * W
+          const idx = Math.max(0, Math.min(n - 1, Math.round((x - P.l) / (W - P.l - P.r) * (n - 1))))
+          setHoverIdx(idx)
+        }}
+        onMouseLeave={() => setHoverIdx(null)}
+      >
+        <defs>
+          <linearGradient id="eg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={chartColor} stopOpacity="0.35" />
+            <stop offset="100%" stopColor={chartColor} stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        <path d={area} fill="url(#eg)" vectorEffect="non-scaling-stroke" />
+        <path d={linePts} fill="none" stroke={chartColor} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        <line x1={P.l} y1={yS(values[0]).toFixed(1)} x2={xS(n - 1)} y2={yS(values[0]).toFixed(1)} stroke="rgba(255,255,255,0.18)" strokeWidth="1" strokeDasharray="3,4" vectorEffect="non-scaling-stroke" />
+        {hoverInfo && (
           <g key="crosshair">
-            <line x1={hx} y1={P.t} x2={hx} y2={H - P.b} stroke="rgba(255,255,255,0.2)" strokeWidth="1" strokeDasharray="4,3" />
-            <circle cx={hx} cy={hy} r="5" fill="var(--bg-surface)" stroke="#5bc8d0" strokeWidth="2" />
-            <rect x={tx} y={ty} width={tw} height={th} rx="7" fill="#1a2332" stroke="rgba(91,200,208,0.3)" strokeWidth="1" />
-            <text x={tx + tw / 2} y={ty + 13} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.5)" fontFamily="inherit">{dateLabel}</text>
-            <text x={tx + tw / 2} y={ty + 28} textAnchor="middle" fontSize="12" fontWeight="700" fill="#5bc8d0" fontFamily="inherit">{fmt(values[hoverIdx])}</text>
+            <line x1={hoverInfo.hx} y1={P.t} x2={hoverInfo.hx} y2={H - P.b} stroke="rgba(255,255,255,0.2)" strokeWidth="1" strokeDasharray="4,3" vectorEffect="non-scaling-stroke" />
+            <circle cx={hoverInfo.hx} cy={hoverInfo.hy} r="5" fill="var(--bg-surface)" stroke={chartColor} strokeWidth="2" />
           </g>
-        )
-      })()}
-    </svg>
+        )}
+      </svg>
+      {hoverInfo && (
+        <div style={{
+          position: 'absolute',
+          left: `${(hoverInfo.hx / W) * 100}%`,
+          top: `${(hoverInfo.hy / H) * 100}%`,
+          transform: `translate(${hoverInfo.hx > W * 0.6 ? '-110%' : '10px'}, -50%)`,
+          pointerEvents: 'none',
+          background: '#131c27',
+          border: `1px solid ${chartColor}44`,
+          borderRadius: 8,
+          padding: '5px 12px',
+          whiteSpace: 'nowrap',
+          zIndex: 10,
+        }}>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginBottom: 2 }}>{hoverInfo.dateLabel}</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: chartColor, fontVariantNumeric: 'tabular-nums' }}>{fmt(values[hoverIdx!])}</div>
+        </div>
+      )}
+      <div style={{ position: 'relative', height: 24, marginTop: 4 }}>
+        {labels.map((m, i) => (
+          <span key={i} style={{
+            position: 'absolute',
+            left: `${((P.l + (i / (labels.length - 1)) * (W - P.l - P.r)) / W) * 100}%`,
+            transform: 'translateX(-50%)',
+            fontSize: 11,
+            fontWeight: 500,
+            color: 'rgba(255,255,255,0.5)',
+            whiteSpace: 'nowrap',
+            letterSpacing: '0.01em',
+          }}>{m}</span>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -444,7 +476,7 @@ export default function EtfPage() {
               ))}
             </div>
           </div>
-          <EtfChart positions={etfs} period={chartPeriod} quotes={quotes} eurUsd={eurUsd} />
+          <EtfChart positions={etfs} period={chartPeriod} quotes={quotes} eurUsd={eurUsd} pnl={totalPnl} />
         </div>
 
         <div className="ledgernest-card" style={{ padding: 20 }}>

@@ -122,6 +122,7 @@ export interface PortfolioPosition {
   sector?: string
   region?: string
   ter?: number         // ETF total expense ratio
+  purchaseDate?: string // earliest known buy date (YYYY-MM-DD); used as chart start
   createdAt: string
   updatedAt: string
 }

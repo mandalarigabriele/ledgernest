@@ -25,12 +25,13 @@ export default function EditPositionModal() {
     { value: 'commodity', label: t('commodityLabel'), icon: 'globe'   },
   ]
 
-  const [name,      setName]      = useState(pos?.name     ?? '')
-  const [assetType, setAssetType] = useState<AssetType>(pos?.type ?? 'stock')
-  const [sector,    setSector]    = useState(pos?.sector   ?? '')
-  const [quantity,  setQuantity]  = useState(pos ? String(pos.quantity) : '')
-  const [avgPrice,  setAvgPrice]  = useState(pos ? pos.avgPrice.toFixed(6).replace(/\.?0+$/, '') : '')
-  const [broker,    setBroker]    = useState(pos?.broker   ?? '')
+  const [name,         setName]         = useState(pos?.name     ?? '')
+  const [assetType,    setAssetType]    = useState<AssetType>(pos?.type ?? 'stock')
+  const [sector,       setSector]       = useState(pos?.sector   ?? '')
+  const [quantity,     setQuantity]     = useState(pos ? String(pos.quantity) : '')
+  const [avgPrice,     setAvgPrice]     = useState(pos ? pos.avgPrice.toFixed(6).replace(/\.?0+$/, '') : '')
+  const [broker,       setBroker]       = useState(pos?.broker   ?? '')
+  const [purchaseDate, setPurchaseDate] = useState(pos?.purchaseDate ?? pos?.createdAt.slice(0, 10) ?? '')
 
   if (!pos) return null
 
@@ -40,12 +41,13 @@ export default function EditPositionModal() {
     const price = parseFloat(avgPrice)
     if (!qty || qty <= 0 || price < 0 || !pos) return
     updatePosition(pos.id, {
-      name:     name.trim() || pos.ticker,
-      type:     assetType,
-      sector:   sector.trim() || undefined,
-      quantity: qty,
-      avgPrice: price,
-      broker:   broker.trim(),
+      name:         name.trim() || pos.ticker,
+      type:         assetType,
+      sector:       sector.trim() || undefined,
+      quantity:     qty,
+      avgPrice:     price,
+      broker:       broker.trim(),
+      purchaseDate: purchaseDate || undefined,
     })
     closeModal()
   }
@@ -189,6 +191,18 @@ export default function EditPositionModal() {
                   style={{ height: 44, fontSize: 15 }}
                 />
               )}
+            </div>
+
+            {/* Purchase date */}
+            <div className="ledgernest-field">
+              <label className="ledgernest-label">Data primo acquisto</label>
+              <input
+                className="ledgernest-input ledgernest-mono"
+                type="date"
+                value={purchaseDate}
+                onChange={(e) => setPurchaseDate(e.target.value)}
+                style={{ height: 44, fontSize: 15 }}
+              />
             </div>
 
             {/* Summary */}

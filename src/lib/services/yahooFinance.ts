@@ -147,6 +147,22 @@ export async function fetchHistory(
   }
 }
 
+// Hourly candles for short ranges (≤ 7 days) — keys are UTC ISO "YYYY-MM-DDTHH:MM"
+export async function fetchHourlyHistory(ticker: string): Promise<Map<string, number>> {
+  const map = new Map<string, number>()
+  try {
+    const result = await fetchChart(ticker, '5d', '1h')
+    const timestamps = result.timestamp ?? []
+    const closes = result.indicators?.quote?.[0]?.close ?? []
+    timestamps.forEach((ts, i) => {
+      const close = closes[i]
+      if (close != null && close > 0)
+        map.set(new Date(ts * 1000).toISOString().slice(0, 16), close)
+    })
+  } catch { /* return empty map */ }
+  return map
+}
+
 export async function fetchEurUsd(): Promise<number> {
   try {
     const result = await fetchChart('EURUSD=X', '5d', '1d')

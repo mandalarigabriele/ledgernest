@@ -9,6 +9,7 @@ import {
 } from '@/lib/utils/csvImport'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useFormatters } from '@/hooks/useFormatters'
+import { usePrices } from '@/hooks/usePrices'
 import { CG_ID_MAP } from '@/lib/services/coinGecko'
 import { CategoryPicker } from '@/components/shared/CategoryPicker'
 import MerchantInput from '@/components/shared/MerchantInput'
@@ -46,6 +47,7 @@ export default function CSVImportWizard({ onClose }: Props) {
   const { accounts, transactions, addAccount, addTransaction, updateAccount } = useFinanceStore()
   const { positions, addPosition } = usePortfolioStore()
   const { settings, updateSettings } = useSettingsStore()
+  const { refetch } = usePrices()
 
   const [step, setStep]         = useState<1 | 2 | 3>(1)
   const [format, setFormat]     = useState<DetectedFormat>('unknown')
@@ -63,6 +65,9 @@ export default function CSVImportWizard({ onClose }: Props) {
   const [tickerVal, setTickerVal]             = useState<Record<string, string>>({})
   const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
+  // Date filter (applied to all rows before review)
+  const [filterFromDate, setFilterFromDate] = useState('')
+
   // Step 3 state
   const [txOpen, setTxOpen]       = useState(true)
   const [tradeOpen, setTradeOpen] = useState(true)
@@ -79,8 +84,15 @@ export default function CSVImportWizard({ onClose }: Props) {
   // ── derived ───────────────────────────────────────────────────
 
 
-  const txRows    = rows.filter((r): r is ParsedTransaction => r.kind === 'transaction')
-  const tradeRows = rows.filter((r): r is ParsedTrade => r.kind === 'trade')
+  const allTxCount    = rows.filter((r) => r.kind === 'transaction').length
+  const allTradeCount = rows.filter((r) => r.kind === 'trade').length
+
+  const txRows    = rows.filter((r): r is ParsedTransaction =>
+    r.kind === 'transaction' && (!filterFromDate || r.date >= filterFromDate)
+  )
+  const tradeRows = rows.filter((r): r is ParsedTrade =>
+    r.kind === 'trade' && (!filterFromDate || r.date >= filterFromDate)
+  )
 
   const includedTx     = txRows.filter((r) => r.include)
   const includedTrades = tradeRows.filter((r) => r.include)
@@ -314,6 +326,7 @@ export default function CSVImportWizard({ onClose }: Props) {
         const totalCost = trs.reduce((s: number, t) => s + t.amount + t.commission, 0)  // EUR debit + separate commission fee
         const avgPrice  = totalQty > 0 ? totalCost / totalQty : 0
         const sample    = trs[0]
+        const earliestDate = trs.map((t) => t.date).sort()[0]
 
         addPosition({
           ticker,
@@ -323,6 +336,7 @@ export default function CSVImportWizard({ onClose }: Props) {
           avgPrice,
           currency: 'EUR',
           broker: accounts.find((a) => a.id === resolvedAccountId)?.name ?? 'Trade Republic',
+          purchaseDate: earliestDate,
         })
       }
 
@@ -406,11 +420,12 @@ export default function CSVImportWizard({ onClose }: Props) {
 
   if (done) {
     const importedAccount = accounts.find((a) => a.id === importedAccountId)
+    const balanceVal = parseFloat(balanceInput.replace(',', '.'))
+    const balanceValid = balanceInput.trim() !== '' && !isNaN(balanceVal)
     const handleSaveBalance = () => {
-      const val = parseFloat(balanceInput.replace(',', '.'))
-      if (!isNaN(val) && importedAccountId) {
-        updateAccount(importedAccountId, { balance: val })
-      }
+      if (!balanceValid || !importedAccountId) return
+      updateAccount(importedAccountId, { balance: balanceVal })
+      refetch()
       onClose()
     }
     return (
@@ -451,8 +466,14 @@ export default function CSVImportWizard({ onClose }: Props) {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-              <button className="ledgernest-btn ledgernest-btn-ghost" style={{ flex: 1 }} onClick={onClose}>Salta</button>
-              <button className="ledgernest-btn" style={{ flex: 2 }} onClick={handleSaveBalance}>Salva e chiudi</button>
+              <button
+                className="ledgernest-btn ledgernest-btn-primary"
+                style={{ flex: 1, opacity: balanceValid ? 1 : 0.45, cursor: balanceValid ? 'pointer' : 'not-allowed' }}
+                onClick={handleSaveBalance}
+                disabled={!balanceValid}
+              >
+                Salva e chiudi
+              </button>
             </div>
           </div>
         </div>
@@ -528,12 +549,45 @@ export default function CSVImportWizard({ onClose }: Props) {
               {rows.length > 0 && !error && (
                 <div style={{ marginTop: 16, padding: '14px 18px', background: 'var(--bg-elevated)', borderRadius: 12, border: '1px solid var(--border-subtle)' }}>
                   <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Riepilogo</div>
-                  <div style={{ display: 'flex', gap: 24, fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                  <div style={{ display: 'flex', gap: 24, fontSize: 12.5, color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
                     <span>Formato: <strong style={{ color: 'var(--text-primary)' }}>{FORMAT_LABEL[format]}</strong></span>
                     <span>Righe totali: <strong style={{ color: 'var(--text-primary)' }}>{rows.length}</strong></span>
-                    {txRows.length > 0 && <span>Movimenti: <strong style={{ color: 'var(--text-primary)' }}>{txRows.length}</strong></span>}
-                    {tradeRows.length > 0 && <span>Investimenti: <strong style={{ color: 'var(--text-primary)' }}>{tradeRows.length}</strong></span>}
+                    {allTxCount > 0 && <span>Movimenti: <strong style={{ color: 'var(--text-primary)' }}>{allTxCount}</strong></span>}
+                    {allTradeCount > 0 && <span>Investimenti: <strong style={{ color: 'var(--text-primary)' }}>{allTradeCount}</strong></span>}
                     {dupCount > 0 && <span style={{ color: '#d29922' }}>Duplicati: <strong>{dupCount}</strong></span>}
+                  </div>
+
+                  {/* Date filter */}
+                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <label style={{ fontSize: 12.5, color: 'var(--text-secondary)', flexShrink: 0 }}>
+                      Importa a partire dal:
+                    </label>
+                    <input
+                      type="date"
+                      value={filterFromDate}
+                      onChange={(e) => setFilterFromDate(e.target.value)}
+                      style={{
+                        padding: '5px 10px', borderRadius: 8, fontSize: 12.5,
+                        border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)',
+                        color: 'var(--text-primary)', outline: 'none', fontFamily: 'inherit',
+                      }}
+                    />
+                    {filterFromDate && (
+                      <>
+                        <button
+                          onClick={() => setFilterFromDate('')}
+                          style={{ padding: '4px 10px', borderRadius: 7, fontSize: 11.5, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}
+                        >
+                          Rimuovi
+                        </button>
+                        <span style={{ fontSize: 11.5, color: 'var(--accent)' }}>
+                          {txRows.length + tradeRows.length} righe nel periodo
+                          {(allTxCount + allTradeCount - txRows.length - tradeRows.length) > 0 && (
+                            <> · <span style={{ color: 'var(--text-tertiary)' }}>{allTxCount + allTradeCount - txRows.length - tradeRows.length} escluse</span></>
+                          )}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
