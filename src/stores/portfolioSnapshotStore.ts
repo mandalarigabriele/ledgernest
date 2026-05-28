@@ -19,6 +19,7 @@ interface PortfolioSnapshotStore {
   getSnapshotsForRange: (days: number) => PortfolioSnapshot[]
   oldestTs: () => number
   clearSnapshots: () => void
+  hydrate: (data: Partial<Pick<PortfolioSnapshotStore, 'snapshots'>>) => void
 }
 
 // Downsampling: keep detail for recent data, compress old data
@@ -77,6 +78,7 @@ export const usePortfolioSnapshotStore = create<PortfolioSnapshotStore>()(
       },
 
       clearSnapshots: () => set({ snapshots: [] }),
+      hydrate: (data) => set(data),
     }),
     { name: 'portfolio-snapshots' }
   )

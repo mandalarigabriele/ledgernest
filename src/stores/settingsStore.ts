@@ -8,6 +8,7 @@ interface SettingsStore {
   ignoredImportIds: string[]
   addIgnoredImportIds: (ids: string[]) => void
   clearIgnoredImportIds: () => void
+  hydrate: (data: Partial<Pick<SettingsStore, 'settings' | 'ignoredImportIds'>>) => void
 }
 
 const defaultSettings: AppSettings = {
@@ -43,6 +44,7 @@ export const useSettingsStore = create<SettingsStore>()(
           return { ignoredImportIds: Array.from(existing) }
         }),
       clearIgnoredImportIds: () => set({ ignoredImportIds: [] }),
+      hydrate: (data) => set(data),
     }),
     { name: 'ledgernest-settings', skipHydration: true }
   )
