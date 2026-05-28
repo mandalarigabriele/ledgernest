@@ -304,24 +304,7 @@ export default function BudgetPage() {
 
   function adjustInvestAlloc(catId: string, newPct: number) {
     const clamped = Math.max(0, Math.min(100, Math.round(newPct)))
-    const others = investLeafCats.filter((c) => c.id !== catId)
-    const rem = 100 - clamped
-    const otherTotal = others.reduce((s, c) => s + (investCatAlloc[c.id] ?? 0), 0)
-    const updated: Record<string, number> = { ...investCatAlloc, [catId]: clamped }
-    if (otherTotal > 0) {
-      let distributed = 0
-      others.forEach((c, i) => {
-        const share = i === others.length - 1
-          ? rem - distributed
-          : Math.round(((investCatAlloc[c.id] ?? 0) / otherTotal) * rem)
-        updated[c.id] = share
-        distributed += share
-      })
-    } else if (others.length > 0) {
-      const share = Math.floor(rem / others.length)
-      others.forEach((c) => { updated[c.id] = share })
-    }
-    setMonthPlanInvestConfig(month, investPct, updated)
+    setMonthPlanInvestConfig(month, investPct, { ...investCatAlloc, [catId]: clamped })
   }
 
   function applyInvestConfig() {
