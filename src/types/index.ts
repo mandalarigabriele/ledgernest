@@ -227,7 +227,7 @@ export interface AppSettings {
 
 // ---- UI Store -----------------------------------------------
 
-export type ModalType = 'movement' | 'buy' | 'goal' | 'account' | 'recurring' | 'editPosition' | 'quickAdd' | 'categoryManager' | null
+export type ModalType = 'movement' | 'buy' | 'goal' | 'account' | 'recurring' | 'editPosition' | 'quickAdd' | 'categoryManager' | 'csvImport' | null
 
 export interface UIState {
   sidebarOpen: boolean

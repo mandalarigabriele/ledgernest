@@ -4,6 +4,7 @@ import type { PortfolioPosition, Trade, Dividend, AssetType } from '@/types'
 import { nanoid } from './utils'
 import { useFinanceStore } from './financeStore'
 import { useSettingsStore } from './settingsStore'
+import { usePortfolioSnapshotStore } from './portfolioSnapshotStore'
 
 function findAccount(broker: string | undefined) {
   const { accounts } = useFinanceStore.getState()
@@ -150,6 +151,8 @@ export const usePortfolioStore = create<PortfolioStore>()(
           .forEach((t) => deleteTransaction(t.id))
         // Clear remembered ignored IDs so next import starts fresh
         useSettingsStore.getState().clearIgnoredImportIds()
+        // Clear chart snapshots so history starts fresh after reset
+        usePortfolioSnapshotStore.getState().clearSnapshots()
       },
 
       addTrade: (trade) => {

@@ -67,6 +67,15 @@ export default function QuickAddModal() {
       subtitle: t('goalSub'),
       modal: 'goal',
     },
+    {
+      key: 'csvImport',
+      icon: 'report',
+      iconBg: 'color-mix(in oklch, #d29922 18%, #0a1628)',
+      iconColor: '#d29922',
+      title: t('importCsv'),
+      subtitle: t('importCsvSub'),
+      modal: 'csvImport',
+    },
   ]
 
   function handleAction(modal: ModalType, props?: Record<string, unknown>) {

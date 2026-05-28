@@ -400,7 +400,8 @@ export default function EtfPage() {
   const hasReit     = rows.some((r) => etfCategory(r.region) === 'REIT')
   const exposureDesc = [hasEquity && 'azionario', hasBond && 'bond', hasReit && 'REIT'].filter(Boolean).join(' + ')
 
-  const filtered = filter === 'Tutti' ? rows : rows.filter((r) => etfCategory(r.region) === filter)
+  const filtered = (filter === 'Tutti' ? rows : rows.filter((r) => etfCategory(r.region) === filter))
+    .sort((a, b) => b.pnl - a.pnl)
 
   if (etfs.length === 0) {
     return (
@@ -524,6 +525,7 @@ export default function EtfPage() {
           <thead>
             <tr>
               <th>{tl('colEtf')}</th>
+              <th className="num">{tl('colPnl')}</th>
               <th>{tl('colRegion')}</th>
               <th className="num">{tl('colQty')}</th>
               <th className="num">{tl('colAvgPrice')}</th>
@@ -531,7 +533,6 @@ export default function EtfPage() {
               <th style={{ paddingLeft: 12 }}>{tl('colTrend')}</th>
               <th className="num">{tl('colTer')}</th>
               <th className="num">{tl('colValue')}</th>
-              <th className="num">{tl('colPnl')}</th>
               <th />
             </tr>
           </thead>
@@ -565,6 +566,10 @@ export default function EtfPage() {
                     </div>
                   </div>
                 </td>
+                <td className="num ledgernest-mono" style={{ fontWeight: 600 }}>
+                  <span className={deltaClass(r.pnl)}>{fmtDlt(r.pnl)}</span>
+                  <div><span className={deltaClass(r.pnlPct)} style={{ fontSize: 11 }}>{fmtPct(r.pnlPct)}</span></div>
+                </td>
                 <td>
                   {r.region ? (
                     <span style={{
@@ -592,12 +597,6 @@ export default function EtfPage() {
                   {r.ter != null ? `${(r.ter * 100).toFixed(2)}%` : '—'}
                 </td>
                 <td className="num ledgernest-mono" style={{ fontWeight: 600 }}>{fmt(r.value)}</td>
-                <td className="num">
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
-                    <span className={`ledgernest-mono ${deltaClass(r.pnl)}`} style={{ fontWeight: 600 }}>{fmtDlt(r.pnl)}</span>
-                    <span className={deltaClass(r.pnlPct)} style={{ fontSize: 11 }}>{fmtPct(r.pnlPct)}</span>
-                  </div>
-                </td>
                 <td style={{ width: 40 }}>
                   <PositionRowMenu
                     onEdit={() => openModal('editPosition', { position: r })}

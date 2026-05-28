@@ -408,12 +408,13 @@ export default function AzioniPage() {
   }, [rows])
 
   const withQ = rows.filter((r) => r.q)
-  const gainers = [...withQ].sort((a, b) => (b.q!.changePct) - (a.q!.changePct)).slice(0, 3)
-  const losers  = [...withQ].sort((a, b) => (a.q!.changePct) - (b.q!.changePct)).slice(0, 3)
+  const topPnl  = [...rows].sort((a, b) => b.pnlPct - a.pnlPct).slice(0, 3)
+  const losers  = [...withQ].filter((r) => r.q!.changePct < 0).sort((a, b) => a.q!.changePct - b.q!.changePct).slice(0, 3)
 
   const sectors = ['all', ...Array.from(new Set(rows.map((r) => r.sector).filter((s): s is string => !!s)))]
   const filtered = (sectorFilter === 'all' ? rows : rows.filter((r) => r.sector === sectorFilter))
     .filter((r) => !search || r.ticker.toLowerCase().includes(search.toLowerCase()) || r.name.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => b.pnl - a.pnl)
 
   if (stocks.length === 0) {
     return (
@@ -510,54 +511,84 @@ export default function AzioniPage() {
         </div>
       </div>
 
-      {/* Top movers */}
-      {withQ.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-          {[
-            { title: tl('moversUp'), items: gainers, isGainer: true },
-            { title: tl('moversDown'), items: losers, isGainer: false },
-          ].map(({ title, items, isGainer }) => {
-            const avgChg = items.length ? items.reduce((s, r) => s + r.q!.changePct, 0) / items.length : 0
-            return (
-              <div key={title} className="ledgernest-card" style={{ padding: '20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                  <div style={{ fontWeight: 700, fontSize: '14px' }}>{title}</div>
-                  <span style={{
-                    fontSize: '12px', fontWeight: 600, padding: '3px 10px', borderRadius: '20px',
-                    background: isGainer ? 'var(--success-dim)' : 'var(--danger-dim)',
-                    color: isGainer ? 'var(--success)' : 'var(--danger)',
-                  }}>
-                    {avgChg >= 0 ? '+' : ''}{avgChg.toFixed(1)}% {tl('moversAvg', { avg: '' }).replace('% ', '')}
-                  </span>
+      {/* Top widgets */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        {/* Top rendimento (best unrealized P&L%) */}
+        <div className="ledgernest-card" style={{ padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <div style={{ fontWeight: 700, fontSize: '14px' }}>{tl('topPnlTitle')}</div>
+            <span style={{
+              fontSize: '12px', fontWeight: 600, padding: '3px 10px', borderRadius: '20px',
+              background: 'var(--success-dim)', color: 'var(--success)',
+            }}>
+              {topPnl.length ? `+${(topPnl.reduce((s, r) => s + r.pnlPct, 0) / topPnl.length).toFixed(1)}%` : '—'} {tl('topPnlBadge')}
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {topPnl.map((r) => (
+              <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: '10px', flexShrink: 0,
+                  background: 'var(--success-dim)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--success)' }}>{r.ticker.slice(0, 2)}</span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {items.map((r) => (
-                    <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{
-                        width: 36, height: 36, borderRadius: '10px', flexShrink: 0,
-                        background: isGainer ? 'var(--accent-dim)' : 'var(--danger-dim)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <span style={{ fontSize: '11px', fontWeight: 700, color: isGainer ? 'var(--accent)' : 'var(--danger)' }}>{r.ticker.slice(0, 2)}</span>
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: '13px' }}>{r.ticker}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: '13px' }}>{fmt(r.value)}</div>
-                        <div style={{ fontSize: '12px', fontWeight: 600, color: isGainer ? 'var(--success)' : 'var(--danger)' }}>
-                          {r.q!.changePct >= 0 ? '+' : ''}{r.q!.changePct.toFixed(2)}%
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: '13px' }}>{r.ticker}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: '13px' }}>{fmt(r.value)}</div>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: r.pnlPct >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+                    {r.pnlPct >= 0 ? '+' : ''}{r.pnlPct.toFixed(2)}%
+                  </div>
                 </div>
               </div>
-            )
-          })}
+            ))}
+          </div>
         </div>
-      )}
+
+        {/* Top in discesa oggi */}
+        <div className="ledgernest-card" style={{ padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <div style={{ fontWeight: 700, fontSize: '14px' }}>{tl('moversDown')}</div>
+            {losers.length > 0 && (
+              <span style={{
+                fontSize: '12px', fontWeight: 600, padding: '3px 10px', borderRadius: '20px',
+                background: 'var(--danger-dim)', color: 'var(--danger)',
+              }}>
+                {(losers.reduce((s, r) => s + r.q!.changePct, 0) / losers.length).toFixed(1)}% {tl('moversAvg', { avg: '' }).replace('% ', '')}
+              </span>
+            )}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {losers.length === 0 ? (
+              <div style={{ fontSize: '13px', color: 'var(--text-secondary)', paddingTop: 8 }}>Nessuna posizione in calo oggi</div>
+            ) : losers.map((r) => (
+              <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: '10px', flexShrink: 0,
+                  background: 'var(--danger-dim)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--danger)' }}>{r.ticker.slice(0, 2)}</span>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: '13px' }}>{r.ticker}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: '13px' }}>{fmt(r.value)}</div>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--danger)' }}>
+                    {r.q!.changePct.toFixed(2)}%
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* Positions table */}
       <div className="ledgernest-card ledgernest-port-table-card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -599,23 +630,26 @@ export default function AzioniPage() {
           <thead>
             <tr>
               <th>{tl('colStock')}</th>
+              <th className="num">{tl('colPnl')}</th>
+              <th className="num">{tl('colChange')}</th>
               <th>{tl('colSector')}</th>
               <th>{tl('colBroker')}</th>
               <th className="num">{tl('colQty')}</th>
               <th className="num">{tl('colAvgPrice')}</th>
               <th className="num">{tl('colPrice')}</th>
               <th className="num" title={tl('colPmAhTitle')}>{tl('colPmAh')}</th>
-              <th className="num">{tl('colChange')}</th>
               <th style={{ paddingLeft: '12px' }}>{tl('colTrend')}</th>
               <th className="num">{tl('colValue')}</th>
-              <th className="num">{tl('colPnl')}</th>
+              <th className="num">{tl('colPortPct')}</th>
               <th />
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan={12} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-secondary)' }}>{tl('emptyTable')}</td></tr>
-            ) : filtered.map((r) => (
+              <tr><td colSpan={13} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-secondary)' }}>{tl('emptyTable')}</td></tr>
+            ) : filtered.map((r) => {
+              const portPct = totalValue > 0 ? (r.value / totalValue) * 100 : 0
+              return (
               <tr key={r.id}>
                 <td>
                   <div className="ledgernest-table-ticker">
@@ -648,6 +682,13 @@ export default function AzioniPage() {
                       <div className="ledgernest-table-ticker-sub">{r.name}</div>
                     </div>
                   </div>
+                </td>
+                <td className="num ledgernest-mono" style={{ fontWeight: 600 }}>
+                  <span className={deltaClass(r.pnl)}>{fmtDlt(r.pnl)}</span>
+                  <div><span className={deltaClass(r.pnlPct)} style={{ fontSize: '11px' }}>{fmtPct(r.pnlPct)}</span></div>
+                </td>
+                <td className={`num ${deltaClass(r.q?.changePct ?? 0)}`} style={{ fontWeight: 600 }}>
+                  {r.q ? fmtPct(r.q.changePct) : '—'}
                 </td>
                 <td>
                   {r.sector ? (
@@ -684,17 +725,16 @@ export default function AzioniPage() {
                     <span style={{ color: 'var(--text-tertiary)' }}>—</span>
                   )}
                 </td>
-                <td className={`num ${deltaClass(r.q?.changePct ?? 0)}`} style={{ fontWeight: 600 }}>
-                  {r.q ? fmtPct(r.q.changePct) : '—'}
-                </td>
                 <td style={{ width: '100px', padding: '6px 12px' }}>
                   <Sparkline data={r.spark} height={32} positive={r.dayChangePct >= 0} responsive />
                 </td>
                 <td className="num ledgernest-mono" style={{ fontWeight: 600 }}>{fmt(r.value)}</td>
                 <td className="num">
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1px' }}>
-                    <span className={`ledgernest-mono ${deltaClass(r.pnl)}`} style={{ fontWeight: 600 }}>{fmtDlt(r.pnl)}</span>
-                    <span className={deltaClass(r.pnlPct)} style={{ fontSize: '11px' }}>{fmtPct(r.pnlPct)}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>{portPct.toFixed(1)}%</span>
+                    <div style={{ width: 44, height: 3, background: 'var(--bg-elevated)', borderRadius: 99, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${portPct}%`, background: 'var(--accent)', borderRadius: 99 }} />
+                    </div>
                   </div>
                 </td>
                 <td style={{ width: 40 }}>
@@ -704,7 +744,8 @@ export default function AzioniPage() {
                   />
                 </td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
         </div>

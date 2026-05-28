@@ -4,7 +4,7 @@
 
 **Personal finance dashboard — portfolio, budget, net worth and cashflow in one place.**
 
-![Version](https://img.shields.io/badge/version-0.2.0-blue)
+![Version](https://img.shields.io/badge/version-0.3.0-blue)
 ![Next.js](https://img.shields.io/badge/Next.js-14-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.5-blue)
 ![License](https://img.shields.io/badge/license-private-lightgrey)
@@ -254,6 +254,16 @@ npm run db:reset     # ⚠️ FULL RESET (deletes all data)
 ---
 
 ## 📝 Changelog
+
+### v0.3.0 (May 2026)
+- **CSV import wizard** — multi-step wizard with ticker validation against Yahoo Finance/CoinGecko, bulk update detection, and ticker search input
+- **Portfolio grid UX** — ticker/asset column first, P&L with % as subtitle, daily var% in dedicated 3rd column, default sort by P&L descending
+- **% Port. column** — portfolio weight with mini progress bar, shown in Stocks grid
+- **"Top rendimento" widget** — replaces "Top in salita": shows best unrealized P&L% across all positions (total return, not just today)
+- **"Top in discesa" fix** — widget now only shows positions with a negative daily change; shows a friendly message when all positions are green
+- **P&L currency fix** — EUR/USD exchange-rate correction applied to `avgPrice` when computing cost basis for USD-denominated positions
+- **Budget "copia dai ricorrenti"** — fixed parent-category resolution (falls back to first leaf child) and added date filter (skips items whose next occurrence is after the target month)
+- **Portfolio snapshot store** — `clearSnapshots()` wired to full portfolio reset
 
 ### v0.2.0 (May 2026)
 - **Full internationalisation** — EN/IT via next-intl; zero hardcoded strings in components

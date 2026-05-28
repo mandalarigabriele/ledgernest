@@ -508,20 +508,20 @@ export default function CryptoPage() {
           <thead>
             <tr>
               <th>{tl('colAsset')}</th>
+              <th className="num">{tl('colPnl')}</th>
+              <th className="num">{tl('col24h')}</th>
               <th className="num">{tl('colQty')}</th>
               <th className="num">{tl('colAvgPrice')}</th>
               <th className="num">{tl('colPrice')}</th>
-              <th className="num">{tl('col24h')}</th>
               <th style={{ paddingLeft: 12 }}>{tl('colTrend')}</th>
               <th className="num">{tl('colValue')}</th>
-              <th className="num">{tl('colPnl')}</th>
               <th className="num">{tl('colPortPct')}</th>
               <th>{tl('colCustody')}</th>
               <th />
             </tr>
           </thead>
           <tbody>
-            {rows.sort((a, b) => b.value - a.value).map((r) => {
+            {[...rows].sort((a, b) => b.pnl - a.pnl).map((r) => {
               const portPct = totalValue > 0 ? (r.value / totalValue) * 100 : 0
               return (
                 <tr key={r.id}>
@@ -552,6 +552,13 @@ export default function CryptoPage() {
                       </div>
                     </div>
                   </td>
+                  <td className="num ledgernest-mono" style={{ fontWeight: 600 }}>
+                    <span className={deltaClass(r.pnl)}>{r.pnl >= 0 ? '+' : ''}{fmt(r.pnl)}</span>
+                    <div><span className={deltaClass(r.pnlPct)} style={{ fontSize: 11 }}>{r.pnlPct >= 0 ? '+' : ''}{r.pnlPct.toFixed(2)}%</span></div>
+                  </td>
+                  <td className={`num ${deltaClass(r.dayChangePct)}`} style={{ fontWeight: 700, fontSize: 13 }}>
+                    {r.q ? `${r.dayChangePct >= 0 ? '+' : ''}${r.dayChangePct.toFixed(2)}%` : '—'}
+                  </td>
                   <td className="num ledgernest-mono" style={{ fontSize: 13 }}>
                     {r.quantity.toLocaleString('it-IT', { maximumFractionDigits: 6 })}
                   </td>
@@ -559,24 +566,11 @@ export default function CryptoPage() {
                     {fmt(r.avgPriceEur)}
                   </td>
                   <td className="num ledgernest-mono" style={{ fontSize: 13, fontWeight: 600 }}>{fmt(r.price)}</td>
-                  <td className={`num ${deltaClass(r.dayChangePct)}`} style={{ fontWeight: 700, fontSize: 13 }}>
-                    {r.q ? `${r.dayChangePct >= 0 ? '+' : ''}${r.dayChangePct.toFixed(2)}%` : '—'}
-                  </td>
                   <td style={{ width: 90, padding: '6px 12px' }}>
                     <Sparkline data={r.spark} height={28} positive={r.dayChangePct >= 0} responsive />
                   </td>
                   <td className="num ledgernest-mono" style={{ fontSize: 13, fontWeight: 600 }}>
                     {fmt(r.value)}
-                  </td>
-                  <td className="num">
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-                      <span className={`ledgernest-mono ${deltaClass(r.pnl)}`} style={{ fontSize: 13, fontWeight: 600 }}>
-                        {r.pnl >= 0 ? '+' : ''}{fmt(r.pnl)}
-                      </span>
-                      <span className={deltaClass(r.pnlPct)} style={{ fontSize: 11 }}>
-                        {r.pnlPct >= 0 ? '+' : ''}{r.pnlPct.toFixed(2)}%
-                      </span>
-                    </div>
                   </td>
                   <td className="num">
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>

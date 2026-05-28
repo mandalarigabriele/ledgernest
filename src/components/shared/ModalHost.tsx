@@ -9,6 +9,7 @@ import AccountModal from './modals/AccountModal'
 import EditPositionModal from './modals/EditPositionModal'
 import QuickAddModal from './modals/QuickAddModal'
 import CategoryManagerModal from './modals/CategoryManagerModal'
+import CSVImportWizard from './CSVImportWizard'
 
 export default function ModalHost() {
   const { activeModal, closeModal } = useUIStore()
@@ -34,6 +35,7 @@ export default function ModalHost() {
       {activeModal === 'editPosition' && <EditPositionModal />}
       {activeModal === 'quickAdd' && <QuickAddModal />}
       {activeModal === 'categoryManager' && <CategoryManagerModal />}
+      {activeModal === 'csvImport' && <CSVImportWizard onClose={closeModal} />}
     </>
   )
 }

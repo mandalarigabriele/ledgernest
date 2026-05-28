@@ -32,6 +32,7 @@ export interface ParsedTrade {
   isFreeReceipt: boolean
   include: boolean
   originalDescription: string
+  tickerConfirmed?: boolean
 }
 
 export type ParsedRow = ParsedTransaction | ParsedTrade

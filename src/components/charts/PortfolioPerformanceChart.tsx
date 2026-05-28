@@ -115,11 +115,11 @@ export default function PortfolioPerformanceChart({ filter = 'all', title, subti
     : filter === 'crypto' ? t('cryptoPerformance', { fallback: 'Andamento crypto' })
     : t('investments'))
 
-  const chartSubtitle = subtitle || (timeframe === '1G' ? 'Oggi'
-    : timeframe === '1S' ? '1 settimana'
-    : timeframe === '1M' ? '1 mese'
-    : timeframe === '1A' ? '1 anno'
-    : 'Tutto')
+  const chartSubtitle = subtitle || (timeframe === '1G' ? t('pfPeriodToday')
+    : timeframe === '1S' ? t('pfPeriodWeek')
+    : timeframe === '1M' ? t('pfPeriodMonth')
+    : timeframe === '1A' ? t('pfPeriodYear')
+    : t('pfPeriodAll'))
 
   if (points.length < 3) {
     return (
@@ -127,8 +127,13 @@ export default function PortfolioPerformanceChart({ filter = 'all', title, subti
         <div className="pfchart-header">
           <div className="pfchart-value-section">
             <div className="pfchart-title">{chartTitle}</div>
-            <div className="pfchart-subtitle">{t('noData', { fallback: 'Raccolta dati in corso...' })}</div>
-            {currentValue > 0 && <div className="pfchart-value">{fmt0(currentValue)}</div>}
+            <div className="pfchart-subtitle">{t('noData')}</div>
+            {currentValue > 0 && (
+              <>
+                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 8 }}>{t('portfolioValueNow')}</div>
+                <div className="pfchart-value">{fmt0(currentValue)}</div>
+              </>
+            )}
           </div>
           <div className="pfchart-tabs">
             {ALL_TIMEFRAMES.map(tf => (
@@ -138,7 +143,7 @@ export default function PortfolioPerformanceChart({ filter = 'all', title, subti
         </div>
         <div className="pfchart-empty">
           <div className="pfchart-empty-icon">📈</div>
-          <p>{t('chartWaiting', { fallback: 'Il grafico si costruirà automaticamente. Tieni aperta l\'app per raccogliere dati.' })}</p>
+          <p>{t('chartWaiting')}</p>
         </div>
       </div>
     )
@@ -150,7 +155,7 @@ export default function PortfolioPerformanceChart({ filter = 'all', title, subti
       <div className="pfchart-header">
         <div className="pfchart-value-section">
           <div className="pfchart-title">{chartTitle}</div>
-          <div className="pfchart-subtitle">Valore complessivo · {chartSubtitle}</div>
+          <div className="pfchart-subtitle">{t('pfSubtitle')} · {chartSubtitle}</div>
           <div className="pfchart-value">{fmt0(displayValue)}</div>
           <div className="pfchart-metrics">
             <span className={`pfchart-delta ${displayGain >= 0 ? 'is-up' : 'is-down'}`}>
@@ -258,11 +263,11 @@ export default function PortfolioPerformanceChart({ filter = 'all', title, subti
       <div className="pfchart-legend">
         <span className="pfchart-legend-item">
           <i className="pfchart-legend-line" style={{ background: accentColor }} />
-          Valore
+          {t('pfValueLabel')}
         </span>
         <span className="pfchart-legend-item">
           <i className="pfchart-legend-line pfchart-legend-dashed" />
-          {t('invested', { fallback: 'Investito' })}
+          {t('invested')}
         </span>
       </div>
     </div>

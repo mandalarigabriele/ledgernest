@@ -18,6 +18,7 @@ interface PortfolioSnapshotStore {
   addSnapshot: (snap: Omit<PortfolioSnapshot, 'ts'>) => void
   getSnapshotsForRange: (days: number) => PortfolioSnapshot[]
   oldestTs: () => number
+  clearSnapshots: () => void
 }
 
 // Downsampling: keep detail for recent data, compress old data
@@ -74,6 +75,8 @@ export const usePortfolioSnapshotStore = create<PortfolioSnapshotStore>()(
         const snaps = get().snapshots
         return snaps.length > 0 ? snaps[0].ts : Date.now()
       },
+
+      clearSnapshots: () => set({ snapshots: [] }),
     }),
     { name: 'portfolio-snapshots' }
   )

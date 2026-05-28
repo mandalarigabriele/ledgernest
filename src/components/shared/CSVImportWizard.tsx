@@ -38,10 +38,12 @@ const FORMAT_LABEL: Record<DetectedFormat, string> = {
 interface TickerResult { ticker: string; name: string; exchange?: string; quoteType?: string }
 
 function TickerSearchInput({
-  value, onChange, assetType, required,
+  value, onChange, onValidated, isConfirmed: isConfirmedProp, assetType, required,
 }: {
   value: string
   onChange: (ticker: string, result?: TickerResult) => void
+  onValidated?: (confirmed: boolean) => void
+  isConfirmed?: boolean
   assetType: string
   required?: boolean
 }) {
@@ -50,10 +52,41 @@ function TickerSearchInput({
   const [open, setOpen]           = useState(false)
   const [loading, setLoading]     = useState(false)
   const [activeIdx, setActiveIdx] = useState(-1)
-  const [confirmed, setConfirmed] = useState(!!value)
+  const [confirmed, setConfirmed] = useState(false)
+  const [notFound, setNotFound]   = useState(false)
   const [dropPos, setDropPos]     = useState<{ top: number; left: number; width: number } | null>(null)
   const debounce  = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inputRef  = useRef<HTMLInputElement>(null)
+
+  // Validate pre-filled ticker on mount
+  useEffect(() => {
+    if (!value.trim()) return
+    setLoading(true)
+    const type = assetType === 'crypto' ? 'crypto' : 'stock'
+    fetch(`/api/ticker-search?q=${encodeURIComponent(value)}&type=${type}`)
+      .then((r) => r.json())
+      .then((data: TickerResult[]) => {
+        setLoading(false)
+        const v = value.trim().toUpperCase()
+        // For crypto, CoinGecko returns "BTC-USD" so also match without the "-USD" suffix
+        const exact = data.find((r: TickerResult) =>
+          r.ticker.toUpperCase() === v ||
+          r.ticker.replace(/-USD$/i, '').toUpperCase() === v
+        )
+        if (exact) { setConfirmed(true); onValidated?.(true) }
+        else        { setNotFound(true);  onValidated?.(false) }
+      })
+      .catch(() => { setLoading(false); onValidated?.(false) })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync query when ticker is changed externally (bulk update from parent)
+  useEffect(() => {
+    if (value === query) return
+    setQuery(value)
+    setNotFound(false)
+    // Use parent's confirmed state so bulk-confirmed selections show ✓ immediately
+    setConfirmed(!!isConfirmedProp)
+  }, [value]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close on outside click
   useEffect(() => {
@@ -73,22 +106,29 @@ function TickerSearchInput({
   }
 
   function search(q: string) {
-    if (!q.trim()) { setResults([]); setLoading(false); return }
+    if (!q.trim()) { setResults([]); setLoading(false); setNotFound(false); return }
     setLoading(true)
     const type = assetType === 'crypto' ? 'crypto' : 'stock'
     fetch(`/api/ticker-search?q=${encodeURIComponent(q)}&type=${type}`)
       .then((r) => r.json())
       .then((data: TickerResult[]) => {
-        setResults(data.slice(0, 7))
         setLoading(false)
-        if (data.length > 0) openDropdown()
+        if (data.length > 0) {
+          setResults(data.slice(0, 7))
+          setNotFound(false)
+          openDropdown()
+        } else {
+          setResults([])
+          setNotFound(true)
+        }
       })
-      .catch(() => setLoading(false))
+      .catch(() => { setLoading(false); setNotFound(true) })
   }
 
   function handleInput(v: string) {
     setQuery(v)
     setConfirmed(false)
+    setNotFound(false)
     setActiveIdx(-1)
     if (debounce.current) clearTimeout(debounce.current)
     debounce.current = setTimeout(() => search(v), 300)
@@ -98,6 +138,7 @@ function TickerSearchInput({
   function select(r: TickerResult) {
     setQuery(r.ticker)
     setConfirmed(true)
+    setNotFound(false)
     setOpen(false)
     setResults([])
     onChange(r.ticker, r)
@@ -113,8 +154,14 @@ function TickerSearchInput({
 
   const isEmpty   = !query.trim()
   const borderCol = confirmed           ? 'var(--success, #3fb950)'
+                  : notFound            ? '#f85149'
                   : required && isEmpty ? '#f85149'
                   : 'var(--border-subtle)'
+  const iconColor = confirmed ? 'var(--success, #3fb950)'
+                  : notFound  ? '#f85149'
+                  : loading   ? 'var(--text-tertiary)'
+                  : 'transparent'
+  const iconChar  = loading ? '…' : confirmed ? '✓' : notFound ? '✗' : ''
 
   return (
     <div style={{ position: 'relative', width: 160 }}>
@@ -135,10 +182,9 @@ function TickerSearchInput({
       />
       <span style={{
         position: 'absolute', right: 7, top: '50%', transform: 'translateY(-50%)',
-        fontSize: 11, color: loading ? 'var(--text-tertiary)' : confirmed ? 'var(--success, #3fb950)' : 'transparent',
-        pointerEvents: 'none',
+        fontSize: 11, color: iconColor, pointerEvents: 'none',
       }}>
-        {loading ? '…' : confirmed ? '✓' : ''}
+        {iconChar}
       </span>
 
       {/* Dropdown rendered via fixed positioning to escape table overflow:hidden */}
@@ -807,16 +853,28 @@ export default function CSVImportWizard({ onClose }: Props) {
                                 {trade.amount > 0 ? fmt(trade.amount) : '—'}
                               </td>
                               <td style={{ padding: '8px 12px' }}>
-                                {trade.isFreeReceipt ? (
-                                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>—</span>
-                                ) : (
-                                  <TickerSearchInput
-                                    value={trade.ticker}
-                                    assetType={trade.assetType}
-                                    required={!trade.isFreeReceipt}
-                                    onChange={(ticker) => patchRow(idx, { ticker })}
-                                  />
-                                )}
+                                <TickerSearchInput
+                                  value={trade.ticker}
+                                  assetType={trade.assetType}
+                                  isConfirmed={trade.tickerConfirmed}
+                                  required
+                                  onChange={(ticker, result) => {
+                                    if (result) {
+                                      // Confirmed selection → bulk-confirm all rows with same name
+                                      const tradeName = trade.name
+                                      setRows((prev) => prev.map((r) => {
+                                        if (r.kind !== 'trade') return r
+                                        if (r === trade || (r as ParsedTrade).name === tradeName)
+                                          return { ...r, ticker, tickerConfirmed: true } as ParsedRow
+                                        return r
+                                      }))
+                                    } else {
+                                      // Typing → only current row, reset confirmed
+                                      patchRow(idx, { ticker, tickerConfirmed: false })
+                                    }
+                                  }}
+                                  onValidated={(confirmed) => patchRow(idx, { tickerConfirmed: confirmed })}
+                                />
                               </td>
                             </tr>
                           )
@@ -1015,14 +1073,14 @@ export default function CSVImportWizard({ onClose }: Props) {
           {step === 2 && (
             <>
               <button className="ledgernest-btn ledgernest-btn-ghost" onClick={() => setStep(1)}>← Indietro</button>
-              {tradeRows.some((t) => !t.isFreeReceipt && !t.ticker.trim()) && (
-                <span style={{ fontSize: 11.5, color: '#f85149', marginLeft: 8 }}>Alcuni ticker mancanti</span>
+              {tradeRows.some((t) => !t.isFreeReceipt && (!t.ticker.trim() || !t.tickerConfirmed)) && (
+                <span style={{ fontSize: 11.5, color: '#f85149', marginLeft: 8 }}>Alcuni ticker non validati</span>
               )}
               <button
                 className="ledgernest-btn"
                 disabled={
                   (!accountId && !(creatingAccount && newName.trim())) ||
-                  tradeRows.some((t) => !t.isFreeReceipt && !t.ticker.trim())
+                  tradeRows.some((t) => !t.isFreeReceipt && (!t.ticker.trim() || !t.tickerConfirmed))
                 }
                 onClick={goToStep3}
                 style={{ marginLeft: 'auto' }}

@@ -287,12 +287,26 @@ export default function BudgetPage() {
   function initFromRecurring() {
     const MULTS: Record<string, number> = { daily: 30, weekly: 4.33, biweekly: 2.17, monthly: 1, quarterly: 1 / 3, yearly: 1 / 12 }
     recurringItems
-      .filter((item) => item.active !== false && item.type === 'expense')
+      .filter((item) => item.active !== false && item.type === 'expense' && item.nextDate.slice(0, 7) <= month)
       .forEach((item) => {
         const monthly = Math.round(item.amount * (MULTS[item.frequency] ?? 1))
-        const cat = leafExpenseCats.find(
-          (c) => c.id === item.category || c.name.toLowerCase() === (item.category ?? '').toLowerCase()
+        const itemCatLower = (item.category ?? '').toLowerCase()
+        // Try leaf categories first (direct ID or name match)
+        let cat = leafExpenseCats.find(
+          (c) => c.id === item.category || c.name.toLowerCase() === itemCatLower
         )
+        if (!cat) {
+          // Fall back: find any expense category (including parents) by ID or name
+          const anyMatch = budgetCategories.find(
+            (c) => c.type === 'expense' && (c.id === item.category || c.name.toLowerCase() === itemCatLower)
+          )
+          if (anyMatch) {
+            // If it's a parent, use its first leaf child
+            cat = parentCatIds.has(anyMatch.id)
+              ? leafExpenseCats.find((c) => c.parentId === anyMatch.id)
+              : anyMatch
+          }
+        }
         if (cat) setMonthPlanCategory(month, cat.id, monthly)
       })
   }
