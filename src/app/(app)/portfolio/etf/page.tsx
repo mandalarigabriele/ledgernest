@@ -7,6 +7,7 @@ import { usePrices } from '@/hooks/usePrices'
 import { fmtUsd, fmtPct, fmtNum, deltaClass } from '@/lib/utils/format'
 import { useFormatters } from '@/hooks/useFormatters'
 import Sparkline from '@/components/charts/Sparkline'
+import PortfolioPerformanceChart from '@/components/charts/PortfolioPerformanceChart'
 import Icon from '@/components/shared/Icon'
 import { useUIStore } from '@/stores/uiStore'
 import { useTranslations } from 'next-intl'
@@ -457,26 +458,8 @@ export default function EtfPage() {
 
       {/* Chart + Esposizione regionale */}
       <div className="ledgernest-port-charts" style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 12 }}>
-        <div className="ledgernest-card" style={{ padding: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>{tl('chartTitle')}</div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-                {tl('chartSubtitle', { period: chartPeriod === '1G' ? tl('period1D') : chartPeriod === '1S' ? tl('period1W') : chartPeriod === '1M' ? tl('period1M') : chartPeriod === '1A' ? tl('period1Y') : tl('periodAll') })}
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 2, background: 'var(--bg-elevated)', borderRadius: 8, padding: 3 }}>
-              {CHART_PERIODS.map((t) => (
-                <button key={t} onClick={() => setChartPeriod(t)} style={{
-                  padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                  border: 'none', cursor: 'pointer', transition: 'all .15s',
-                  background: chartPeriod === t ? 'var(--accent)' : 'transparent',
-                  color: chartPeriod === t ? '#fff' : 'var(--text-secondary)',
-                }}>{t}</button>
-              ))}
-            </div>
-          </div>
-          <EtfChart positions={etfs} period={chartPeriod} quotes={quotes} eurUsd={eurUsd} pnl={totalPnl} />
+        <div className="ledgernest-card">
+          <PortfolioPerformanceChart filter="etf" title={tl('chartTitle')} />
         </div>
 
         <div className="ledgernest-card" style={{ padding: 20 }}>

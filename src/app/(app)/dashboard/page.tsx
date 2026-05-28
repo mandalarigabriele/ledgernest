@@ -14,6 +14,7 @@ import Sparkline from '@/components/charts/Sparkline'
 import Heatmap from '@/components/charts/Heatmap'
 import Treemap from '@/components/charts/Treemap'
 import DivCalendar from '@/components/charts/DivCalendar'
+import PortfolioPerformanceChart from '@/components/charts/PortfolioPerformanceChart'
 import Icon from '@/components/shared/Icon'
 
 
@@ -210,37 +211,41 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* ── Allocation ── */}
-      <div className="ledgernest-card">
-        <div className="ledgernest-card-head">
-          <div>
-            <div className="ledgernest-card-title">{t('allocationTitle')}</div>
-            <div className="ledgernest-card-sub">{donutData.length} · {fmt0(totalAlloc)}</div>
-          </div>
+      {/* ── Performance + Allocation side by side ── */}
+      <div className="ledgernest-grid ledgernest-grid--7-5">
+        <div className="ledgernest-card">
+          <PortfolioPerformanceChart />
         </div>
-        {donutData.length === 0 ? (
-          <div className="ledgernest-empty"><div className="ledgernest-empty-icon">📊</div>{t('noPositions')}</div>
-        ) : (
-          <div className="ledgernest-alloc">
-            <div className="ledgernest-alloc-chart">
-              <Donut data={donutData} size={160} label="" sublabel="" />
-              <div className="ledgernest-donut-center">
-                <div className="ledgernest-donut-num">{fmtCpt(totalAlloc)}</div>
-                <div className="ledgernest-donut-cap">{t('inPortfolio')}</div>
+
+        <div className="ledgernest-card" style={{ padding: '20px' }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{t('allocationTitle')}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>{donutData.length} asset · {fmt0(totalAlloc)}</div>
+          {donutData.length === 0 ? (
+            <div className="ledgernest-empty"><div className="ledgernest-empty-icon">📊</div>{t('noPositions')}</div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+                <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Donut data={donutData} size={150} thickness={24}
+                    label={fmtCpt(totalAlloc)}
+                    sublabel={t('inPortfolio')} />
+                </div>
               </div>
-            </div>
-            <ul className="ledgernest-alloc-legend">
-              {donutData.map((d) => (
-                <li key={d.label}>
-                  <span className="ledgernest-swatch" style={{ background: d.color }} />
-                  <span className="ledgernest-legend-name">{d.label}</span>
-                  <span className="ledgernest-legend-val">{fmt0(d.value)}</span>
-                  <span className="ledgernest-legend-pct">{totalAlloc > 0 ? ((d.value / totalAlloc) * 100).toFixed(1) : 0}%</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {donutData.map((d) => (
+                  <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: d.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 13, fontWeight: 600, width: 60 }}>{d.label}</span>
+                    <span style={{ flex: 1, fontSize: 12, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fmt0(d.value)}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)' }}>
+                      {totalAlloc > 0 ? ((d.value / totalAlloc) * 100).toFixed(1) : '0'}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* ── Cashflow ── */}

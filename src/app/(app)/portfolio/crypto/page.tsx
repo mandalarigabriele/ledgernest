@@ -8,6 +8,7 @@ import { fmtUsd, fmtPct, deltaClass } from '@/lib/utils/format'
 import { useFormatters } from '@/hooks/useFormatters'
 import Donut from '@/components/charts/Donut'
 import Sparkline from '@/components/charts/Sparkline'
+import PortfolioPerformanceChart from '@/components/charts/PortfolioPerformanceChart'
 import Icon from '@/components/shared/Icon'
 import { useUIStore } from '@/stores/uiStore'
 import { useTranslations } from 'next-intl'
@@ -447,35 +448,8 @@ export default function CryptoPage() {
       {/* Chart + Allocation */}
       <div className="ledgernest-port-charts" style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 12 }}>
         {/* Line chart */}
-        <div className="ledgernest-card" style={{ padding: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>{tl('chartTitle')}</div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-                {tl('chartSubtitle', { period: period === '1G' ? tl('period1D') : period === '1S' ? tl('period1W') : period === '1M' ? tl('period1M') : period === '1A' ? tl('period1Y') : tl('periodAll') })}
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 2, background: 'var(--bg-elevated)', borderRadius: 8, padding: 3 }}>
-              {CRYPTO_PERIODS.map((t) => (
-                <button key={t} onClick={() => setPeriod(t)} style={{
-                  padding: '3px 9px', borderRadius: 6, fontSize: '11px', fontWeight: 600,
-                  border: 'none', cursor: 'pointer', transition: 'all .15s',
-                  background: period === t ? 'var(--accent)' : 'transparent',
-                  color: period === t ? '#fff' : 'var(--text-secondary)',
-                }}>{t}</button>
-              ))}
-            </div>
-          </div>
-          <CryptoChart
-            cryptoPositions={cryptos}
-            biggest={biggest}
-            totalValue={totalValue}
-            period={period}
-            eurUsd={eurUsd}
-            quotes={quotes}
-            quotesLoading={quotesLoading}
-            pnl={totalPnl}
-          />
+        <div className="ledgernest-card">
+          <PortfolioPerformanceChart filter="crypto" title={tl('chartTitle')} />
         </div>
 
         {/* Allocazione */}

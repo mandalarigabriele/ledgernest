@@ -129,6 +129,7 @@ export async function fetchHistory(
     const result = await fetchChart(ticker, range, interval)
     const timestamps = result.timestamp ?? []
     const q = result.indicators?.quote?.[0] ?? {}
+    const currency = (result.meta?.currency as string) || undefined
 
     const candles: OHLCCandle[] = timestamps
       .map((ts, i) => ({
@@ -141,7 +142,7 @@ export async function fetchHistory(
       }))
       .filter((c) => c.close > 0)
 
-    return { ticker, interval, candles }
+    return { ticker, interval, candles, currency }
   } catch {
     return { ticker, interval, candles: [] }
   }

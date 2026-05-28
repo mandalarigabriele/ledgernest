@@ -2,44 +2,74 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 export interface PortfolioSnapshot {
-  ts: number    // Unix ms
-  value: number // portfolio value in EUR (positions only, not cash)
+  ts: number       // Unix ms
+  value: number    // total portfolio value in EUR
+  invested: number // total cost basis in EUR
+  stocks: number   // stocks value
+  etf: number      // etf value
+  crypto: number   // crypto value
 }
 
 interface PortfolioSnapshotStore {
   snapshots: PortfolioSnapshot[]
-  addSnapshot: (value: number) => void
+  addSnapshot: (snap: Omit<PortfolioSnapshot, 'ts'>) => void
+  getSnapshotsForRange: (days: number) => PortfolioSnapshot[]
+  oldestTs: () => number
 }
 
-const RETAIN_MS   = 8 * 24 * 3600_000  // 8 days total
-const RECENT_MS   = 24 * 3600_000      // last 24h kept at full resolution
-const BUCKET_MS   = 30 * 60_000        // older data: 1 point per 30-min bucket
+// Downsampling: keep detail for recent data, compress old data
+const BUCKET_15M = 15 * 60_000
+const BUCKET_1H  = 60 * 60_000
+const BUCKET_1D  = 24 * 3600_000
+const BUCKET_1W  = 7 * 24 * 3600_000
+
+function bucketize(arr: PortfolioSnapshot[], bucketMs: number): PortfolioSnapshot[] {
+  const buckets: Record<number, PortfolioSnapshot> = {}
+  for (const snap of arr) {
+    const b = Math.floor(snap.ts / bucketMs)
+    if (!buckets[b] || snap.ts > buckets[b].ts) buckets[b] = snap
+  }
+  return Object.values(buckets).sort((a, b) => a.ts - b.ts)
+}
+
+function downsample(snapshots: PortfolioSnapshot[]): PortfolioSnapshot[] {
+  const now = Date.now()
+  const cut24h = now - 24 * 3600_000
+  const cut7d  = now - 7 * 24 * 3600_000
+  const cut30d = now - 30 * 24 * 3600_000
+  const cut1y  = now - 365 * 24 * 3600_000
+
+  return [
+    ...bucketize(snapshots.filter(s => s.ts < cut1y), BUCKET_1W),
+    ...bucketize(snapshots.filter(s => s.ts >= cut1y && s.ts < cut30d), BUCKET_1D),
+    ...bucketize(snapshots.filter(s => s.ts >= cut30d && s.ts < cut7d), BUCKET_1H),
+    ...bucketize(snapshots.filter(s => s.ts >= cut7d && s.ts < cut24h), BUCKET_15M),
+    ...snapshots.filter(s => s.ts >= cut24h),
+  ]
+}
 
 export const usePortfolioSnapshotStore = create<PortfolioSnapshotStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       snapshots: [],
 
-      addSnapshot: (value) => {
-        const now    = Date.now()
-        const cut8d  = now - RETAIN_MS
-        const cut24h = now - RECENT_MS
-
+      addSnapshot: (snap) => {
+        const now = Date.now()
         set((s) => {
-          // Recent (< 24h): keep as-is
-          const recent = s.snapshots.filter((p) => p.ts >= cut24h)
-
-          // Older (24h–8d): downsample to 1 point per 30-min bucket (keep latest in bucket)
-          const older  = s.snapshots.filter((p) => p.ts >= cut8d && p.ts < cut24h)
-          const buckets: Record<number, PortfolioSnapshot> = {}
-          for (const snap of older) {
-            const b = Math.floor(snap.ts / BUCKET_MS)
-            if (!buckets[b] || snap.ts > buckets[b].ts) buckets[b] = snap
-          }
-          const downsampledOlder = Object.values(buckets).sort((a, b) => a.ts - b.ts)
-
-          return { snapshots: [...downsampledOlder, ...recent, { ts: now, value }] }
+          const newSnap: PortfolioSnapshot = { ...snap, ts: now }
+          const all = [...s.snapshots, newSnap]
+          return { snapshots: downsample(all) }
         })
+      },
+
+      getSnapshotsForRange: (days) => {
+        const cutoff = Date.now() - days * 24 * 3600_000
+        return get().snapshots.filter(s => s.ts >= cutoff)
+      },
+
+      oldestTs: () => {
+        const snaps = get().snapshots
+        return snaps.length > 0 ? snaps[0].ts : Date.now()
       },
     }),
     { name: 'portfolio-snapshots' }

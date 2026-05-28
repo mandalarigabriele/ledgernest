@@ -3019,6 +3019,359 @@ ul, ol { list-style: none; }
   .ledgernest-fin-kpis {
     grid-template-columns: 1fr 1fr !important;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PORTFOLIO PERFORMANCE CHART — Getquin style
+   ═══════════════════════════════════════════════════════════════ */
+
+.pfchart {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  margin-bottom: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.pfchart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.pfchart-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent, #5bc8d0);
+  margin-bottom: 2px;
+}
+
+.pfchart-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.pfchart-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.pfchart-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.pfchart-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 6px;
+  align-items: center;
+}
+
+.pfchart-delta {
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.pfchart-delta.is-up { color: var(--success, #22c55e); }
+.pfchart-delta.is-down { color: var(--danger, #ef4444); }
+
+.pfchart-delta-pct {
+  font-weight: 500;
+  opacity: 0.8;
+  margin-left: 3px;
+}
+
+.pfchart-period-gain {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pfchart-invested-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.pfchart-invested-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.pfchart-invested-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Canvas */
+.pfchart-canvas {
+  position: relative;
+  margin: 0 -8px;
+}
+
+.pfchart-svg {
+  width: 100%;
+  height: 200px;
+  display: block;
+  touch-action: none;
+}
+
+.pfchart-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.1);
+  border-radius: 8px;
+  z-index: 2;
+}
+
+.pfchart-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2.5px solid rgba(255,255,255,0.15);
+  border-top-color: var(--accent, #5bc8d0);
+  border-radius: 50%;
+  animation: pfchart-spin 0.7s linear infinite;
+}
+
+@keyframes pfchart-spin {
+  to { transform: rotate(360deg); }
+}
+
+.pfchart-date-tooltip {
+  position: absolute;
+  bottom: -18px;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Timeframe tabs */
+.pfchart-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 10px;
+  align-self: flex-start;
+}
+
+.pfchart-tab {
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  letter-spacing: 0.3px;
+}
+
+.pfchart-tab:hover {
+  color: var(--text-primary);
+  background: rgba(255,255,255,0.05);
+}
+
+.pfchart-tab.is-active {
+  color: var(--text-primary);
+  background: var(--accent, #5bc8d0);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.pfchart-tab.is-locked {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.pfchart-tab.is-locked:hover {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+/* Legend */
+.pfchart-legend {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.pfchart-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.pfchart-legend-line {
+  display: inline-block;
+  width: 16px;
+  height: 2.5px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.25);
+}
+
+.pfchart-legend-dashed {
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255,255,255,0.35) 0px,
+    rgba(255,255,255,0.35) 4px,
+    transparent 4px,
+    transparent 7px
+  );
+}
+
+/* X-axis labels */
+.pfchart-x-labels {
+  position: relative;
+  height: 20px;
+  margin-top: 4px;
+}
+.pfchart-x-labels span {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: rgba(255,255,255,0.4);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.pfchart-x-labels span:first-child { transform: translateX(0); }
+.pfchart-x-labels span:last-child { transform: translateX(-100%); }
+
+/* Empty state */
+.pfchart-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  text-align: center;
+  gap: 8px;
+}
+.pfchart-empty-icon { font-size: 32px; opacity: 0.5; }
+.pfchart-empty p { font-size: 13px; max-width: 280px; line-height: 1.5; }
+
+/* ── Allocation card (improved) ── */
+.ledgernest-alloc-card {
+  display: flex;
+  flex-direction: column;
+}
+.ledgernest-alloc-card .ledgernest-alloc {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+.ledgernest-alloc-card .ledgernest-alloc-chart {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ledgernest-alloc-card .ledgernest-donut-center {
+  position: absolute;
+  text-align: center;
+}
+.ledgernest-alloc-card .ledgernest-donut-num {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.ledgernest-alloc-card .ledgernest-donut-cap {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.ledgernest-alloc-card .ledgernest-alloc-legend {
+  width: 100%;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ledgernest-alloc-card .ledgernest-alloc-legend li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  transition: background 0.15s;
+}
+.ledgernest-alloc-card .ledgernest-alloc-legend li:hover {
+  background: rgba(255,255,255,0.04);
+}
+.ledgernest-alloc-card .ledgernest-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.ledgernest-alloc-card .ledgernest-legend-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ledgernest-alloc-card .ledgernest-legend-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.ledgernest-alloc-card .ledgernest-legend-val {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.ledgernest-alloc-card .ledgernest-legend-pct {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .pfchart { padding: 16px 12px; }
+  .pfchart-value { font-size: 24px; }
+  .pfchart-header { flex-direction: column; }
+  .pfchart-invested-badge { flex-direction: row; align-items: center; gap: 8px; align-self: flex-start; }
+  .pfchart-tab { padding: 6px 10px; font-size: 11px; }
 
   /* Finance: chart+breakdown → stacked */
   .ledgernest-fin-charts {

@@ -202,6 +202,7 @@ export interface PriceHistory {
   ticker: string
   interval: '1d' | '1wk' | '1mo'
   candles: OHLCCandle[]
+  currency?: string
 }
 
 // ---- Settings -----------------------------------------------

@@ -5,25 +5,31 @@ import { fetchCryptoHistory, isCryptoTicker, yahooToCgId } from '@/lib/services/
 // ── per-ticker price history ──────────────────────────────────
 // For days <= 7: returns Map with "YYYY-MM-DDTHH:MM" keys (hourly candles, UTC)
 // For days > 7:  returns Map with "YYYY-MM-DD" keys (daily closes)
+// Also returns the native currency of the price data.
 
-async function getHistory(ticker: string, days: number): Promise<Map<string, number>> {
+interface HistoryResult {
+  prices: Map<string, number>
+  currency: string // e.g. 'USD', 'EUR', 'GBp'
+}
+
+async function getHistory(ticker: string, days: number): Promise<HistoryResult> {
   const map = new Map<string, number>()
+  let currency = 'USD'
   try {
     if (isCryptoTicker(ticker)) {
       const cgId = yahooToCgId(ticker)
-      if (!cgId) return map
+      if (!cgId) return { prices: map, currency: 'EUR' } // CoinGecko returns EUR
       const pts = await fetchCryptoHistory(cgId, Math.min(days, 365))
       for (const { timestamp, price } of pts) {
         map.set(new Date(timestamp).toISOString().slice(0, 10), price)
       }
+      return { prices: map, currency: 'EUR' }
     } else if (days <= 7) {
-      // For 1S: fetch daily closes first as fallback, then overlay hourly candles.
-      // This ensures positions with limited intraday history still have a price
-      // for every trading day, preventing artificial gaps that inflate portfolio jumps.
       try {
         const hist = await fetchHistory(ticker, '1mo')
+        currency = hist.currency || 'USD'
         for (const c of hist.candles) map.set(c.date, c.close)
-      } catch { /* ignore — hourly may still work */ }
+      } catch { /* ignore */ }
       try {
         const hourly = await fetchHourlyHistory(ticker)
         for (const [dt, price] of hourly) map.set(dt, price)
@@ -36,10 +42,11 @@ async function getHistory(ticker: string, days: number): Promise<Map<string, num
         days <= 366 ? '1y'   :
         days <= 730 ? '2y'   : '5y'
       const hist = await fetchHistory(ticker, period)
+      currency = hist.currency || 'USD'
       for (const c of hist.candles) map.set(c.date, c.close)
     }
   } catch { /* return empty map on error */ }
-  return map
+  return { prices: map, currency }
 }
 
 // ── bi-directional fill ───────────────────────────────────────
@@ -54,7 +61,6 @@ function fillBothWays(priceMap: Map<string, number>, sortedDates: string[]): Map
   const sorted = Array.from(priceMap.entries()).sort((a, b) => a[0].localeCompare(b[0]))
   if (sorted.length === 0) return new Map()
 
-  const firstKnown = sorted[0][1]
   const result = new Map<string, number>()
   let j = 0, lastPrice = 0
 
@@ -63,9 +69,10 @@ function fillBothWays(priceMap: Map<string, number>, sortedDates: string[]): Map
       lastPrice = sorted[j][1]
       j++
     }
-    // Before first data point → back-fill with oldest price; after → forward-fill
-    const price = lastPrice > 0 ? lastPrice : firstKnown
-    if (price > 0) result.set(date, price)
+    // Only forward-fill: once we have a known price, carry it forward (weekends/holidays).
+    // Do NOT back-fill dates before the first known data point — the ticker simply
+    // won't contribute to the portfolio total for those dates.
+    if (lastPrice > 0) result.set(date, lastPrice)
   }
   return result
 }
@@ -83,18 +90,20 @@ export async function GET(req: NextRequest) {
   const pParam = req.nextUrl.searchParams.get('p') ?? ''
   const days   = parseInt(req.nextUrl.searchParams.get('days')   ?? '180')
   const eurUsd = parseFloat(req.nextUrl.searchParams.get('eurUsd') ?? '1.08')
+  const debug  = req.nextUrl.searchParams.get('debug') === '1'
 
   if (!pParam) return NextResponse.json({ points: [] })
 
   const positions = pParam.split(',')
     .map((s) => {
-      const [ticker, qty, purchaseDate, currency, livePriceEurStr] = s.split(':')
+      const [ticker, qty, purchaseDate, currency, livePriceEurStr, avgPriceStr] = s.split(':')
       return {
         ticker,
         quantity:     parseFloat(qty),
         purchaseDate,
         currency:     currency ?? 'USD',
         livePriceEur: parseFloat(livePriceEurStr) || 0,
+        avgPrice:     parseFloat(avgPriceStr) || 0,
       }
     })
     .filter((p) => p.ticker && p.quantity > 0 && p.purchaseDate)
@@ -102,15 +111,15 @@ export async function GET(req: NextRequest) {
   if (positions.length === 0) return NextResponse.json({ points: [] })
 
   // Fetch all price histories in parallel
-  const histories = await Promise.all(positions.map((p) => getHistory(p.ticker, days)))
+  const historyResults = await Promise.all(positions.map((p) => getHistory(p.ticker, days)))
 
   // Build a unified sorted date list within the requested range
   const cutoff    = new Date(); cutoff.setDate(cutoff.getDate() - days)
   const cutoffStr = cutoff.toISOString().slice(0, 10)
 
   const dateSet = new Set<string>()
-  for (const h of histories) {
-    Array.from(h.keys()).forEach((date) => {
+  for (const h of historyResults) {
+    Array.from(h.prices.keys()).forEach((date) => {
       if (date >= cutoffStr) dateSet.add(date)
     })
   }
@@ -118,24 +127,25 @@ export async function GET(req: NextRequest) {
   const sortedDates = Array.from(dateSet).sort()
   if (sortedDates.length === 0) return NextResponse.json({ points: [] })
 
-  // Fill each history in both directions so every date has a price.
-  // For tickers with zero history (both daily fallback and hourly fetch failed),
-  // use the live price as a constant so they contribute the same value to every
-  // historical date and to the live terminal — eliminating the end-of-chart spike.
-  const filled = histories.map((h, i) => {
-    if (h.size === 0 && positions[i].livePriceEur > 0) {
-      const fallback = new Map<string, number>()
-      for (const date of sortedDates) fallback.set(date, positions[i].livePriceEur)
-      return fallback
-    }
-    return fillBothWays(h, sortedDates)
+  // Fill gaps (weekends/holidays) with forward-fill only.
+  // Tickers with zero history simply won't contribute to any date.
+  const filled = historyResults.map((h) => {
+    if (h.prices.size === 0) return new Map<string, number>()
+    return fillBothWays(h.prices, sortedDates)
   })
 
-  // Compute portfolio value for each date
-  const points: { date: string; value: number }[] = []
+  // Determine the actual currency of each ticker's price data from Yahoo/CoinGecko.
+  // This overrides the client-supplied currency which may be incorrect.
+  const priceCurrencies = historyResults.map((h) => h.currency)
+
+  // Compute portfolio value AND invested cost for each date.
+  // A position only contributes to BOTH value and invested when it has a known price.
+  // This keeps the two lines in sync — no invested without corresponding value.
+  const points: { date: string; value: number; invested: number }[] = []
 
   for (const date of sortedDates) {
-    let total = 0, hasAny = false
+    let total = 0, invested = 0, hasAny = false
+    const debugEntries: { ticker: string; qty: number; price: number; priceEur: number; cost: number; purchaseDate: string; priceCurrency: string }[] = []
 
     for (let i = 0; i < positions.length; i++) {
       const pos = positions[i]
@@ -145,13 +155,46 @@ export async function GET(req: NextRequest) {
       const price = filled[i].get(date)
       if (!price) continue
 
-      // Convert to EUR
-      const priceEur = pos.currency === 'EUR' ? price : price / eurUsd
+      // Use the actual currency from Yahoo/CoinGecko, not the client-supplied one
+      const priceCurrency = priceCurrencies[i]
+      const isEur = priceCurrency === 'EUR'
+      // GBp (pence) needs special handling: divide by 100 to get GBP, then convert
+      const isGBp = priceCurrency === 'GBp' || priceCurrency === 'GBX'
+
+      let priceEur: number
+      if (isEur) {
+        priceEur = price
+      } else if (isGBp) {
+        // GBp → GBP → EUR (approximate: GBP ≈ EUR * 1.17)
+        priceEur = (price / 100) / (eurUsd * 0.87) // rough GBP/EUR via USD
+      } else {
+        // Assume USD for anything else
+        priceEur = price / eurUsd
+      }
+
       total += pos.quantity * priceEur
+
+      // Cost basis: use CLIENT-supplied currency since avgPrice is stored
+      // in whatever currency the user's position uses (may already be EUR)
+      const clientIsEur = pos.currency === 'EUR'
+      let costEur: number
+      if (clientIsEur) {
+        costEur = pos.avgPrice
+      } else {
+        costEur = pos.avgPrice / eurUsd
+      }
+      invested += pos.quantity * costEur
+
       hasAny = true
+      if (debug) debugEntries.push({ ticker: pos.ticker, qty: pos.quantity, price, priceEur, cost: costEur * pos.quantity, purchaseDate: pos.purchaseDate, priceCurrency })
     }
 
-    if (hasAny) points.push({ date, value: Math.round(total * 100) / 100 })
+    if (hasAny) points.push({
+      date,
+      value: Math.round(total * 100) / 100,
+      invested: Math.round(invested * 100) / 100,
+      ...(debug ? { details: debugEntries } : {}),
+    } as any)
   }
 
   return NextResponse.json(

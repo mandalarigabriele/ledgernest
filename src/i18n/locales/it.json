@@ -107,7 +107,10 @@
     "range6M": "6 mesi",
     "range1A": "1 anno",
     "rangeMAX": "tutto",
-    "last30Days": "ultimi 30 giorni"
+    "last30Days": "ultimi 30 giorni",
+    "invested": "Investito",
+    "inPeriod": "nel periodo",
+    "portfolioValueLabel": "Valore"
   },
   "portfolio": {
     "title": "Portfolio",

@@ -8,6 +8,7 @@ import { usePrices } from '@/hooks/usePrices'
 import { fmtPct, fmtNum, deltaClass } from '@/lib/utils/format'
 import { useFormatters } from '@/hooks/useFormatters'
 import Sparkline from '@/components/charts/Sparkline'
+import PortfolioPerformanceChart from '@/components/charts/PortfolioPerformanceChart'
 import Icon from '@/components/shared/Icon'
 import { useUIStore } from '@/stores/uiStore'
 
@@ -479,26 +480,8 @@ export default function AzioniPage() {
 
       {/* Chart + Sector breakdown */}
       <div className="ledgernest-port-charts" style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '12px' }}>
-        <div className="ledgernest-card" style={{ padding: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: '14px' }}>{tl('chartTitle')}</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                {tl('chartSubtitle', { period: PERIOD_LABELS[chartPeriod] })}
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '2px', background: 'var(--bg-elevated)', borderRadius: '8px', padding: '3px' }}>
-              {CHART_PERIODS.map((cp) => (
-                <button key={cp} onClick={() => setChartPeriod(cp)} style={{
-                  padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
-                  border: 'none', cursor: 'pointer', transition: 'all .15s',
-                  background: chartPeriod === cp ? 'var(--accent)' : 'transparent',
-                  color: chartPeriod === cp ? '#fff' : 'var(--text-secondary)',
-                }}>{cp}</button>
-              ))}
-            </div>
-          </div>
-          <PortfolioChart positions={stocks} period={chartPeriod} quotes={quotes} eurUsd={eurUsd} pnl={totalPnl} />
+        <div className="ledgernest-card">
+          <PortfolioPerformanceChart filter="stocks" title={tl('chartTitle')} />
         </div>
 
         <div className="ledgernest-card" style={{ padding: '20px' }}>
