@@ -235,7 +235,7 @@ interface Props {
 export default function CSVImportWizard({ onClose }: Props) {
   const { fmt } = useFormatters()
   const { accounts, transactions, addAccount, addTransaction, updateAccount } = useFinanceStore()
-  const { positions, addPosition } = usePortfolioStore()
+  const { positions, addPosition, addTrade } = usePortfolioStore()
   const { settings, updateSettings } = useSettingsStore()
   const { refetch } = usePrices()
 
@@ -442,37 +442,41 @@ export default function CSVImportWizard({ onClose }: Props) {
 
     for (const [ticker, trs] of Array.from(byTicker)) {
       const existingPos = usePortfolioStore.getState().positions.find((p) => p.ticker.toUpperCase() === ticker.toUpperCase())
+      const sample = trs[0]
+      const earliestDate = trs.map((t) => t.date).sort()[0]
 
       if (!existingPos) {
-        const totalQty  = trs.reduce((s: number, t) => s + t.quantity, 0)
-        const totalCost = trs.reduce((s: number, t) => s + t.amount + t.commission, 0)  // EUR debit + separate commission fee
-        const avgPrice  = totalQty > 0 ? totalCost / totalQty : 0
-        const sample    = trs[0]
-        const earliestDate = trs.map((t) => t.date).sort()[0]
-
         addPosition({
           ticker,
           name: sample.name || ticker,
           type: sample.assetType === 'commodity' ? 'commodity' : sample.assetType,
-          quantity: totalQty,
-          avgPrice,
+          quantity: 0,   // will be updated by addTrade
+          avgPrice: 0,   // will be updated by addTrade
           currency: 'EUR',
           broker: accounts.find((a) => a.id === resolvedAccountId)?.name ?? 'Trade Republic',
           purchaseDate: earliestDate,
         })
       }
 
-      // Finance transaction per trade
-      for (const trade of trs) {
-        if (trade.isFreeReceipt) continue
-        addTransaction({
+      const posId = usePortfolioStore.getState().positions.find(
+        (p) => p.ticker.toUpperCase() === ticker.toUpperCase()
+      )?.id
+      if (!posId) continue
+
+      // One addTrade per CSV row — creates finance movement automatically
+      const sorted = [...trs].filter((t) => !t.isFreeReceipt).sort((a, b) => a.date.localeCompare(b.date))
+      for (const trade of sorted) {
+        const pricePerUnit = trade.quantity > 0 ? trade.amount / trade.quantity : 0
+        addTrade({
+          positionId: posId,
+          ticker,
+          type: 'buy',
+          quantity: trade.quantity,
+          price: pricePerUnit,
+          commission: trade.commission,
           date: trade.date,
-          description: `Acquisto ${ticker} ×${trade.quantity}`,
-          amount: trade.amount,
-          type: 'expense',
-          category: ASSET_LABEL[trade.assetType] ?? 'Azioni',
-          accountId: resolvedAccountId,
-          note: `[import:${trade.sourceId}] ${trade.originalDescription ?? ''}`.trim(),
+          currency: 'EUR',
+          note: `[import:${trade.sourceId}] ${trade.originalDescription ?? ''}`.trim() || undefined,
         })
       }
     }

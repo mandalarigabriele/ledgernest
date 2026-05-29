@@ -3,13 +3,15 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { useFinanceStore } from '@/stores/financeStore'
+import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useUIStore } from '@/stores/uiStore'
 import { useFormatters } from '@/hooks/useFormatters'
 import BarChart from '@/components/charts/BarChart'
 import Icon from '@/components/shared/Icon'
 import { CategoryPicker } from '@/components/shared/CategoryPicker'
 import MerchantInput from '@/components/shared/MerchantInput'
-import type { Transaction } from '@/types'
+import EditTradeModal from '@/components/shared/modals/EditTradeModal'
+import type { Transaction, Trade } from '@/types'
 
 // ── shared helpers ────────────────────────────────────────────
 
@@ -270,10 +272,26 @@ function AddAsRecurringModal({ tx, onClose }: { tx: TxSnap; onClose: () => void 
 
 // ── Tx row kebab ──────────────────────────────────────────────
 
+const TRADE_DESC_RE = /^(Acquisto|Vendita) (\S+) ×([\d.]+) @ ([\d.]+)$/
+
+function findTradeForTx(tx: Transaction, trades: Trade[]): Trade | undefined {
+  const m = tx.description.match(TRADE_DESC_RE)
+  if (!m) return undefined
+  const type = m[1] === 'Acquisto' ? 'buy' : 'sell'
+  const ticker = m[2]
+  const qty = parseFloat(m[3])
+  const price = parseFloat(m[4])
+  return trades.find(
+    (t) => t.ticker === ticker && t.type === type && t.date === tx.date &&
+      Math.abs(t.quantity - qty) < 0.0001 && Math.abs(t.price - price) < 0.0001
+  )
+}
+
 type TxActions = {
   onAddRecurring: () => void
   onEdit: () => void
   onDelete: () => void
+  onEditTrade?: () => void
 }
 
 function TxRowMenu({ actions }: { actions: TxActions }) {
@@ -325,6 +343,13 @@ function TxRowMenu({ actions }: { actions: TxActions }) {
             onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
             {tl('menuRecurring')}
           </button>
+          {actions.onEditTrade && (
+            <button onClick={() => { setOpen(false); actions.onEditTrade!() }} style={{ ...menuItem, color: 'var(--accent)' }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-elevated)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
+              <Icon name="edit" size={13} /> Modifica operazione
+            </button>
+          )}
           <button onClick={() => { setOpen(false); actions.onEdit() }} style={{ ...menuItem, color: 'var(--text-primary)' }}
             onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-elevated)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
@@ -353,12 +378,14 @@ export default function MovimentiPage() {
   const tl = useTranslations('movimenti')
   const { fmt } = useFormatters()
   const { transactions, accounts, budgetCategories, budgetGroups, monthlyIncome, monthlyExpenses, deleteTransaction, merchantLogos } = useFinanceStore()
+  const { trades } = usePortfolioStore()
   const { openModal } = useUIStore()
 
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<TxFilter>('all')
   const [addingRecurring, setAddingRecurring] = useState<TxSnap | null>(null)
   const [editingTx, setEditingTx] = useState<Transaction | null>(null)
+  const [editingTrade, setEditingTrade] = useState<Trade | null>(null)
   const [deletingTxId, setDeletingTxId] = useState<string | null>(null)
 
   const FILTERS: Array<[TxFilter, string]> = [
@@ -721,6 +748,9 @@ export default function MovimentiPage() {
                         onAddRecurring: () => setAddingRecurring(tx),
                         onEdit: () => setEditingTx(transactions.find((tx2) => tx2.id === tx.id) ?? null),
                         onDelete: () => setDeletingTxId(tx.id),
+                        onEditTrade: INVEST_CATS.has(tx.category) && TRADE_DESC_RE.test(tx.description)
+                          ? () => { const tr = findTradeForTx(tx, trades); if (tr) setEditingTrade(tr) }
+                          : undefined,
                       }} />
                     </div>
                   )
@@ -732,6 +762,9 @@ export default function MovimentiPage() {
 
       </div>
 
+      {editingTrade && (
+        <EditTradeModal trade={editingTrade} onClose={() => setEditingTrade(null)} />
+      )}
       {addingRecurring && (
         <AddAsRecurringModal tx={addingRecurring} onClose={() => setAddingRecurring(null)} />
       )}

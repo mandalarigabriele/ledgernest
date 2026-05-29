@@ -27,7 +27,7 @@ const HEATMAP_ROWS = ['Stocks', 'ETF', 'Crypto']
 export default function DashboardPage() {
   usePrices()
   const t = useTranslations('dashboard')
-  const { fmt, fmt0, fmtCpt } = useFormatters()
+  const { fmt, fmt0, fmtCpt, fmtDlt } = useFormatters()
 
   const { positions } = usePortfolioStore()
   const { snapshots } = usePortfolioSnapshotStore()
@@ -247,7 +247,7 @@ export default function DashboardPage() {
           <div className="ledgernest-kpi-value">{fmt0(portfolioValue)}</div>
           <div className="ledgernest-kpi-foot">
             <span className={`ledgernest-kpi-delta ${pnlPct >= 0 ? 'is-up' : ''}`}>
-              {pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(2)}%
+              {fmtDlt(pnl)} ({pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(2)}%)
             </span>
             <span className="ledgernest-kpi-sub">{netWorth > 0 ? ((portfolioValue / netWorth) * 100).toFixed(0) : 0}% {t('ofNetWorth')}</span>
           </div>

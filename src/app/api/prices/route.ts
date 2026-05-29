@@ -4,9 +4,10 @@ import { fetchCryptoQuotes, isCryptoTicker } from '@/lib/services/coinGecko'
 import { getDb } from '@/lib/db/schema'
 import type { Quote } from '@/types'
 
-const CACHE_TTL     = 60_000   // 60 s for regular quotes
-const CRYPTO_TTL    = 30_000   // 30 s for crypto (more volatile)
-const EURUSD_TTL    = 300_000  // 5 min for EUR/USD rate
+const CACHE_TTL        = 60_000         // 60 s for regular quotes
+const CRYPTO_TTL       = 30_000         // 30 s for crypto (more volatile)
+const EURUSD_TTL       = 300_000        // 5 min for EUR/USD rate
+const EXTENDED_STALE   = 8 * 3_600_000 // 8 h — max age of a preserved PM/AH value
 
 // ── SQLite helpers ────────────────────────────────────────────
 
@@ -20,6 +21,19 @@ function getCached(ticker: string): Quote | null {
     const ttl = isCryptoTicker(ticker) ? CRYPTO_TTL : CACHE_TTL
     if (Date.now() - new Date(row.updated_at).getTime() > ttl) return null
     return JSON.parse(row.data) as Quote
+  } catch {
+    return null
+  }
+}
+
+function getCachedRaw(ticker: string): { data: Quote; age: number } | null {
+  try {
+    const db  = getDb()
+    const row = db
+      .prepare('SELECT data, updated_at FROM price_cache WHERE ticker = ?')
+      .get(ticker) as { data: string; updated_at: string } | undefined
+    if (!row) return null
+    return { data: JSON.parse(row.data) as Quote, age: Date.now() - new Date(row.updated_at).getTime() }
   } catch {
     return null
   }
@@ -98,11 +112,33 @@ export async function GET(req: NextRequest) {
   const toEur = (v: number, currency: string) => currency === 'EUR' ? v : v / rateVal
 
   const freshWithEur = [...cryptoFresh, ...regularFresh].map((q) => {
+    const hasExtended = q.preMarket != null || q.postMarket != null
+
+    // Preserve last known PM/AH if the new quote has none and the cached value is < 8 h old
+    let preserved: Pick<Quote, 'preMarket' | 'preMarketEur' | 'preMarketChange' | 'preMarketChangePct' |
+                                       'postMarket' | 'postMarketEur' | 'postMarketChange' | 'postMarketChangePct'> = {}
+    if (!hasExtended) {
+      const raw = getCachedRaw(q.ticker)
+      if (raw && raw.age < EXTENDED_STALE && (raw.data.preMarket != null || raw.data.postMarket != null)) {
+        const p = raw.data
+        preserved = {
+          preMarket: p.preMarket, preMarketEur: p.preMarketEur,
+          preMarketChange: p.preMarketChange, preMarketChangePct: p.preMarketChangePct,
+          postMarket: p.postMarket, postMarketEur: p.postMarketEur,
+          postMarketChange: p.postMarketChange, postMarketChangePct: p.postMarketChangePct,
+        }
+      }
+    }
+
+    const effPreMarket  = q.preMarket  ?? preserved.preMarket
+    const effPostMarket = q.postMarket ?? preserved.postMarket
+
     const enriched: Quote = {
       ...q,
+      ...preserved,
       priceEur:      toEur(q.price, q.currency),
-      preMarketEur:  q.preMarket  != null ? toEur(q.preMarket,  q.currency) : undefined,
-      postMarketEur: q.postMarket != null ? toEur(q.postMarket, q.currency) : undefined,
+      preMarketEur:  effPreMarket  != null ? toEur(effPreMarket,  q.currency) : undefined,
+      postMarketEur: effPostMarket != null ? toEur(effPostMarket, q.currency) : undefined,
     }
     setCache(q.ticker, enriched)
     return enriched

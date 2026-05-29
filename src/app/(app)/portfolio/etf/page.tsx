@@ -426,7 +426,7 @@ export default function EtfPage() {
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiTotal')}</div>
           <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{fmt(totalValue)}</div>
           <div style={{ fontSize: 12, fontWeight: 600, color: totalPnlPct >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-            {totalPnlPct >= 0 ? '+' : ''}{fmtPct(totalPnlPct)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{tl('kpiFunds', { n: etfs.length })}</span>
+            {fmtPct(totalPnlPct)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{tl('kpiFunds', { n: etfs.length })}</span>
           </div>
         </div>
 

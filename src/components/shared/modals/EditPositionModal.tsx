@@ -5,15 +5,17 @@ import { useTranslations } from 'next-intl'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useFinanceStore } from '@/stores/financeStore'
 import { useUIStore } from '@/stores/uiStore'
-import type { AssetType, PortfolioPosition } from '@/types'
+import type { AssetType, PortfolioPosition, Trade } from '@/types'
 import Icon from '../Icon'
+import EditTradeModal from './EditTradeModal'
 
 export default function EditPositionModal() {
   const t = useTranslations('modals')
   const tc = useTranslations('common')
   const { closeModal, modalProps } = useUIStore()
-  const { updatePosition } = usePortfolioStore()
+  const { updatePosition, trades, deleteTrade, backfillTradesFromTransactions } = usePortfolioStore()
   const { accounts } = useFinanceStore()
+  const [editingTrade, setEditingTrade] = useState<Trade | null>(null)
 
   const pos = modalProps.position as PortfolioPosition | undefined
 
@@ -220,23 +222,98 @@ export default function EditPositionModal() {
                 <div style={{ fontWeight: 700 }}>{price.toFixed(4)} {pos.currency}</div>
               </div>
             </div>
+
+            {/* Trades history */}
+            {(() => {
+              const posTrades = trades
+                .filter((tr) => tr.positionId === pos.id)
+                .sort((a, b) => b.date.localeCompare(a.date))
+              if (posTrades.length === 0) return (
+                <div style={{ padding: '12px 14px', background: 'var(--bg-elevated)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                    Nessuna operazione collegata a questa posizione.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => backfillTradesFromTransactions(pos.id)}
+                    style={{ fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 7, border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+                  >
+                    Collega transazioni
+                  </button>
+                </div>
+              )
+              return (
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-secondary)', marginBottom: 8 }}>
+                    STORICO OPERAZIONI ({posTrades.length})
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflowY: 'auto' }}>
+                    {posTrades.map((tr) => (
+                      <div key={tr.id} style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '8px 12px', borderRadius: 8,
+                        background: 'var(--bg-elevated)',
+                        fontSize: 13,
+                      }}>
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, flexShrink: 0,
+                          background: tr.type === 'buy' ? 'color-mix(in oklch, var(--success) 15%, transparent)' : 'color-mix(in oklch, var(--danger) 15%, transparent)',
+                          color: tr.type === 'buy' ? 'var(--success)' : 'var(--danger)',
+                        }}>
+                          {tr.type === 'buy' ? 'ACQ' : 'VEN'}
+                        </span>
+                        <span style={{ color: 'var(--text-tertiary)', flexShrink: 0, fontSize: 12 }}>{tr.date}</span>
+                        <span style={{ flex: 1, fontVariantNumeric: 'tabular-nums' }}>
+                          {tr.quantity} × {tr.price.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} {tr.currency}
+                        </span>
+                        {(tr.commission ?? 0) > 0 && (
+                          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>+{tr.commission} comm.</span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setEditingTrade(tr)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px 4px', borderRadius: 4 }}
+                          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+                          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-tertiary)')}
+                        >
+                          <Icon name="edit" size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteTrade(tr.id)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px 4px', borderRadius: 4 }}
+                          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--danger)')}
+                          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-tertiary)')}
+                        >
+                          <Icon name="trash" size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
           </div>
 
-          <div className="ledgernest-modal-footer">
-            <button type="button" className="ledgernest-btn ledgernest-btn-ghost" onClick={closeModal}>
-              {tc('cancel')}
-            </button>
-            <button
-              type="submit"
-              className="ledgernest-btn ledgernest-btn-primary"
-              disabled={!quantity || !avgPrice || parseFloat(quantity) <= 0}
-              style={{ opacity: quantity && avgPrice && parseFloat(quantity) > 0 ? 1 : 0.5 }}
-            >
-              {t('saveChanges')}
-            </button>
-          </div>
-        </form>
-      </div>
+        <div className="ledgernest-modal-footer">
+          <button type="button" className="ledgernest-btn ledgernest-btn-ghost" onClick={closeModal}>
+            {tc('cancel')}
+          </button>
+          <button
+            type="submit"
+            className="ledgernest-btn ledgernest-btn-primary"
+            disabled={!quantity || !avgPrice || parseFloat(quantity) <= 0}
+            style={{ opacity: quantity && avgPrice && parseFloat(quantity) > 0 ? 1 : 0.5 }}
+          >
+            {t('saveChanges')}
+          </button>
+        </div>
+      </form>
+
+      {editingTrade && (
+        <EditTradeModal trade={editingTrade} onClose={() => setEditingTrade(null)} />
+      )}
     </div>
+  </div>
   )
 }

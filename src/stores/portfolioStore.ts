@@ -87,7 +87,9 @@ interface PortfolioStore {
   resetPortfolio: () => void
 
   addTrade: (trade: Omit<Trade, 'id'>) => void
+  updateTrade: (id: string, patch: Partial<Pick<Trade, 'price' | 'quantity' | 'commission' | 'date' | 'note'>>) => void
   deleteTrade: (id: string) => void
+  backfillTradesFromTransactions: (positionId: string) => void
 
   addDividend: (div: Omit<Dividend, 'id'>) => void
   importDividend: (div: Omit<Dividend, 'id'>) => void
@@ -179,7 +181,95 @@ export const usePortfolioStore = create<PortfolioStore>()(
         createTradeMovement(newTrade, get().positions)
       },
 
+      updateTrade: (id, patch) => {
+        const oldTrade = get().trades.find((t) => t.id === id)
+        if (!oldTrade) return
+        const updatedTrade = { ...oldTrade, ...patch }
+        set((s) => ({ trades: s.trades.map((t) => t.id === id ? updatedTrade : t) }))
+        // Recalculate position qty and avgPrice from all buy trades from scratch
+        const buyTrades = get().trades.filter((t) => t.positionId === oldTrade.positionId && t.type === 'buy')
+        if (buyTrades.length > 0) {
+          const totalCost = buyTrades.reduce((s, t) => s + t.price * t.quantity + (t.commission ?? 0), 0)
+          const totalQty  = buyTrades.reduce((s, t) => s + t.quantity, 0)
+          set((s) => ({
+            positions: s.positions.map((p) =>
+              p.id === oldTrade.positionId
+                ? { ...p, quantity: totalQty, avgPrice: totalCost / totalQty, updatedAt: new Date().toISOString() }
+                : p
+            ),
+          }))
+        }
+        // Sync finance transaction: delete the old one and recreate with new data
+        const oldDesc = oldTrade.type === 'buy'
+          ? `Acquisto ${oldTrade.ticker} ×${oldTrade.quantity} @ ${oldTrade.price}`
+          : `Vendita ${oldTrade.ticker} ×${oldTrade.quantity} @ ${oldTrade.price}`
+        const { transactions, deleteTransaction } = useFinanceStore.getState()
+        const oldTx = transactions.find((t) => t.description === oldDesc && t.date === oldTrade.date)
+        if (oldTx) deleteTransaction(oldTx.id)
+        createTradeMovement(updatedTrade, get().positions)
+      },
+
       deleteTrade: (id) => set((s) => ({ trades: s.trades.filter((t) => t.id !== id) })),
+
+      backfillTradesFromTransactions: (positionId) => {
+        const pos = get().positions.find((p) => p.id === positionId)
+        if (!pos) return
+
+        const { transactions } = useFinanceStore.getState()
+        const existingTrades = get().trades.filter((t) => t.positionId === positionId)
+
+        // Match both "Acquisto X ×qty @ price" (from addTrade) and "Acquisto X ×qty" (old CSV import)
+        const esc = pos.ticker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        const REfull   = new RegExp(`^(Acquisto|Vendita) ${esc} ×([\\d.]+) @ ([\\d.]+)$`)
+        const REsimple = new RegExp(`^(Acquisto|Vendita) ${esc} ×([\\d.]+)$`)
+
+        const investTxs = transactions.filter(
+          (tx) => INVESTMENT_CATEGORIES.has(tx.category) && (REfull.test(tx.description) || REsimple.test(tx.description))
+        )
+
+        let created = 0
+        for (const tx of investTxs) {
+          const mFull   = tx.description.match(REfull)
+          const mSimple = tx.description.match(REsimple)
+          const m = mFull ?? mSimple
+          if (!m) continue
+
+          const type     = m[1] === 'Acquisto' ? 'buy' : 'sell' as 'buy' | 'sell'
+          const quantity = parseFloat(m[2])
+          const price    = mFull ? parseFloat(m[3]) : (quantity > 0 ? tx.amount / quantity : 0)
+          if (!quantity || !price) continue
+
+          const alreadyExists = existingTrades.some(
+            (t) => t.date === tx.date && Math.abs(t.quantity - quantity) < 0.0001 && Math.abs(t.price - price) < 0.01
+          )
+          if (alreadyExists) continue
+
+          // Create trade WITHOUT regenerating the finance movement (it already exists)
+          set((s) => ({
+            trades: [...s.trades, {
+              id: nanoid(), positionId, ticker: pos.ticker, type,
+              quantity, price, commission: 0, date: tx.date, currency: pos.currency,
+            }],
+          }))
+          created++
+        }
+
+        if (created === 0) return
+
+        // Recalculate position qty and avgPrice from all buy trades
+        const buyTrades = get().trades.filter((t) => t.positionId === positionId && t.type === 'buy')
+        if (buyTrades.length > 0) {
+          const totalCost = buyTrades.reduce((s, t) => s + t.price * t.quantity + (t.commission ?? 0), 0)
+          const totalQty  = buyTrades.reduce((s, t) => s + t.quantity, 0)
+          set((s) => ({
+            positions: s.positions.map((p) =>
+              p.id === positionId
+                ? { ...p, quantity: totalQty, avgPrice: totalCost / totalQty, updatedAt: new Date().toISOString() }
+                : p
+            ),
+          }))
+        }
+      },
 
       addDividend: (div) => {
         const newDiv = { ...div, id: nanoid() }
