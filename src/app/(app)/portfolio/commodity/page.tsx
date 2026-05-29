@@ -4,6 +4,8 @@ import { useMemo, useRef, useState, useEffect } from 'react'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { usePricesStore } from '@/stores/pricesStore'
 import { usePrices } from '@/hooks/usePrices'
+import { useSettingsStore } from '@/stores/settingsStore'
+import { effectivePriceEur } from '@/lib/utils/price'
 import { fmtPct, fmtNum, deltaClass } from '@/lib/utils/format'
 import { useFormatters } from '@/hooks/useFormatters'
 import Sparkline from '@/components/charts/Sparkline'
@@ -121,6 +123,7 @@ export default function CommodityPage() {
   usePrices()
   const { positions, deletePosition } = usePortfolioStore()
   const { quotes, eurUsd } = usePricesStore()
+  const showPrePostMarket = useSettingsStore((s) => s.settings.showPrePostMarket)
   const { openModal } = useUIStore()
   const [filter, setFilter] = useState<CatFilter>('Tutte')
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -129,7 +132,7 @@ export default function CommodityPage() {
 
   const rows = useMemo(() => commodities.map((p) => {
     const q = quotes[p.ticker]
-    const price = q?.priceEur ?? q?.price ?? p.avgPrice
+    const price = effectivePriceEur(q, p.avgPrice, showPrePostMarket)
     const avgPriceEur = p.currency === 'USD' ? p.avgPrice / eurUsd : p.avgPrice
     const value = price * p.quantity
     const cost = avgPriceEur * p.quantity

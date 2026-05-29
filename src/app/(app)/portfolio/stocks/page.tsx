@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { usePricesStore } from '@/stores/pricesStore'
 import { usePrices } from '@/hooks/usePrices'
+import { useSettingsStore } from '@/stores/settingsStore'
 import { fmtPct, fmtNum, deltaClass } from '@/lib/utils/format'
 import { useFormatters } from '@/hooks/useFormatters'
 import Sparkline from '@/components/charts/Sparkline'
@@ -337,6 +338,7 @@ export default function AzioniPage() {
   const { refetch } = usePrices()
   const { positions, updatePosition, deletePosition } = usePortfolioStore()
   const { quotes, eurUsd, lastUpdated, loading } = usePricesStore()
+  const showPrePostMarket = useSettingsStore((s) => s.settings.showPrePostMarket)
   const { openModal } = useUIStore()
   const [search, setSearch] = useState('')
   const [sectorFilter, setSectorFilter] = useState('all')
@@ -380,8 +382,8 @@ export default function AzioniPage() {
   const rows = useMemo(() => stocks.map((p) => {
     const q = quotes[p.ticker]
     const price = q?.priceEur ?? q?.price ?? p.avgPrice        // regular close — for display
-    const extPrice = q?.preMarketEur ?? q?.postMarketEur        // PM/AH — if present
-    const extLabel = q?.preMarketEur != null ? 'PM' : q?.postMarketEur != null ? 'AH' : null
+    const extPrice = showPrePostMarket ? (q?.preMarketEur ?? q?.postMarketEur) : undefined
+    const extLabel = showPrePostMarket ? (q?.preMarketEur != null ? 'PM' : q?.postMarketEur != null ? 'AH' : null) : null
     const extChangePct = extPrice != null && price > 0 ? (extPrice / price - 1) * 100 : undefined
     const effectivePrice = extPrice ?? price                    // best available price for P&L
     const avgPriceEur = p.currency === 'USD' ? p.avgPrice / eurUsd : p.avgPrice

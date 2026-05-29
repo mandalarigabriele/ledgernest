@@ -7,6 +7,8 @@ import { usePortfolioSnapshotStore } from '@/stores/portfolioSnapshotStore'
 import { useFinanceStore } from '@/stores/financeStore'
 import { usePricesStore } from '@/stores/pricesStore'
 import { usePrices } from '@/hooks/usePrices'
+import { useSettingsStore } from '@/stores/settingsStore'
+import { effectivePriceEur } from '@/lib/utils/price'
 import { fmtDate } from '@/lib/utils/format'
 import { useFormatters } from '@/hooks/useFormatters'
 import Donut from '@/components/charts/Donut'
@@ -34,16 +36,16 @@ export default function DashboardPage() {
   const { snapshots } = usePortfolioSnapshotStore()
   const { accounts, transactions, monthlyExpenses, monthlyIncome, totalCash, budgetCategories, merchantLogos, budgetPlans } = useFinanceStore()
   const { quotes, eurUsd } = usePricesStore()
+  const showPrePostMarket = useSettingsStore((s) => s.settings.showPrePostMarket)
 
   const currentMonth = new Date().toISOString().slice(0, 7)
 
   /* ─── Values ─── */
   const portfolioValue = useMemo(() =>
     positions.reduce((sum, p) => {
-      const q     = quotes[p.ticker]
-      const price = q?.priceEur ?? q?.price ?? p.avgPrice
-      return sum + price * p.quantity
-    }, 0), [positions, quotes])
+      const q = quotes[p.ticker]
+      return sum + effectivePriceEur(q, p.avgPrice, showPrePostMarket) * p.quantity
+    }, 0), [positions, quotes, showPrePostMarket])
 
   const cash     = totalCash()
   const netWorth = portfolioValue + cash
@@ -105,9 +107,8 @@ export default function DashboardPage() {
     const map: Record<string, number> = {}
     for (const p of positions) {
       const q     = quotes[p.ticker]
-      const price = q?.priceEur ?? q?.price ?? p.avgPrice
       const label = TYPE_LABEL[p.type] ?? p.type
-      map[label] = (map[label] ?? 0) + price * p.quantity
+      map[label] = (map[label] ?? 0) + effectivePriceEur(q, p.avgPrice, showPrePostMarket) * p.quantity
     }
     if (cash > 0) map[t('cash')] = (map[t('cash')] ?? 0) + cash
     return map
@@ -121,11 +122,11 @@ export default function DashboardPage() {
     [...positions]
       .map((p) => {
         const q           = quotes[p.ticker]
-        const price       = q?.priceEur ?? q?.price ?? p.avgPrice
+        const ep          = effectivePriceEur(q, p.avgPrice, showPrePostMarket)
         const avgPriceEur = p.currency === 'USD' ? p.avgPrice / eurUsd : p.avgPrice
-        const value       = price * p.quantity
-        const chgPct      = avgPriceEur > 0 ? ((price - avgPriceEur) / avgPriceEur) * 100 : 0
-        return { ...p, price, value, chgPct }
+        const value       = ep * p.quantity
+        const chgPct      = avgPriceEur > 0 ? ((ep - avgPriceEur) / avgPriceEur) * 100 : 0
+        return { ...p, price: ep, value, chgPct }
       })
       .sort((a, b) => b.value - a.value)
       .slice(0, 6),
@@ -170,9 +171,10 @@ export default function DashboardPage() {
       for (const p of positions) {
         if (p.type !== type) continue
         const q          = quotes[p.ticker]
-        const priceEur   = q?.priceEur ?? (q?.price != null ? (p.currency === 'USD' ? q.price / eurUsd : q.price) : (p.currency === 'USD' ? p.avgPrice / eurUsd : p.avgPrice))
+        const closePriceEur = q?.priceEur ?? (q?.price != null ? (p.currency === 'USD' ? q.price / eurUsd : q.price) : (p.currency === 'USD' ? p.avgPrice / eurUsd : p.avgPrice))
+        const ep = showPrePostMarket ? (q?.preMarketEur ?? q?.postMarketEur ?? closePriceEur) : closePriceEur
         const avgPriceEur = p.currency === 'USD' ? p.avgPrice / eurUsd : p.avgPrice
-        cur  += priceEur   * p.quantity
+        cur  += ep * p.quantity
         cost += avgPriceEur * p.quantity
       }
       return cost > 0 ? +((cur / cost - 1) * 100).toFixed(1) : 0

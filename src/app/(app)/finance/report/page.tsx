@@ -5,6 +5,8 @@ import { useTranslations } from 'next-intl'
 import { useFinanceStore } from '@/stores/financeStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { usePricesStore } from '@/stores/pricesStore'
+import { useSettingsStore } from '@/stores/settingsStore'
+import { effectivePriceEur } from '@/lib/utils/price'
 import { deltaClass } from '@/lib/utils/format'
 import { useFormatters } from '@/hooks/useFormatters'
 import BarChart from '@/components/charts/BarChart'
@@ -89,6 +91,7 @@ export default function ReportPage() {
   const { transactions } = useFinanceStore()
   const { positions } = usePortfolioStore()
   const { quotes, eurUsd } = usePricesStore()
+  const showPrePostMarket = useSettingsStore((s) => s.settings.showPrePostMarket)
   const [period, setPeriod] = useState<Period>('1A')
 
   const allDates = useMemo(() => transactions.map((t) => t.date).sort(), [transactions])
@@ -173,7 +176,7 @@ export default function ReportPage() {
   // ── Portfolio performance ─────────────────────────────────────
   const perfRows = useMemo(() => positions.map((p) => {
     const q = quotes[p.ticker]
-    const price = q?.priceEur ?? q?.price ?? p.avgPrice
+    const price = effectivePriceEur(q, p.avgPrice, showPrePostMarket)
     const avgPriceEur = p.currency === 'USD' ? p.avgPrice / eurUsd : p.avgPrice
     const value = price * p.quantity
     const cost  = avgPriceEur * p.quantity

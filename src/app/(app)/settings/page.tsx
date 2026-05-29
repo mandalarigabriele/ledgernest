@@ -4,6 +4,7 @@ import { useState, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
+import { usePortfolioSnapshotStore } from '@/stores/portfolioSnapshotStore'
 import { useFinanceStore } from '@/stores/financeStore'
 import Icon from '@/components/shared/Icon'
 import CSVImportWizard from '@/components/shared/CSVImportWizard'
@@ -700,6 +701,7 @@ export default function ImpostazioniPage() {
 
   const { settings, updateSettings } = useSettingsStore()
   const { resetPortfolio } = usePortfolioStore()
+  const { clearSnapshots } = usePortfolioSnapshotStore()
   const {
     budgetCategories, addBudgetCategory, updateBudgetCategory, deleteBudgetCategory, reorderBudgetCategories,
     budgetGroups, addBudgetGroup, updateBudgetGroup, deleteBudgetGroup,
@@ -714,6 +716,7 @@ export default function ImpostazioniPage() {
   const [collapsedCatGroups, setCollapsedCatGroups] = useState<Set<string>>(() => new Set())
   const toggleCatGroup = (key: string) => setCollapsedCatGroups((p) => { const n = new Set(p); n.has(key) ? n.delete(key) : n.add(key); return n })
   const [resetConfirm, setResetConfirm]           = useState(false)
+  const [confirmSnapshotReset, setConfirmSnapshotReset] = useState(false)
   const [confirmFullReset, setConfirmFullReset]   = useState(false)
   const [importOpen, setImportOpen]               = useState(false)
 
@@ -1475,6 +1478,29 @@ export default function ImpostazioniPage() {
                     </div>
                   ) : (
                     <button className="ledgernest-btn ledgernest-btn-danger ledgernest-btn-sm" style={{ flexShrink: 0 }} onClick={() => setResetConfirm(true)}>{t('resetPortfolioBtn')}</button>
+                  )}
+                </div>
+
+                <div style={{ borderTop: '1px solid color-mix(in oklch, var(--danger) 20%, transparent)' }} />
+
+                {/* Reset snapshots */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{t('resetSnapshotsLabel')}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3, lineHeight: 1.5 }}>
+                      {t('resetSnapshotsDesc')}
+                    </div>
+                  </div>
+                  {confirmSnapshotReset ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end', flexShrink: 0 }}>
+                      <div style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, whiteSpace: 'nowrap' }}>{t('resetConfirmWarning')}</div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" onClick={() => setConfirmSnapshotReset(false)}>{tc('cancel')}</button>
+                        <button className="ledgernest-btn ledgernest-btn-danger ledgernest-btn-sm" onClick={() => { clearSnapshots(); setConfirmSnapshotReset(false) }}>{t('resetSnapshotsConfirmBtn')}</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button className="ledgernest-btn ledgernest-btn-danger ledgernest-btn-sm" style={{ flexShrink: 0 }} onClick={() => setConfirmSnapshotReset(true)}>{t('resetSnapshotsBtn')}</button>
                   )}
                 </div>
 

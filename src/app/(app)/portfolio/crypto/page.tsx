@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { usePricesStore } from '@/stores/pricesStore'
 import { usePrices } from '@/hooks/usePrices'
+import { useSettingsStore } from '@/stores/settingsStore'
+import { effectivePriceEur } from '@/lib/utils/price'
 import { fmtUsd, fmtPct, deltaClass } from '@/lib/utils/format'
 import { useFormatters } from '@/hooks/useFormatters'
 import Donut from '@/components/charts/Donut'
@@ -337,6 +339,7 @@ export default function CryptoPage() {
   const { refetch } = usePrices()
   const { positions, deletePosition, updatePosition } = usePortfolioStore()
   const { quotes, eurUsd, loading: quotesLoading } = usePricesStore()
+  const showPrePostMarket = useSettingsStore((s) => s.settings.showPrePostMarket)
   const { openModal } = useUIStore()
   const [period, setPeriod] = useState<CryptoPeriod>('1M')
   const [deletingPositionId, setDeletingPositionId] = useState<string | null>(null)
@@ -347,7 +350,7 @@ export default function CryptoPage() {
 
   const rows = useMemo(() => cryptos.map((p, i) => {
     const q = quotes[p.ticker]
-    const price = q?.priceEur ?? q?.price ?? p.avgPrice
+    const price = effectivePriceEur(q, p.avgPrice, showPrePostMarket)
     const avgPriceEur = p.currency === 'USD' ? p.avgPrice / eurUsd : p.avgPrice
     const value = price * p.quantity
     const cost = avgPriceEur * p.quantity

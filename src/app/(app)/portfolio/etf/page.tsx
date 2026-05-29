@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { usePricesStore } from '@/stores/pricesStore'
 import { usePrices } from '@/hooks/usePrices'
+import { useSettingsStore } from '@/stores/settingsStore'
+import { effectivePriceEur } from '@/lib/utils/price'
 import { fmtUsd, fmtPct, fmtNum, deltaClass } from '@/lib/utils/format'
 import { useFormatters } from '@/hooks/useFormatters'
 import Sparkline from '@/components/charts/Sparkline'
@@ -121,6 +123,7 @@ export default function EtfPage() {
   const { refetch } = usePrices()
   const { positions, deletePosition, updatePosition } = usePortfolioStore()
   const { quotes, eurUsd, loading } = usePricesStore()
+  const showPrePostMarket = useSettingsStore((s) => s.settings.showPrePostMarket)
   const { openModal } = useUIStore()
 const [filter, setFilter] = useState('Tutti' as EtfFilter)
   const [deletingPositionId, setDeletingPositionId] = useState<string | null>(null)
@@ -131,7 +134,7 @@ const [filter, setFilter] = useState('Tutti' as EtfFilter)
 
   const rows = useMemo(() => etfs.map((p) => {
     const q = quotes[p.ticker]
-    const price = q?.priceEur ?? q?.price ?? p.avgPrice
+    const price = effectivePriceEur(q, p.avgPrice, showPrePostMarket)
     const avgPriceEur = p.currency === 'USD' ? p.avgPrice / eurUsd : p.avgPrice
     const value = price * p.quantity
     const cost  = avgPriceEur * p.quantity

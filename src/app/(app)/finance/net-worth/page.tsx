@@ -4,6 +4,8 @@ import { useMemo, useState, useEffect } from 'react'
 import { useFinanceStore } from '@/stores/financeStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { usePricesStore } from '@/stores/pricesStore'
+import { useSettingsStore } from '@/stores/settingsStore'
+import { effectivePriceEur } from '@/lib/utils/price'
 import { useFormatters } from '@/hooks/useFormatters'
 import Icon from '@/components/shared/Icon'
 import { useTranslations } from 'next-intl'
@@ -212,16 +214,16 @@ export default function PatrimonioPage() {
   const { accounts, transactions, liabilities, netWorthSnapshots, addLiability, deleteLiability, takeNetWorthSnapshot } = useFinanceStore()
   const { positions } = usePortfolioStore()
   const { quotes } = usePricesStore()
+  const showPrePostMarket = useSettingsStore((s) => s.settings.showPrePostMarket)
 
   const [showAddLiability, setShowAddLiability] = useState(false)
 
   const portfolioValue = useMemo(() => {
     return positions.reduce((sum, p) => {
       const q = quotes[p.ticker]
-      const price = q?.priceEur ?? q?.price ?? p.avgPrice
-      return sum + price * p.quantity
+      return sum + effectivePriceEur(q, p.avgPrice, showPrePostMarket) * p.quantity
     }, 0)
-  }, [positions, quotes])
+  }, [positions, quotes, showPrePostMarket])
 
   const cashValue = accounts.filter((a) => a.type !== 'broker').reduce((s, a) => s + a.balance, 0)
   const totalLiabilities = liabilities.reduce((s, l) => s + l.residuo, 0)
@@ -240,10 +242,10 @@ export default function PatrimonioPage() {
       .reduce((sum, t) => sum + (t.type === 'income' ? t.amount : t.type === 'expense' ? -t.amount : 0), 0)
   }
 
-  const stockVal = positions.filter((p) => p.type === 'stock').reduce((s, p) => s + (quotes[p.ticker]?.priceEur ?? quotes[p.ticker]?.price ?? p.avgPrice) * p.quantity, 0)
-  const etfVal = positions.filter((p) => p.type === 'etf').reduce((s, p) => s + (quotes[p.ticker]?.priceEur ?? quotes[p.ticker]?.price ?? p.avgPrice) * p.quantity, 0)
-  const cryptoVal = positions.filter((p) => p.type === 'crypto').reduce((s, p) => s + (quotes[p.ticker]?.priceEur ?? quotes[p.ticker]?.price ?? p.avgPrice) * p.quantity, 0)
-  const bondVal = positions.filter((p) => p.type === 'bond').reduce((s, p) => s + (quotes[p.ticker]?.priceEur ?? quotes[p.ticker]?.price ?? p.avgPrice) * p.quantity, 0)
+  const stockVal = positions.filter((p) => p.type === 'stock').reduce((s, p) => s + effectivePriceEur(quotes[p.ticker], p.avgPrice, showPrePostMarket) * p.quantity, 0)
+  const etfVal = positions.filter((p) => p.type === 'etf').reduce((s, p) => s + effectivePriceEur(quotes[p.ticker], p.avgPrice, showPrePostMarket) * p.quantity, 0)
+  const cryptoVal = positions.filter((p) => p.type === 'crypto').reduce((s, p) => s + effectivePriceEur(quotes[p.ticker], p.avgPrice, showPrePostMarket) * p.quantity, 0)
+  const bondVal = positions.filter((p) => p.type === 'bond').reduce((s, p) => s + effectivePriceEur(quotes[p.ticker], p.avgPrice, showPrePostMarket) * p.quantity, 0)
 
   const compositionItems = [
     { label: tl('compStocks'),      value: stockVal,  color: '#5bc8d0' },
