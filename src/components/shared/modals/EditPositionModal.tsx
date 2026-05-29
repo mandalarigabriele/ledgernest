@@ -78,7 +78,7 @@ export default function EditPositionModal() {
           <div className="ledgernest-modal-body" style={{ gap: 18 }}>
 
             <div style={{ padding: '10px 14px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', fontSize: 12, color: 'var(--text-secondary)' }}>
-              <strong style={{ color: 'var(--text-primary)' }}>Nota:</strong> {t('editPositionNote')}
+              <strong style={{ color: 'var(--text-primary)' }}>{t('notePrefix')}</strong> {t('editPositionNote')}
             </div>
 
             {/* Asset type */}
@@ -197,7 +197,7 @@ export default function EditPositionModal() {
 
             {/* Purchase date */}
             <div className="ledgernest-field">
-              <label className="ledgernest-label">Data primo acquisto</label>
+              <label className="ledgernest-label">{t('purchaseDateLabel')}</label>
               <input
                 className="ledgernest-input ledgernest-mono"
                 type="date"
@@ -231,21 +231,21 @@ export default function EditPositionModal() {
               if (posTrades.length === 0) return (
                 <div style={{ padding: '12px 14px', background: 'var(--bg-elevated)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                    Nessuna operazione collegata a questa posizione.
+                    {t('noTradesMsg')}
                   </div>
                   <button
                     type="button"
                     onClick={() => backfillTradesFromTransactions(pos.id)}
                     style={{ fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 7, border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
                   >
-                    Collega transazioni
+                    {t('linkTradesBtn')}
                   </button>
                 </div>
               )
               return (
                 <div>
                   <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-secondary)', marginBottom: 8 }}>
-                    STORICO OPERAZIONI ({posTrades.length})
+                    {t('tradeHistoryTitle', { n: posTrades.length })}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflowY: 'auto' }}>
                     {posTrades.map((tr) => (
@@ -260,14 +260,14 @@ export default function EditPositionModal() {
                           background: tr.type === 'buy' ? 'color-mix(in oklch, var(--success) 15%, transparent)' : 'color-mix(in oklch, var(--danger) 15%, transparent)',
                           color: tr.type === 'buy' ? 'var(--success)' : 'var(--danger)',
                         }}>
-                          {tr.type === 'buy' ? 'ACQ' : 'VEN'}
+                          {tr.type === 'buy' ? t('tradeBuyBadge') : t('tradeSellBadge')}
                         </span>
                         <span style={{ color: 'var(--text-tertiary)', flexShrink: 0, fontSize: 12 }}>{tr.date}</span>
                         <span style={{ flex: 1, fontVariantNumeric: 'tabular-nums' }}>
                           {tr.quantity} × {tr.price.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} {tr.currency}
                         </span>
                         {(tr.commission ?? 0) > 0 && (
-                          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>+{tr.commission} comm.</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{t('tradeCommission', { amount: tr.commission })}</span>
                         )}
                         <button
                           type="button"

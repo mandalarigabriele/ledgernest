@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import Icon from '../Icon'
 import type { Trade } from '@/types'
@@ -11,6 +12,8 @@ interface Props {
 }
 
 export default function EditTradeModal({ trade, onClose }: Props) {
+  const t  = useTranslations('modals')
+  const tc = useTranslations('common')
   const { updateTrade } = usePortfolioStore()
   const [price,      setPrice]      = useState(String(trade.price))
   const [quantity,   setQuantity]   = useState(String(trade.quantity))
@@ -28,7 +31,6 @@ export default function EditTradeModal({ trade, onClose }: Props) {
   }
 
   const total = (parseFloat(price) || 0) * (parseFloat(quantity) || 0) + (parseFloat(commission) || 0)
-  const isBuy = trade.type === 'buy'
 
   return (
     <div
@@ -42,10 +44,10 @@ export default function EditTradeModal({ trade, onClose }: Props) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <div>
             <div style={{ fontWeight: 700, fontSize: 15 }}>
-              Modifica {isBuy ? 'acquisto' : 'vendita'} · {trade.ticker}
+              {trade.type === 'buy' ? t('editBuyTitle', { ticker: trade.ticker }) : t('editSellTitle', { ticker: trade.ticker })}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-              Le modifiche ricalcolano prezzo medio e quantità
+              {t('editTradeSub')}
             </div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 4 }}>
@@ -56,7 +58,7 @@ export default function EditTradeModal({ trade, onClose }: Props) {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="ledgernest-field">
-              <label className="ledgernest-label">Prezzo ({trade.currency})</label>
+              <label className="ledgernest-label">{t('tradePrice', { currency: trade.currency })}</label>
               <input
                 className="ledgernest-input ledgernest-mono"
                 type="number" step="any" min="0" required
@@ -66,7 +68,7 @@ export default function EditTradeModal({ trade, onClose }: Props) {
               />
             </div>
             <div className="ledgernest-field">
-              <label className="ledgernest-label">Quantità</label>
+              <label className="ledgernest-label">{t('tradeQuantity')}</label>
               <input
                 className="ledgernest-input ledgernest-mono"
                 type="number" step="any" min="0.000001" required
@@ -78,7 +80,7 @@ export default function EditTradeModal({ trade, onClose }: Props) {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="ledgernest-field">
-              <label className="ledgernest-label">Commissione ({trade.currency})</label>
+              <label className="ledgernest-label">{t('tradeCommissionLabel', { currency: trade.currency })}</label>
               <input
                 className="ledgernest-input ledgernest-mono"
                 type="number" step="any" min="0"
@@ -87,7 +89,7 @@ export default function EditTradeModal({ trade, onClose }: Props) {
               />
             </div>
             <div className="ledgernest-field">
-              <label className="ledgernest-label">Data</label>
+              <label className="ledgernest-label">{t('tradeDate')}</label>
               <input
                 className="ledgernest-input"
                 type="date" required
@@ -98,20 +100,20 @@ export default function EditTradeModal({ trade, onClose }: Props) {
           </div>
 
           <div style={{ padding: '10px 14px', background: 'var(--bg-elevated)', borderRadius: 8, fontSize: 13, display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ color: 'var(--text-secondary)' }}>Totale operazione</span>
+            <span style={{ color: 'var(--text-secondary)' }}>{t('tradeTotalLabel')}</span>
             <span style={{ fontWeight: 700 }}>{total.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {trade.currency}</span>
           </div>
 
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
             <button type="button" className="ledgernest-btn ledgernest-btn-ghost" onClick={onClose}>
-              Annulla
+              {tc('cancel')}
             </button>
             <button
               type="submit"
               className="ledgernest-btn ledgernest-btn-primary"
               disabled={!price || !quantity || parseFloat(quantity) <= 0}
             >
-              Salva
+              {tc('save')}
             </button>
           </div>
         </form>

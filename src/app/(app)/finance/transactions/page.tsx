@@ -347,7 +347,7 @@ function TxRowMenu({ actions }: { actions: TxActions }) {
             <button onClick={() => { setOpen(false); actions.onEditTrade!() }} style={{ ...menuItem, color: 'var(--accent)' }}
               onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-elevated)')}
               onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
-              <Icon name="edit" size={13} /> Modifica operazione
+              <Icon name="edit" size={13} /> {tl('menuEditTrade')}
             </button>
           )}
           <button onClick={() => { setOpen(false); actions.onEdit() }} style={{ ...menuItem, color: 'var(--text-primary)' }}

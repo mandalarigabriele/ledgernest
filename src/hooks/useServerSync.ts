@@ -72,7 +72,19 @@ export function useServerSync() {
         if (settRes.ok) {
           const { data } = await settRes.json() as { data: SettingsData | null }
           if (data) {
-            useSettingsStore.getState().hydrate(data)
+            // Preserve locale if cookie and local store already agree —
+            // this prevents a just-toggled locale from being overwritten by
+            // stale server data before the next settings sync propagates.
+            const cookieLocale = document.cookie
+              .split('; ')
+              .find((r) => r.startsWith('ledgernest-locale='))
+              ?.split('=')[1]
+            const localLocale = useSettingsStore.getState().settings.locale
+            const resolvedLocale = cookieLocale === localLocale ? localLocale : (data.settings?.locale ?? localLocale)
+            useSettingsStore.getState().hydrate({
+              ...data,
+              settings: { ...data.settings, locale: resolvedLocale },
+            })
           } else {
             const { settings, ignoredImportIds } = useSettingsStore.getState()
             syncPut('settings', { settings, ignoredImportIds })
@@ -82,6 +94,18 @@ export function useServerSync() {
         // Fallback silenzioso: rimangono i dati da localStorage
       } finally {
         hydratedRef.current = true
+
+        // Silently keep the cookie in sync with the store locale.
+        // No reload here — avoids the blink/bounce caused by reloading right
+        // after the user already did a hard reload for a locale switch.
+        const { locale } = useSettingsStore.getState().settings
+        const cookieLocale = document.cookie
+          .split('; ')
+          .find((r) => r.startsWith('ledgernest-locale='))
+          ?.split('=')[1]
+        if (cookieLocale !== locale) {
+          document.cookie = `ledgernest-locale=${locale}; path=/; max-age=31536000`
+        }
       }
     }
     load()
