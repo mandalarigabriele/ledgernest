@@ -1,24 +1,16 @@
 'use client'
 
-import { useMemo, useState, useRef, useEffect } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useFinanceStore } from '@/stores/financeStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
+import { usePricesStore } from '@/stores/pricesStore'
+import { useSettingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
 import { useFormatters } from '@/hooks/useFormatters'
+import { effectivePriceEur } from '@/lib/utils/price'
 import Icon from '@/components/shared/Icon'
-import Sparkline from '@/components/charts/Sparkline'
 import type { Account } from '@/types'
-
-// Deterministic synthetic sparkline (no random each render)
-function buildSparkline(seed: number, positive: boolean): number[] {
-  const base = 100
-  return Array.from({ length: 14 }, (_, i) => {
-    const x = Math.sin(seed + i * 0.7) * 3 + Math.cos(seed * 2 + i * 1.2) * 2
-    const trend = positive ? i * 0.3 : -i * 0.3
-    return base + trend + x
-  })
-}
 
 const inputStyle: React.CSSProperties = {
   padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border-subtle)',
@@ -176,112 +168,54 @@ function AccountCard({ account, onEdit, onDelete }: { account: Account; onEdit: 
     other:  { label: t('typeOtherLabel'),  icon: 'wallet', color: '#7c6df7', bg: 'rgba(124,109,247,.15)' },
   }
   const cfg = TYPE_CONFIG[account.type]
-  const seed = account.id.charCodeAt(0) + account.id.charCodeAt(1)
-  const positive = account.balance >= 0
-  const spark = useMemo(() => buildSparkline(seed, positive), [seed, positive])
-  const fakeChange = ((seed % 17) - 5) * 12
-
-  const [menuOpen, setMenuOpen] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!menuOpen) return
-    function handleClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [menuOpen])
 
   return (
-    <div className="ledgernest-card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', minWidth: 0 }}>
-      {/* Row 1: icon + name + kebab */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-          <div style={{
-            width: 38, height: 38, borderRadius: '10px', flexShrink: 0,
-            background: cfg.bg,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: cfg.color,
-          }}>
-            <Icon name={cfg.icon} size={18} />
-          </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {account.name}
-            </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '1px' }}>
-              {account.broker ? `${cfg.label} · ${account.broker}` : cfg.label}
-            </div>
-          </div>
-        </div>
-        {/* Kebab menu */}
-        <div ref={menuRef} style={{ position: 'relative', flexShrink: 0 }}>
-          <button
-            onClick={() => setMenuOpen((v) => !v)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: '2px', display: 'flex' }}
-          >
-            <Icon name="kebab" size={16} />
-          </button>
-          {menuOpen && (
-            <div style={{
-              position: 'absolute', top: '100%', right: 0, marginTop: 4,
-              background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
-              borderRadius: 10, padding: 4, minWidth: 130,
-              boxShadow: '0 8px 24px rgba(0,0,0,0.3)', zIndex: 100,
-            }}>
-              <button
-                onClick={() => { setMenuOpen(false); onEdit() }}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', borderRadius: 7, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-primary)', fontSize: 13, fontWeight: 500 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-elevated)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
-              >
-                <Icon name="edit" size={13} /> {t('cardEdit')}
-              </button>
-              <button
-                onClick={() => { setMenuOpen(false); onDelete() }}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', borderRadius: 7, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: 13, fontWeight: 500 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'color-mix(in oklch, var(--danger) 12%, transparent)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
-              >
-                <Icon name="trash" size={13} /> {t('cardDelete')}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Row 2: balance + trend */}
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px' }}>
-        <div style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
-          {fmt(account.balance)}
-        </div>
+    <div className="ledgernest-card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', minWidth: 0 }}>
+      {/* Row 1: icon + name */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
         <div style={{
-          fontSize: '12px', fontWeight: 600,
-          color: fakeChange >= 0 ? 'var(--success)' : 'var(--danger)',
-          whiteSpace: 'nowrap',
+          width: 38, height: 38, borderRadius: '10px', flexShrink: 0,
+          background: cfg.bg,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: cfg.color,
         }}>
-          {fakeChange >= 0 ? '+' : ''}{fmt(fakeChange)} · 30g
+          <Icon name={cfg.icon} size={18} />
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {account.name}
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '1px' }}>
+            {account.broker ? `${cfg.label} · ${account.broker}` : cfg.label}
+          </div>
         </div>
       </div>
 
-      {/* Row 3: sparkline full-width */}
-      <Sparkline data={spark} height={36} positive={positive} responsive />
+      {/* Row 2: balance */}
+      <div style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
+        {fmt(account.balance)}
+      </div>
 
-      {/* Row 4: actions */}
+      {/* Row 3: actions */}
       <div style={{
         display: 'grid', gridTemplateColumns: '1fr 1fr',
         borderTop: '1px solid var(--border-subtle)', paddingTop: '10px', gap: '8px',
       }}>
-        <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" style={{ justifyContent: 'center', fontSize: '12px', gap: '5px' }}>
-          <Icon name="refresh" size={13} />
-          {t('cardTransfer')}
+        <button
+          className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm"
+          style={{ justifyContent: 'center', fontSize: '12px', gap: '5px' }}
+          onClick={onEdit}
+        >
+          <Icon name="edit" size={13} />
+          {t('cardEdit')}
         </button>
-        <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" style={{ justifyContent: 'center', fontSize: '12px', gap: '4px' }}>
-          {t('cardDetails')}
-          <span style={{ display: 'inline-flex', transform: 'rotate(-90deg)', lineHeight: 1 }}>
-            <Icon name="chevron" size={13} />
-          </span>
+        <button
+          className="ledgernest-btn ledgernest-btn-sm"
+          style={{ justifyContent: 'center', fontSize: '12px', gap: '5px', color: 'var(--danger)', background: 'color-mix(in oklch, var(--danger) 10%, transparent)', border: 'none' }}
+          onClick={onDelete}
+        >
+          <Icon name="trash" size={13} />
+          {t('cardDelete')}
         </button>
       </div>
     </div>
@@ -336,7 +270,14 @@ export default function ContiPage() {
   const { fmt } = useFormatters()
   const { accounts, deleteAccount } = useFinanceStore()
   const { positions } = usePortfolioStore()
+  const { quotes, eurUsd } = usePricesStore()
+  const showPrePostMarket = useSettingsStore((s) => s.settings.showPrePostMarket)
   const { openModal } = useUIStore()
+
+  const portfolioValue = useMemo(() =>
+    positions.reduce((sum, p) => sum + effectivePriceEur(quotes[p.ticker], p.avgPrice, showPrePostMarket) * p.quantity, 0),
+    [positions, quotes, showPrePostMarket] // eslint-disable-line react-hooks/exhaustive-deps
+  )
   const [filter, setFilter] = useState<'all' | Account['type']>('all')
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
   const [deletingAccountId, setDeletingAccountId] = useState<string | null>(null)
@@ -390,7 +331,7 @@ export default function ContiPage() {
         <div className="ledgernest-kpi is-hl" style={{ padding: '18px 20px', gap: '6px' }}>
           <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>{t('kpiNetWorth')}</div>
           <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmt(totalAssets)}</div>
-          <div style={{ fontSize: '12px', color: 'var(--success)', fontWeight: 500 }}>+2.34% <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{t('kpiLast30Days')}</span></div>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{accounts.length} {t('kpiAccounts')}</div>
         </div>
 
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: '6px' }}>
@@ -401,7 +342,7 @@ export default function ContiPage() {
 
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: '6px' }}>
           <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>{t('kpiInvested')}</div>
-          <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmt(totalBroker + totalCrypto)}</div>
+          <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmt(portfolioValue)}</div>
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
             {brokerAccounts.length} {t('kpiBroker')} · {cryptoAccounts.length} {t('kpiWallet')}
           </div>

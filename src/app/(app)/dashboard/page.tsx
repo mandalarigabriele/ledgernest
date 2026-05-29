@@ -348,6 +348,29 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* ── Heatmap + Dividends calendar ── */}
+      <div className="ledgernest-grid ledgernest-grid--row">
+        <div className="ledgernest-card">
+          <div className="ledgernest-card-head">
+            <div>
+              <div className="ledgernest-card-title">{t('returnsByClass')}</div>
+              <div className="ledgernest-card-sub">{t('monthly12Months')}</div>
+            </div>
+          </div>
+          <Heatmap rows={HEATMAP_ROWS} cols={heatmapMonths} data={heatmapData} height={210} />
+        </div>
+
+        <div className="ledgernest-card">
+          <div className="ledgernest-card-head">
+            <div>
+              <div className="ledgernest-card-title">{t('upcomingDividends')}</div>
+              <div className="ledgernest-card-sub">{t('next12Weeks')}</div>
+            </div>
+          </div>
+          <DivCalendar events={divEvents} height={210} />
+        </div>
+      </div>
+
       {/* ── Positions + Movements ── */}
       <div className="ledgernest-grid ledgernest-grid--7-5">
         <div className="ledgernest-card">
@@ -485,28 +508,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Heatmap + Dividends calendar ── */}
-      <div className="ledgernest-grid ledgernest-grid--row">
-        <div className="ledgernest-card">
-          <div className="ledgernest-card-head">
-            <div>
-              <div className="ledgernest-card-title">{t('returnsByClass')}</div>
-              <div className="ledgernest-card-sub">{t('monthly12Months')}</div>
-            </div>
-          </div>
-          <Heatmap rows={HEATMAP_ROWS} cols={heatmapMonths} data={heatmapData} height={210} />
-        </div>
-
-        <div className="ledgernest-card">
-          <div className="ledgernest-card-head">
-            <div>
-              <div className="ledgernest-card-title">{t('upcomingDividends')}</div>
-              <div className="ledgernest-card-sub">{t('next12Weeks')}</div>
-            </div>
-          </div>
-          <DivCalendar events={divEvents} height={210} />
-        </div>
-      </div>
 
     </div>
   )

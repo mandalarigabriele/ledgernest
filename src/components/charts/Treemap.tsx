@@ -48,7 +48,7 @@ export default function Treemap({ data, height = 210 }: TreemapProps) {
           {rowH > 50 && (
             <text x={x + 12} y={y + 40} fill="var(--text-secondary)"
               fontSize="11" fontFamily="inherit">
-              €{(d.value / 1000).toFixed(1)}k
+              {d.value >= 1_000_000 ? `€${(d.value / 1_000_000).toFixed(1)}M` : d.value >= 1000 ? `€${(d.value / 1000).toFixed(1)}k` : `€${Math.round(d.value)}`}
             </text>
           )}
         </g>

@@ -30,6 +30,7 @@ export function fmtNum(value: number): string {
 
 export function fmtCompact(value: number, currency: Currency = 'EUR'): string {
   const c = currency === 'USD' ? '$' : '€'
+  if (Math.abs(value) < 1000) return c + Math.round(value).toLocaleString('it-IT')
   return c + COMPACT.format(value)
 }
 
