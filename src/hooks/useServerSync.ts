@@ -44,8 +44,8 @@ export function useServerSync() {
           if (data) {
             useFinanceStore.getState().hydrate(data)
           } else {
-            const { accounts, transactions, budgetCategories, recurringItems, goals, budgetPlans } = useFinanceStore.getState()
-            syncPut('finance', { accounts, transactions, budgetCategories, recurringItems, goals, budgetPlans })
+            const { accounts, transactions, budgetCategories, budgetGroups, recurringItems, goals, budgetPlans } = useFinanceStore.getState()
+            syncPut('finance', { accounts, transactions, budgetCategories, budgetGroups, recurringItems, goals, budgetPlans })
           }
         }
 
@@ -118,8 +118,8 @@ export function useServerSync() {
       if (!hydratedRef.current) return
       clearTimeout(timeout)
       timeout = setTimeout(() => {
-        const { accounts, transactions, budgetCategories, recurringItems, goals, budgetPlans } = state
-        syncPut('finance', { accounts, transactions, budgetCategories, recurringItems, goals, budgetPlans })
+        const { accounts, transactions, budgetCategories, budgetGroups, recurringItems, goals, budgetPlans } = state
+        syncPut('finance', { accounts, transactions, budgetCategories, budgetGroups, recurringItems, goals, budgetPlans })
       }, 1500)
     })
     return () => { unsub(); clearTimeout(timeout) }
