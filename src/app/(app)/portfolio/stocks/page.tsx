@@ -401,6 +401,7 @@ export default function AzioniPage() {
   const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0
   const totalDayChg = rows.reduce((s, r) =>
     s + (r.q?.change ?? 0) * r.quantity * (r.q?.currency === 'EUR' ? 1 : 1 / eurUsd), 0)
+  const totalDayPct = totalValue > 0 ? (totalDayChg / (totalValue - totalDayChg + 0.001)) * 100 : 0
 
   const sectorMap = useMemo(() => {
     const map: Record<string, number> = {}
@@ -457,26 +458,26 @@ export default function AzioniPage() {
         <div className="ledgernest-kpi is-hl" style={{ padding: '18px 20px', gap: '6px' }}>
           <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiTotal')}</div>
           <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmt(totalValue)}</div>
-          <div style={{ fontSize: '12px', fontWeight: 500, color: totalDayChg >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-            {totalDayChg >= 0 ? '+' : ''}{fmt(totalDayChg)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{tl('kpiTodayPositions', { n: stocks.length })}</span>
+          <div style={{ fontSize: '12px', fontWeight: 600, color: totalDayPct >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+            {fmtPct(totalDayPct)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{tl('kpiToday')} · {stocks.length}</span>
           </div>
         </div>
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: '6px' }}>
           <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiPnl')}</div>
           <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', color: totalPnl >= 0 ? 'var(--success)' : 'var(--danger)' }}>{fmtDlt(totalPnl)}</div>
-          <div style={{ fontSize: '12px', fontWeight: 500, color: totalPnl >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-            {fmtPct(totalPnlPct)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{tl('kpiAvgPrice')}</span>
+          <div style={{ fontSize: '12px', fontWeight: 600, color: totalPnl >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+            {fmtPct(totalPnlPct)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{tl('kpiVsCost')}</span>
           </div>
+        </div>
+        <div className="ledgernest-card" style={{ padding: '18px 20px', gap: '6px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiInvested')}</div>
+          <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmt(totalCost)}</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{tl('kpiCapital')}</div>
         </div>
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: '6px' }}>
           <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiSectors')}</div>
           <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em' }}>{Object.keys(sectorMap).length}</div>
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{tl('kpiDiversified')}</div>
-        </div>
-        <div className="ledgernest-card" style={{ padding: '18px 20px', gap: '6px' }}>
-          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiCost')}</div>
-          <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmt(totalCost)}</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{tl('kpiCapital')}</div>
         </div>
       </div>
 

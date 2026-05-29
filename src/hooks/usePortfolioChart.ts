@@ -21,7 +21,7 @@ export interface ChartPoint {
   invested: number
 }
 
-export type AssetFilter = 'all' | 'stocks' | 'etf' | 'crypto'
+export type AssetFilter = 'all' | 'stocks' | 'etf' | 'crypto' | 'commodity'
 
 export interface PortfolioChartData {
   points: ChartPoint[]
@@ -52,6 +52,9 @@ export function usePortfolioChart(timeframe: Timeframe, filter: AssetFilter = 'a
       } else if (filter === 'crypto') {
         value    = s.crypto || 0
         invested = (s.cryptoInvested ?? s.crypto) || 0
+      } else if (filter === 'commodity') {
+        value    = s.commodity || 0
+        invested = (s.commodityInvested ?? s.commodity) || 0
       } else {
         value    = s.value || 0
         invested = s.invested || 0

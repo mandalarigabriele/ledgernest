@@ -80,7 +80,7 @@ function CryptoChart({
   pnl: number
 }) {
   const tl = useTranslations('crypto')
-  const { fmt } = useFormatters()
+  const { fmt, fmtDlt } = useFormatters()
   const { trades } = usePortfolioStore()
   const [apiPoints, setApiPoints] = useState<{ date: string; value: number }[]>([])
   const [apiLoading, setApiLoading] = useState(false)
@@ -365,6 +365,7 @@ export default function CryptoPage() {
   const totalValue  = rows.reduce((s, r) => s + r.value, 0)
   const totalCost   = rows.reduce((s, r) => s + r.cost, 0)
   const totalPnl    = totalValue - totalCost
+  const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0
   const totalDayChg = rows.reduce((s, r) =>
     s + (r.q?.change ?? 0) * r.quantity * (r.q?.currency === 'EUR' ? 1 : 1 / eurUsd), 0)
   const totalDayPct = totalValue > 0 ? (totalDayChg / (totalValue - totalDayChg)) * 100 : 0
@@ -406,30 +407,28 @@ export default function CryptoPage() {
         <div className="ledgernest-kpi is-hl" style={{ padding: '18px 20px', gap: 5 }}>
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiTotal')}</div>
           <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{fmt(totalValue)}</div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: totalDayPct >= 0 ? '#3fb950' : 'var(--danger)' }}>
-            {totalDayPct >= 0 ? '+' : ''}{totalDayPct.toFixed(2)}% <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{tl('kpiToday')}</span>
+          <div style={{ fontSize: 12, fontWeight: 600, color: totalDayPct >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+            {fmtPct(totalDayPct)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{tl('kpiToday')} · {cryptos.length}</span>
           </div>
         </div>
 
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: 5 }}>
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiPnl')}</div>
-          <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', color: totalPnl >= 0 ? '#3fb950' : 'var(--danger)' }}>
-            {totalPnl >= 0 ? '+' : ''}{fmt(totalPnl)}
+          <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', color: totalPnl >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+            {fmtDlt(totalPnl)}
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-            <span style={{ fontWeight: 700, color: totalPnl >= 0 ? '#3fb950' : 'var(--danger)' }}>
-              {totalPnl >= 0 ? '+' : ''}{totalCost > 0 ? ((totalPnl / totalCost) * 100).toFixed(2) : '0.00'}%
-            </span> {tl('kpiVsCost')}
+          <div style={{ fontSize: 12, fontWeight: 600, color: totalPnl >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+            {fmtPct(totalPnlPct)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{tl('kpiVsCost')}</span>
           </div>
         </div>
 
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: 5 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiHoldings')}</div>
-          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em' }}>{cryptos.length}</div>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiInvested')}</div>
+          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmt(totalCost)}</div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
             {stableCount > 0
               ? <><span style={{ fontWeight: 700, color: '#f0a500' }}>{tl('kpiStablecoins', { n: stableCount })}</span> {tl('kpiLowDiv')}</>
-              : <span style={{ color: '#3fb950', fontWeight: 600 }}>{tl('kpiNoStable')}</span>}
+              : <span style={{ fontWeight: 400 }}>{tl('kpiCapital')}</span>}
           </div>
         </div>
 

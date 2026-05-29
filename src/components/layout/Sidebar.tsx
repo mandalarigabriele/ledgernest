@@ -18,10 +18,10 @@ interface NavItem {
 const portfolioItems: NavItem[] = [
   { href: '/dashboard',              icon: 'dashboard',  labelKey: 'dashboard' },
   { href: '/portfolio/stocks',       icon: 'azioni',     labelKey: 'azioni' },
-  { href: '/portfolio/dividends',    icon: 'dividendi',  labelKey: 'dividendi' },
-  { href: '/portfolio/crypto',       icon: 'crypto',     labelKey: 'crypto' },
   { href: '/portfolio/etf',          icon: 'etf',        labelKey: 'etf' },
+  { href: '/portfolio/crypto',       icon: 'crypto',     labelKey: 'crypto' },
   { href: '/portfolio/commodity',    icon: 'commodity',  labelKey: 'commodity' },
+  { href: '/portfolio/dividends',    icon: 'dividendi',  labelKey: 'dividendi' },
 ]
 
 const analisiItems: NavItem[] = [

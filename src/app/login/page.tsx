@@ -3,6 +3,7 @@
 import { signIn, useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import Icon from '@/components/shared/Icon'
 
 export default function LoginPage() {
   const { data: session, status } = useSession()
@@ -42,20 +43,26 @@ export default function LoginPage() {
         maxWidth: '400px',
       }}>
         {/* Logo */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-          <div style={{
-            width: '48px', height: '48px',
-            background: 'linear-gradient(135deg, #5bc8d0, #3fb950)',
-            borderRadius: '12px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '24px',
-          }}>
-            📊
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '44px', height: '44px',
+              background: 'linear-gradient(135deg, #1a2332, #1e2d40)',
+              borderRadius: '12px',
+              border: '1px solid #30363d',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <Icon name="logo" size={24} />
+            </div>
+            <div>
+              <div style={{ color: '#e6edf3', fontSize: '20px', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+                LedgerNest
+              </div>
+              <div style={{ color: '#8b949e', fontSize: '13px' }}>Personale</div>
+            </div>
           </div>
-          <div style={{ color: '#e6edf3', fontSize: '22px', fontWeight: 700, letterSpacing: '-0.02em' }}>
-            LedgerNest
-          </div>
-          <div style={{ color: '#8b949e', fontSize: '14px' }}>
+          <div style={{ color: '#8b949e', fontSize: '14px', marginTop: 4 }}>
             Accedi per continuare
           </div>
         </div>

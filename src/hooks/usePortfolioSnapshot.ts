@@ -20,8 +20,8 @@ export function usePortfolioSnapshot() {
     if (Date.now() - lastTs < MIN_INTERVAL_MS) return
 
     let value = 0, invested = 0
-    let stocks = 0, etf = 0, crypto = 0
-    let stocksInvested = 0, etfInvested = 0, cryptoInvested = 0
+    let stocks = 0, etf = 0, crypto = 0, commodity = 0
+    let stocksInvested = 0, etfInvested = 0, cryptoInvested = 0, commodityInvested = 0
 
     for (const p of positions) {
       const priceEur = getPriceEur(p.ticker) ?? (p.avgPrice / (p.currency === 'USD' ? eurUsd : 1))
@@ -32,11 +32,12 @@ export function usePortfolioSnapshot() {
       value    += posValue
       invested += posCost
 
-      if (p.type === 'stock')       { stocks += posValue;  stocksInvested += posCost }
-      else if (p.type === 'etf')    { etf    += posValue;  etfInvested    += posCost }
-      else if (p.type === 'crypto') { crypto += posValue;  cryptoInvested += posCost }
+      if      (p.type === 'stock')     { stocks    += posValue; stocksInvested    += posCost }
+      else if (p.type === 'etf')       { etf       += posValue; etfInvested       += posCost }
+      else if (p.type === 'crypto')    { crypto    += posValue; cryptoInvested    += posCost }
+      else if (p.type === 'commodity') { commodity += posValue; commodityInvested += posCost }
     }
 
-    if (value > 0) addSnapshot({ value, invested, stocks, etf, crypto, stocksInvested, etfInvested, cryptoInvested })
+    if (value > 0) addSnapshot({ value, invested, stocks, etf, crypto, commodity, stocksInvested, etfInvested, cryptoInvested, commodityInvested })
   }, [lastUpdated]) // eslint-disable-line react-hooks/exhaustive-deps
 }

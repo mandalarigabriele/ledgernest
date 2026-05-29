@@ -44,5 +44,28 @@ else
 fi
 pm2 save
 
+# ── Price snapshot cron ────────────────────────────────────────
+# Runs every 10 minutes by default; override with SNAPSHOT_INTERVAL (minutes).
+SNAPSHOT_INTERVAL="${SNAPSHOT_INTERVAL:-10}"
+CRON_EXPR="*/${SNAPSHOT_INTERVAL} * * * *"
+
+chmod +x "$APP_DIR/scripts/cron-snapshot.sh"
+
+if pm2 describe "ledgernest-snapshot" &>/dev/null; then
+  pm2 delete "ledgernest-snapshot"
+fi
+
+if [ -n "${CRON_SECRET:-}" ]; then
+  pm2 start "$APP_DIR/scripts/cron-snapshot.sh" \
+    --name "ledgernest-snapshot" \
+    --cron "$CRON_EXPR" \
+    --no-autorestart
+  pm2 save
+  echo "==> Snapshot cron registered (every ${SNAPSHOT_INTERVAL} min)"
+else
+  echo "==> WARNING: CRON_SECRET not set — snapshot cron not registered."
+  echo "    Set CRON_SECRET in .env.local and re-run deploy.sh to enable it."
+fi
+
 echo ""
 echo "==> Done. App running at http://$(hostname -I | awk '{print $1}'):3000"

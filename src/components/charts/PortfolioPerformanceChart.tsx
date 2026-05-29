@@ -35,19 +35,16 @@ export default function PortfolioPerformanceChart({ filter = 'all', title, subti
   // Scale calculations
   const allValues = useMemo(() => {
     if (points.length === 0) return [0, 1]
-    const vals: number[] = []
-    for (const p of points) {
-      vals.push(p.value)
-      vals.push(p.invested)
-    }
-    return vals
+    // Scale Y axis on value only — including invested would compress the
+    // visible variation to near-zero when cost basis is far below current value
+    return points.map(p => p.value)
   }, [points])
 
   const minV = Math.min(...allValues)
   const maxV = Math.max(...allValues)
   const vRange = maxV - minV || 1
-  const yMin = minV - vRange * 0.08
-  const yMax = maxV + vRange * 0.06
+  const yMin = minV - vRange * 0.15
+  const yMax = maxV + vRange * 0.08
   const yRange = yMax - yMin
 
   const n = points.length
@@ -156,7 +153,7 @@ export default function PortfolioPerformanceChart({ filter = 'all', title, subti
         <div className="pfchart-value-section">
           <div className="pfchart-title">{chartTitle}</div>
           <div className="pfchart-subtitle">{t('pfSubtitle')} · {chartSubtitle}</div>
-          <div className="pfchart-value">{fmt0(displayValue)}</div>
+          <div className="pfchart-value">{fmt(displayValue)}</div>
           <div className="pfchart-metrics">
             <span className={`pfchart-delta ${displayGain >= 0 ? 'is-up' : 'is-down'}`}>
               {displayGain >= 0 ? '+' : ''}{fmt(displayGain)}
@@ -248,6 +245,44 @@ export default function PortfolioPerformanceChart({ filter = 'all', title, subti
             </>
           )}
         </svg>
+
+        {/* Hover tooltip */}
+        {hoverIdx !== null && valuePoints[hoverIdx] && (() => {
+          const hx = valuePoints[hoverIdx].x
+          const hy = valuePoints[hoverIdx].y
+          const p  = points[hoverIdx]
+          const d  = new Date(p.date)
+          const dateStr = timeframe === '1G'
+            ? d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+            : d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+          const g    = p.value - p.invested
+          const gPct = p.invested > 0 ? (g / p.invested) * 100 : 0
+          const isUp = g >= 0
+          return (
+            <div style={{
+              position: 'absolute',
+              left: `${(hx / W) * 100}%`,
+              top:  `${(hy / H) * 100}%`,
+              transform: `translate(${hx > W * 0.65 ? 'calc(-100% - 10px)' : '10px'}, -50%)`,
+              pointerEvents: 'none',
+              background: 'var(--bg-surface)',
+              border: `1px solid ${accentColor}55`,
+              borderRadius: 8,
+              padding: '6px 12px',
+              whiteSpace: 'nowrap',
+              zIndex: 10,
+              boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+            }}>
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 3 }}>{dateStr}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>
+                {fmt(p.value)}
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: isUp ? 'var(--success)' : 'var(--danger)', marginTop: 1 }}>
+                {isUp ? '+' : ''}{fmt(g)} ({isUp ? '+' : ''}{gPct.toFixed(2)}%)
+              </div>
+            </div>
+          )
+        })()}
 
         {/* X-axis labels */}
         <div className="pfchart-x-labels">

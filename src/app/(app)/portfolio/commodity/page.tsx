@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, useEffect } from 'react'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { usePricesStore } from '@/stores/pricesStore'
 import { usePrices } from '@/hooks/usePrices'
@@ -10,6 +10,7 @@ import Sparkline from '@/components/charts/Sparkline'
 import Icon from '@/components/shared/Icon'
 import { useUIStore } from '@/stores/uiStore'
 import { useTranslations } from 'next-intl'
+import PortfolioPerformanceChart from '@/components/charts/PortfolioPerformanceChart'
 import type { PortfolioPosition, Quote } from '@/types'
 
 // ── commodity categories ──────────────────────────────────────
@@ -49,178 +50,6 @@ function makeSpark(seed: number, positive: boolean, n = 22): number[] {
   })
 }
 
-// ── chart ─────────────────────────────────────────────────────
-
-type ChartPeriod = '1G' | '1S' | '1M' | '1A' | 'MAX'
-const CHART_PERIODS: ChartPeriod[] = ['1G', '1S', '1M', '1A', 'MAX']
-type ChartPoint = { date: string; value: number }
-const PERIOD_DAYS: Record<Exclude<ChartPeriod, 'MAX'>, number> = { '1G': 1, '1S': 7, '1M': 30, '1A': 365 }
-const IT_M = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic']
-
-function fmtChartLabel(dateStr: string, totalDays: number): string {
-  const isDatetime = dateStr.length > 10
-  const d = isDatetime ? new Date(dateStr + ':00Z') : new Date(dateStr + 'T12:00:00')
-  if (isDatetime) return d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', timeZone: 'UTC' })
-  if (totalDays <= 35)  return `${d.getDate()} ${IT_M[d.getMonth()]}`
-  if (totalDays <= 400) return `${IT_M[d.getMonth()]} '${d.getFullYear().toString().slice(2)}`
-  return d.getFullYear().toString()
-}
-
-function buildChartLabels(pts: { date: string }[], n = 5): string[] {
-  if (pts.length < 2) return []
-  const totalDays = (new Date(pts.at(-1)!.date).getTime() - new Date(pts[0].date).getTime()) / 86_400_000
-  return Array.from({ length: n }, (_, i) => {
-    const idx = Math.round(i * (pts.length - 1) / (n - 1))
-    return fmtChartLabel(pts[idx].date, totalDays)
-  })
-}
-
-function CommodityChart({ positions, period, quotes, eurUsd, pnl }: {
-  positions: PortfolioPosition[]; period: ChartPeriod; quotes: Record<string, Quote>; eurUsd: number; pnl: number
-}) {
-  const tl = useTranslations('commodity')
-  const { fmt } = useFormatters()
-  const { trades } = usePortfolioStore()
-  const [chartPts, setChartPts] = useState<ChartPoint[]>([])
-  const [loading, setLoading] = useState(false)
-  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
-
-  const posKey = positions.map((p) => `${p.ticker}:${p.quantity}`).join(',')
-
-  const earliestDate = useMemo(() => {
-    let min = new Date().toISOString().slice(0, 10)
-    for (const p of positions) {
-      const t = trades.filter(t => t.positionId === p.id && t.type === 'buy').sort((a, b) => a.date.localeCompare(b.date))[0]
-      const d = p.purchaseDate ?? t?.date ?? new Date().toISOString().slice(0, 10)
-      if (d < min) min = d
-    }
-    return min
-  }, [posKey, trades]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const days = period === 'MAX'
-    ? Math.max(1, Math.ceil((Date.now() - new Date(earliestDate).getTime()) / 86_400_000) + 1)
-    : PERIOD_DAYS[period]
-
-  const oneGPts = useMemo(() => {
-    if (period !== '1G') return null
-    const today = new Date().toISOString().slice(0, 10)
-    const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10)
-    let prev = 0, curr = 0, hasAny = false
-    for (const p of positions) {
-      const q = quotes[p.ticker]
-      if (!q) continue
-      const prevEur = q.prevClose > 0 ? (q.currency === 'EUR' ? q.prevClose : q.prevClose / eurUsd) : (q.priceEur ?? q.price / eurUsd)
-      const currEur = q.priceEur ?? q.price / eurUsd
-      prev += p.quantity * prevEur
-      curr += p.quantity * currEur
-      hasAny = true
-    }
-    if (!hasAny) return []
-    return [{ date: yesterday, value: Math.round(prev * 100) / 100 }, { date: today, value: Math.round(curr * 100) / 100 }]
-  }, [positions, quotes, eurUsd, period]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (period === '1G') { setChartPts([]); setLoading(false); return }
-    if (positions.length === 0) return
-    let cancelled = false
-    setLoading(true)
-    const pParam = positions.map((p) => {
-      const currency = quotes[p.ticker]?.currency ?? 'USD'
-      const t = trades.filter(t => t.positionId === p.id && t.type === 'buy').sort((a, b) => a.date.localeCompare(b.date))[0]
-      const purchaseDate = p.purchaseDate ?? t?.date ?? new Date().toISOString().slice(0, 10)
-      return `${p.ticker}:${p.quantity}:${purchaseDate}:${currency}`
-    }).join(',')
-    fetch(`/api/portfolio-chart?p=${encodeURIComponent(pParam)}&days=${days}&eurUsd=${eurUsd}`)
-      .then((r) => r.json())
-      .then((data: { points?: ChartPoint[] }) => { if (!cancelled) { setChartPts(data.points ?? []); setLoading(false) } })
-      .catch(() => { if (!cancelled) { setChartPts([]); setLoading(false) } })
-    return () => { cancelled = true }
-  }, [posKey, days, eurUsd]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const pts = period === '1G' ? (oneGPts ?? []) : chartPts
-  const isLoading = period !== '1G' && loading
-  const W = 500; const H = 160
-  const P = { t: 16, r: 8, b: 4, l: 8 }
-
-  if (isLoading) return (
-    <div style={{ width: '100%', height: H, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-      <div className="ledgernest-spinner" style={{ width: 20, height: 20, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%' }} />
-      <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{tl('chartLoading')}</span>
-    </div>
-  )
-
-  if (pts.length < 2) return (
-    <div style={{ width: '100%', height: H, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{period === '1G' ? tl('chartNoData') : tl('chartInsufficient')}</span>
-    </div>
-  )
-
-  const values = pts.map((p) => p.value)
-  const labels = period === '1G' ? ['Ieri', 'Oggi'] : buildChartLabels(pts)
-  const n = values.length
-  const minV = Math.min(...values); const maxV = Math.max(...values); const vRange = maxV - minV || 1
-  const yMin = minV - vRange * 0.15; const yMax = maxV + vRange * 0.08
-  const xS = (i: number) => P.l + (i / (n - 1)) * (W - P.l - P.r)
-  const yS = (v: number) => P.t + (1 - (v - yMin) / (yMax - yMin)) * (H - P.t - P.b)
-  const chartColor = pnl >= 0 ? '#22c55e' : '#ef4444'
-  let linePts = `M${xS(0).toFixed(1)},${yS(values[0]).toFixed(1)}`
-  for (let i = 1; i < n; i++) {
-    const cpx = ((xS(i - 1) + xS(i)) / 2).toFixed(1)
-    linePts += ` C${cpx},${yS(values[i - 1]).toFixed(1)} ${cpx},${yS(values[i]).toFixed(1)} ${xS(i).toFixed(1)},${yS(values[i]).toFixed(1)}`
-  }
-  const area = `${linePts} L${xS(n - 1).toFixed(1)},${(H - P.b).toFixed(1)} L${xS(0).toFixed(1)},${(H - P.b).toFixed(1)} Z`
-  const hoverInfo = hoverIdx !== null ? (() => {
-    const hx = xS(hoverIdx), hy = yS(values[hoverIdx])
-    const tDays = pts.length >= 2 ? (new Date(pts.at(-1)!.date).getTime() - new Date(pts[0].date).getTime()) / 86_400_000 : 1
-    const dateLabel = period === '1G' ? (hoverIdx === 0 ? 'Ieri' : 'Oggi') : fmtChartLabel(pts[hoverIdx].date, tDays)
-    return { hx, hy, dateLabel }
-  })() : null
-
-  return (
-    <div style={{ position: 'relative', width: '100%' }}>
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none"
-        style={{ width: '100%', height: H, display: 'block', cursor: 'crosshair' }}
-        onMouseMove={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect()
-          const x = ((e.clientX - rect.left) / rect.width) * W
-          setHoverIdx(Math.max(0, Math.min(n - 1, Math.round((x - P.l) / (W - P.l - P.r) * (n - 1)))))
-        }}
-        onMouseLeave={() => setHoverIdx(null)}
-      >
-        <defs>
-          <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={chartColor} stopOpacity="0.35" />
-            <stop offset="100%" stopColor={chartColor} stopOpacity="0.02" />
-          </linearGradient>
-        </defs>
-        <path d={area} fill="url(#cg)" vectorEffect="non-scaling-stroke" />
-        <path d={linePts} fill="none" stroke={chartColor} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-        <line x1={P.l} y1={yS(values[0]).toFixed(1)} x2={xS(n - 1)} y2={yS(values[0]).toFixed(1)} stroke="rgba(255,255,255,0.18)" strokeWidth="1" strokeDasharray="3,4" vectorEffect="non-scaling-stroke" />
-        {hoverInfo && (
-          <g>
-            <line x1={hoverInfo.hx} y1={P.t} x2={hoverInfo.hx} y2={H - P.b} stroke="rgba(255,255,255,0.2)" strokeWidth="1" strokeDasharray="4,3" vectorEffect="non-scaling-stroke" />
-            <circle cx={hoverInfo.hx} cy={hoverInfo.hy} r="5" fill="var(--bg-surface)" stroke={chartColor} strokeWidth="2" />
-          </g>
-        )}
-      </svg>
-      {hoverInfo && (
-        <div style={{ position: 'absolute', left: `${(hoverInfo.hx / W) * 100}%`, top: `${(hoverInfo.hy / H) * 100}%`,
-          transform: `translate(${hoverInfo.hx > W * 0.6 ? '-110%' : '10px'}, -50%)`,
-          pointerEvents: 'none', background: '#131c27', border: `1px solid ${chartColor}44`,
-          borderRadius: 8, padding: '5px 12px', whiteSpace: 'nowrap', zIndex: 10 }}>
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginBottom: 2 }}>{hoverInfo.dateLabel}</div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: chartColor, fontVariantNumeric: 'tabular-nums' }}>{fmt(values[hoverIdx!])}</div>
-        </div>
-      )}
-      <div style={{ position: 'relative', height: 24, marginTop: 4 }}>
-        {labels.map((m, i) => (
-          <span key={i} style={{ position: 'absolute', left: `${((P.l + (i / (labels.length - 1)) * (W - P.l - P.r)) / W) * 100}%`,
-            transform: 'translateX(-50%)', fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,0.5)', whiteSpace: 'nowrap' }}>{m}</span>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 // ── row menu ──────────────────────────────────────────────────
 
@@ -293,7 +122,6 @@ export default function CommodityPage() {
   const { positions, deletePosition } = usePortfolioStore()
   const { quotes, eurUsd } = usePricesStore()
   const { openModal } = useUIStore()
-  const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('1M')
   const [filter, setFilter] = useState<CatFilter>('Tutte')
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
@@ -318,6 +146,8 @@ export default function CommodityPage() {
   const totalCost   = rows.reduce((s, r) => s + r.cost, 0)
   const totalPnl    = totalValue - totalCost
   const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0
+  const totalDayChg = rows.reduce((s, r) => s + (r.q?.change ?? 0) * r.quantity * (r.q?.currency === 'EUR' ? 1 : 1 / eurUsd), 0)
+  const totalDayPct = totalValue > 0 ? (totalDayChg / (totalValue - totalDayChg + 0.001)) * 100 : 0
 
   const bestRow = rows.length > 0 ? [...rows].sort((a, b) => b.pnlPct - a.pnlPct)[0] : null
   const categories = Array.from(new Set(rows.map((r) => r.cat)))
@@ -353,8 +183,8 @@ export default function CommodityPage() {
         <div className="ledgernest-kpi is-hl" style={{ padding: '18px 20px', gap: 5 }}>
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiTotal')}</div>
           <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{fmt(totalValue)}</div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: totalPnlPct >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-            {fmtPct(totalPnlPct)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{tl('kpiPositions', { n: commodities.length })}</span>
+          <div style={{ fontSize: 12, fontWeight: 600, color: totalDayPct >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+            {fmtPct(totalDayPct)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{tl('kpiToday')} · {commodities.length}</span>
           </div>
         </div>
 
@@ -363,7 +193,15 @@ export default function CommodityPage() {
           <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', color: totalPnl >= 0 ? 'var(--success)' : 'var(--danger)' }}>
             {fmtDlt(totalPnl)}
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{tl('kpiCost', { cost: fmt(totalCost) })}</div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: totalPnl >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+            {fmtPct(totalPnlPct)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{tl('kpiVsCost')}</span>
+          </div>
+        </div>
+
+        <div className="ledgernest-card" style={{ padding: '18px 20px', gap: 5 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiInvested')}</div>
+          <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{fmt(totalCost)}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{tl('kpiCapital')}</div>
         </div>
 
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: 5 }}>
@@ -375,41 +213,18 @@ export default function CommodityPage() {
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                 <span style={{ fontWeight: 700, color: bestRow.pnlPct >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-                  {bestRow.pnlPct >= 0 ? '+' : ''}{fmtPct(bestRow.pnlPct)}
+                  {fmtPct(bestRow.pnlPct)}
                 </span> {tl('kpiBestSub')}
               </div>
             </>
           ) : <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>—</div>}
-        </div>
-
-        <div className="ledgernest-card" style={{ padding: '18px 20px', gap: 5 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{tl('kpiCategories')}</div>
-          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em' }}>{categories.length}</div>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{tl('kpiCategoriesSub', { n: categories.length })}</div>
         </div>
       </div>
 
       {/* Chart + allocation */}
       <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: 12 }}>
         <div className="ledgernest-card" style={{ padding: '20px 20px 12px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>{tl('chartTitle')}</div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-                {tl('chartSubtitle', { period: chartPeriod })}
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 4 }}>
-              {CHART_PERIODS.map((p) => (
-                <button key={p} onClick={() => setChartPeriod(p)} style={{
-                  padding: '4px 10px', borderRadius: 7, border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                  background: chartPeriod === p ? 'var(--accent)' : 'var(--bg-elevated)',
-                  color: chartPeriod === p ? 'var(--text-on-accent)' : 'var(--text-secondary)',
-                }}>{p}</button>
-              ))}
-            </div>
-          </div>
-          <CommodityChart positions={commodities} period={chartPeriod} quotes={quotes} eurUsd={eurUsd} pnl={totalPnl} />
+          <PortfolioPerformanceChart filter="commodity" title={tl('chartTitle')} />
         </div>
 
         {/* Category allocation */}
