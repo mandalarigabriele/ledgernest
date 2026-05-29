@@ -11,12 +11,13 @@ APP_NAME="ledgernest"
 
 cd "$APP_DIR"
 
-# Load .env.local so CRON_SECRET and SNAPSHOT_INTERVAL are available in this shell
+# Load CRON_SECRET and SNAPSHOT_INTERVAL from .env.local if not already in environment
 if [ -f "$APP_DIR/.env.local" ]; then
-  set -a
-  # shellcheck disable=SC1091
-  source "$APP_DIR/.env.local"
-  set +a
+  _val=$(grep -E '^CRON_SECRET=' "$APP_DIR/.env.local" | head -1 | sed 's/^CRON_SECRET=//' | tr -d '"' | tr -d "'")
+  [ -n "$_val" ] && export CRON_SECRET="$_val"
+  _val=$(grep -E '^SNAPSHOT_INTERVAL=' "$APP_DIR/.env.local" | head -1 | sed 's/^SNAPSHOT_INTERVAL=//' | tr -d '"' | tr -d "'")
+  [ -n "$_val" ] && export SNAPSHOT_INTERVAL="$_val"
+  unset _val
 fi
 
 echo "==> LedgerNest deploy — $(date)"
