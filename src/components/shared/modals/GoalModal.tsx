@@ -5,8 +5,8 @@ import { useTranslations } from 'next-intl'
 import { useUIStore } from '@/stores/uiStore'
 import { useFinanceStore } from '@/stores/financeStore'
 import Icon from '../Icon'
+import EmojiPicker from '../EmojiPicker'
 
-const ICONS = ['🏖️', '🚗', '🏠', '📚', '💍', '✈️', '💻', '🎓', '🏋️', '🌍']
 const COLORS = ['#5bc8d0', '#7c6df7', '#f77c3a', '#3fb950', '#f85149', '#d29922', '#58a6ff', '#e879a8']
 
 export default function GoalModal() {
@@ -66,25 +66,7 @@ export default function GoalModal() {
             {/* Icon picker */}
             <div className="ledgernest-field">
               <label className="ledgernest-label">{t('icon')}</label>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {ICONS.map((ic) => (
-                  <button
-                    key={ic}
-                    type="button"
-                    style={{
-                      fontSize: '20px',
-                      padding: '6px 8px',
-                      borderRadius: 'var(--radius-sm)',
-                      background: icon === ic ? 'var(--accent-dim)' : 'var(--bg-elevated)',
-                      border: `1.5px solid ${icon === ic ? 'var(--accent)' : 'transparent'}`,
-                      cursor: 'pointer',
-                    }}
-                    onClick={() => setIcon(ic)}
-                  >
-                    {ic}
-                  </button>
-                ))}
-              </div>
+              <EmojiPicker value={icon} onChange={setIcon} />
             </div>
 
             {/* Color picker */}

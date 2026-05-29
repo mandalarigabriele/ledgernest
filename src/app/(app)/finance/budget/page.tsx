@@ -543,54 +543,121 @@ export default function BudgetPage() {
           </div>
         </div>
 
-        {/* Right — Dove vanno i tuoi soldi */}
-        <div className="ledgernest-card" style={{ padding: '20px 22px' }}>
-          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3 }}>{tl('whereMoneyGoes')}</div>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>
-            {tl('whereMoneyDesc', { income: fmt(income), pct: allocPct })}
+        {/* Right — Dove vanno i tuoi soldi (flow layout) */}
+        <div className="ledgernest-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>{tl('whereMoneyGoes')}</div>
+
+          {/* ── Entrate anchor ── */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#4ade80', flexShrink: 0 }} />
+              <span style={{ fontWeight: 700, fontSize: 13 }}>Entrate pianificate</span>
+            </div>
+            <span style={{ fontWeight: 800, fontSize: 15, fontVariantNumeric: 'tabular-nums', color: 'var(--success)' }}>{fmt(income)}</span>
           </div>
-          {income > 0 && (
-            <>
-              <div style={{ height: 20, background: 'var(--bg-elevated)', borderRadius: 8, overflow: 'hidden', display: 'flex', marginBottom: 6 }}>
-                {summaryGroups.map((g) => {
-                  const amt = leafExpenseCats.filter((c) => c.group === g.key).reduce((s, c) => s + getCatBudget(c.id), 0)
-                  const goalsAmt = g.key === 'investments' ? totalGoalContrib : 0
-                  const pct = ((amt + goalsAmt) / income) * 100
-                  return pct > 0 ? <div key={g.key} style={{ width: `${Math.min(pct, 100)}%`, background: g.color, flexShrink: 0, transition: 'width .3s' }} /> : null
-                })}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', marginBottom: 18 }}>
-                {[0, 0.25, 0.5, 0.75, 1].map((f) => <span key={f}>{f === 0 ? '€0' : fmt(income * f).replace(',00', '')}</span>)}
-              </div>
-            </>
-          )}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+          {/* ── Group rows with mini-bar ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {summaryGroups.map((g) => {
               const amt = leafExpenseCats.filter((c) => c.group === g.key).reduce((s, c) => s + getCatBudget(c.id), 0)
-              const goalsAmt = g.key === 'investments' ? totalGoalContrib : 0
-              const total = amt + goalsAmt
-              const pct = income > 0 ? (total / income) * 100 : 0
-              const onTarget = Math.abs(pct - g.target) <= 3
+              const total = amt
+              const pct   = income > 0 ? (total / income) * 100 : 0
+              const delta = pct - g.target
+              const isOver   = delta >  3
+              const isUnder  = delta < -3
+              const tagColor = isOver ? 'var(--danger)' : isUnder ? 'var(--text-tertiary)' : 'var(--success)'
+              const tagBg    = isOver
+                ? 'color-mix(in oklch, var(--danger) 12%, transparent)'
+                : isUnder ? 'var(--bg-elevated)'
+                : 'color-mix(in oklch, var(--success) 12%, transparent)'
               return (
-                <div key={g.key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: g.color, flexShrink: 0 }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13 }}>{g.label}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{g.desc}</div>
-                  </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontWeight: 800, fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>{fmt(total)}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'flex-end' }}>
-                      <span>{pct.toFixed(0)}%</span>
-                      <span style={{ fontWeight: 700, fontSize: 10, padding: '1px 7px', borderRadius: 20, background: onTarget ? 'color-mix(in oklch, var(--success) 15%, transparent)' : 'var(--bg-elevated)', color: onTarget ? 'var(--success)' : 'var(--text-tertiary)', border: `1px solid ${onTarget ? 'color-mix(in oklch, var(--success) 30%, transparent)' : 'transparent'}` }}>
-                        {tl('whereMoneyTarget', { target: g.target })}
+                <div key={g.key}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: g.color, flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13 }}>{g.label}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 6 }}>{g.desc}</span>
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <span style={{ fontWeight: 800, fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>{fmt(total)}</span>
+                      <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: tagBg, color: tagColor, border: `1px solid ${tagColor}40` }}>
+                        {pct.toFixed(0)}% / {g.target}%
                       </span>
                     </div>
                   </div>
+                  {/* Mini bar: actual fill + target marker */}
+                  {income > 0 && (
+                    <div style={{ position: 'relative', height: 5, background: 'var(--bg-elevated)', borderRadius: 4, overflow: 'visible' }}>
+                      <div style={{ height: '100%', width: `${Math.min(pct, 100)}%`, background: g.color, borderRadius: 4, transition: 'width .3s', opacity: 0.85 }} />
+                      {/* target marker */}
+                      <div style={{ position: 'absolute', top: -3, left: `${Math.min(g.target, 100)}%`, width: 2, height: 11, background: g.color, borderRadius: 1, opacity: 0.5 }} title={`Target: ${g.target}%`} />
+                    </div>
+                  )}
                 </div>
               )
             })}
+
+            {/* ── Goals section ── */}
+            {goals.length > 0 && (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#f77c3a', flexShrink: 0 }} />
+                  <span style={{ fontWeight: 700, fontSize: 13, flex: 1 }}>Goal mensili</span>
+                  <span style={{ fontWeight: 800, fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>{fmt(totalGoalContrib)}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: 'var(--bg-elevated)', color: 'var(--text-tertiary)' }}>
+                    {income > 0 ? ((totalGoalContrib / income) * 100).toFixed(0) : 0}%
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, paddingLeft: 18 }}>
+                  {goals.map((goal) => {
+                    const goalPct = goal.targetAmount > 0 ? Math.min((goal.currentAmount / goal.targetAmount) * 100, 100) : 0
+                    return (
+                      <div key={goal.id}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                          <span style={{ fontSize: 13 }}>{goal.icon}</span>
+                          <span style={{ fontSize: 12, flex: 1, color: 'var(--text-primary)', fontWeight: 600 }}>{goal.name}</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+                            {fmt(goal.monthlyContribution ?? 0)}/mese
+                          </span>
+                          <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{goalPct.toFixed(0)}%</span>
+                        </div>
+                        <div style={{ height: 3, background: 'var(--bg-elevated)', borderRadius: 2 }}>
+                          <div style={{ height: '100%', width: `${goalPct}%`, background: goal.color, borderRadius: 2, transition: 'width .3s' }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* ── Divider ── */}
+          <div style={{ height: 1, background: 'var(--border-subtle)', margin: '14px 0' }} />
+
+          {/* ── Saldo libero ── */}
+          {(() => {
+            const free    = income - leafExpenseCats.reduce((s, c) => s + getCatBudget(c.id), 0) - totalGoalContrib
+            const freePct = income > 0 ? (free / income) * 100 : 0
+            const isPos   = free >= 0
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 14 }}>{isPos ? '✓' : '⚠'}</span>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 13 }}>Saldo libero</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{allocPct}% allocato</div>
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontWeight: 800, fontSize: 15, fontVariantNumeric: 'tabular-nums', color: isPos ? 'var(--success)' : 'var(--danger)' }}>
+                    {isPos ? '+' : ''}{fmt(free)}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{freePct.toFixed(0)}% del reddito</div>
+                </div>
+              </div>
+            )
+          })()}
         </div>
       </div>
 
@@ -964,16 +1031,36 @@ export default function BudgetPage() {
             {activeTab === 'riepilogo' && (
               <div style={{ padding: '18px 22px', display: 'flex', flexDirection: 'column', gap: 18 }}>
                 {[
-                  { label: tl('summaryIncome'),   planned: income,                          actual: actualIncome, rem: income - actualIncome,                            color: '#4ade80', remLabel: tl('summaryExpected')  },
-                  { label: tl('summaryExpenses'), planned: opexBudget,                      actual: opexSpent,    rem: opexBudget - opexSpent,                            color: 'var(--accent)', remLabel: tl('summaryRemain') },
-                  { label: tl('summarySavings'),  planned: investBudget + totalGoalContrib, actual: investSpent,  rem: (investBudget + totalGoalContrib) - investSpent,   color: '#5bc8d0', remLabel: tl('summaryRemain') },
+                  {
+                    label: tl('summaryIncome'),
+                    tooltip: `Reddito pianificato per il mese (${fmt(income)}).\n"Attesi" = ancora da incassare = pianificato − già ricevuto (${fmt(actualIncome)}).`,
+                    planned: income, actual: actualIncome,
+                    rem: income - actualIncome, color: '#4ade80', remLabel: tl('summaryExpected'),
+                  },
+                  {
+                    label: tl('summaryExpenses'),
+                    tooltip: `Spese operative pianificate (${fmt(opexBudget)}) = tutte le categorie di spesa esclusi Investimenti.\n"Rimasti" = budget ancora disponibile = pianificato − già speso (${fmt(opexSpent)}).`,
+                    planned: opexBudget, actual: opexSpent,
+                    rem: opexBudget - opexSpent, color: 'var(--accent)', remLabel: tl('summaryRemain'),
+                  },
+                  {
+                    label: 'Investimenti + Goal',
+                    tooltip: `Budget investimenti (${fmt(investBudget)}) + contributi mensili ai goal (${fmt(totalGoalContrib)}) = ${fmt(investBudget + totalGoalContrib)} pianificati.\n"Rimasti" = ancora da investire/versare questo mese = pianificato − già investito (${fmt(investSpent)}).`,
+                    planned: investBudget + totalGoalContrib, actual: investSpent,
+                    rem: (investBudget + totalGoalContrib) - investSpent, color: '#5bc8d0', remLabel: tl('summaryRemain'),
+                  },
                 ].map((s) => {
                   const pct  = s.planned > 0 ? Math.min(100, (s.actual / s.planned) * 100) : 0
                   const over = s.actual > s.planned && s.planned > 0
                   return (
                     <div key={s.label}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 7 }}>
-                        <span style={{ fontSize: 13, fontWeight: 700 }}>{s.label}</span>
+                        <span
+                          style={{ fontSize: 13, fontWeight: 700, cursor: 'help', borderBottom: '1px dashed var(--border-subtle)' }}
+                          title={s.tooltip}
+                        >
+                          {s.label} ℹ
+                        </span>
                         <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
                           {s.planned > 0 ? fmt(s.planned) : '—'}
                         </span>

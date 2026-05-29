@@ -8,6 +8,7 @@ import { usePortfolioSnapshotStore } from '@/stores/portfolioSnapshotStore'
 import { usePricesStore } from '@/stores/pricesStore'
 import { useFinanceStore } from '@/stores/financeStore'
 import Icon from '@/components/shared/Icon'
+import EmojiPicker from '@/components/shared/EmojiPicker'
 import CSVImportWizard from '@/components/shared/CSVImportWizard'
 import { BRAND_FAVICON_DOMAINS, normalizeMerchantName } from '@/lib/utils/csvImport'
 import type { BudgetCategory, BudgetGroup, Currency, Theme, Locale } from '@/types'
@@ -32,17 +33,6 @@ type ThemeOption = [Theme, string, string]
 const CAT_COLORS = [
   '#5bc8d0', '#7c6df7', '#3fb950', '#f77c3a', '#f85149', '#58a6ff',
   '#d29922', '#e879a8', '#84cc16', '#06b6d4', '#a78bfa', '#fb923c',
-]
-
-const EMOJI_CATS = [
-  { icon: '🏠', label: 'Casa',      emojis: ['🏠','🏡','🏘️','🏗️','🏢','🏬','🏦','🛏️','🛋️','🪑','🚿','🛁','🪴','🧹','🧺','💡','🔌','🔒','🗑️','📦','🧰','🔧','🔨','⚙️','🪤','🫙','🧯','🪣','🧲','🪜','🏊','🛖'] },
-  { icon: '🍕', label: 'Cibo',      emojis: ['🍕','🍔','🍟','🌮','🌯','🥗','🥘','🍲','🍜','🍝','🍣','🥩','🍗','🥚','🍳','🥐','🧁','🎂','🍰','🍩','🍪','🍫','🍭','🥤','☕','🧃','🍷','🍸','🥂','🍻','🧋','🫖'] },
-  { icon: '🚗', label: 'Trasporti', emojis: ['🚗','🚕','🚙','🏎️','🚌','🚎','🚑','🚒','✈️','🛳️','⛵','🚂','🚇','🏍️','🛵','🚲','🛴','🚁','⛽','🅿️','🚦','🛣️','🗺️','🧭','🏔️','🌊','🌍','🗼','🌐','🛫','🛬','🛟'] },
-  { icon: '🎭', label: 'Svago',     emojis: ['🎭','🎬','🎮','🕹️','🎲','🎯','🎳','⛳','🎸','🎹','🎺','🎻','🎤','🎧','🎼','📚','📖','🖌️','🎨','🎪','🏆','🥇','🎫','🎟️','🎡','🎢','🎠','🎉','🎊','🎁','🎀','🎑'] },
-  { icon: '💰', label: 'Finanza',   emojis: ['💰','💵','💶','💷','💸','💳','💹','📈','📉','📊','🪙','💎','🏷️','🧾','📄','📋','📌','🔑','🏧','💼','🗂️','📦','📨','📧','📬','🖊️','✏️','📝','📁','🗃️','🗄️','🔐'] },
-  { icon: '❤️', label: 'Salute',    emojis: ['❤️','🩺','💊','💉','🩻','🏥','🏃','🚶','🧘','🤸','⚽','🏀','🎾','🏊','🚴','🧗','🥊','⚾','🏈','🎿','🏄','🛹','🏋️','🤽','🧩','🎯','🧸','🪆','🫶','🦷','🦴','🩹'] },
-  { icon: '🛍️', label: 'Shopping',  emojis: ['🛍️','👗','👔','👕','👖','🧥','🧣','🧤','🧦','👠','👟','👜','👛','🎒','🧳','💄','💍','💎','🪮','🛒','🏪','🎀','🪞','🩱','🩲','🩳','🥻','🥽','🪭','🕶️','👓','🌂'] },
-  { icon: '🌱', label: 'Natura',    emojis: ['🌱','🌿','🌲','🌳','🌴','🌵','🍀','🍁','🍂','🍃','🌸','🌺','🌻','🌹','🌷','🪷','🌼','💐','🍄','🌾','🌊','🏔️','🏕️','🌅','🌄','🌠','⛅','🌈','❄️','🔥','⭐','🌙'] },
 ]
 
 // ── helpers ───────────────────────────────────────────────────
@@ -99,58 +89,6 @@ function SettingRow({ label, desc, children }: { label: string; desc?: string; c
         {desc && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{desc}</div>}
       </div>
       <div style={{ flexShrink: 0, marginLeft: 24 }}>{children}</div>
-    </div>
-  )
-}
-
-// ── emoji picker ──────────────────────────────────────────────
-
-function EmojiPicker({ value, onChange }: { value: string; onChange: (e: string) => void }) {
-  const t = useTranslations('settings')
-  const [catIdx, setCatIdx] = useState(0)
-  const cat = EMOJI_CATS[catIdx]
-  return (
-    <div style={{ border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}>
-      {/* Category tabs */}
-      <div style={{ display: 'flex', overflowX: 'auto', background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-subtle)', padding: '6px 8px', gap: 4 }}>
-        {EMOJI_CATS.map((c, i) => (
-          <button
-            key={i}
-            onClick={() => setCatIdx(i)}
-            style={{
-              width: 34, height: 34, borderRadius: 8, flexShrink: 0, cursor: 'pointer', fontSize: 16,
-              border: 'none', background: catIdx === i ? 'var(--bg-surface)' : 'transparent',
-              outline: catIdx === i ? `2px solid var(--accent)` : 'none',
-              outlineOffset: -2, transition: 'background .1s',
-            }}
-            title={c.label}
-          >
-            {c.icon}
-          </button>
-        ))}
-      </div>
-      {/* Emoji grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 2, padding: 8, maxHeight: 200, overflowY: 'auto', background: 'var(--bg-surface)' }}>
-        {cat.emojis.map((e) => (
-          <button
-            key={e}
-            onClick={() => onChange(e)}
-            style={{
-              width: '100%', aspectRatio: '1', fontSize: 20, borderRadius: 6, cursor: 'pointer', border: 'none',
-              background: value === e ? 'color-mix(in oklch, var(--accent) 20%, transparent)' : 'transparent',
-              outline: value === e ? `2px solid var(--accent)` : 'none',
-              transition: 'background .1s',
-            }}
-          >
-            {e}
-          </button>
-        ))}
-      </div>
-      {/* Footer */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 12px', background: 'var(--bg-elevated)', borderTop: '1px solid var(--border-subtle)', fontSize: 11, color: 'var(--text-tertiary)' }}>
-        <span>{t('selectedEmoji')} <span style={{ fontSize: 16 }}>{value}</span></span>
-        <span>{cat.emojis.length} emoji</span>
-      </div>
     </div>
   )
 }
