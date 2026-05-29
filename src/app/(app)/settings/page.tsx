@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { usePortfolioSnapshotStore } from '@/stores/portfolioSnapshotStore'
+import { usePricesStore } from '@/stores/pricesStore'
 import { useFinanceStore } from '@/stores/financeStore'
 import Icon from '@/components/shared/Icon'
 import CSVImportWizard from '@/components/shared/CSVImportWizard'
@@ -701,7 +702,8 @@ export default function ImpostazioniPage() {
 
   const { settings, updateSettings } = useSettingsStore()
   const { resetPortfolio } = usePortfolioStore()
-  const { clearSnapshots } = usePortfolioSnapshotStore()
+  const { clearSnapshots, snapshots } = usePortfolioSnapshotStore()
+  const { lastUpdated: pricesLastUpdated } = usePricesStore()
   const {
     budgetCategories, addBudgetCategory, updateBudgetCategory, deleteBudgetCategory, reorderBudgetCategories,
     budgetGroups, addBudgetGroup, updateBudgetGroup, deleteBudgetGroup,
@@ -811,6 +813,7 @@ export default function ImpostazioniPage() {
               {isProtected
                 ? <span style={{ fontSize: 11, color: 'var(--text-tertiary)', padding: '4px 10px', border: '1px solid var(--border-subtle)', borderRadius: 7 }}>{t('categoriesSystem')}</span>
                 : <>
+                    {!cat.parentId && actionBtn(t('addSubcat'), (e) => { e.stopPropagation(); setSubcatModal({ groupId: cat.group, parentId: cat.id }) })}
                     {actionBtn(t('categoriesEdit'), (e) => { e.stopPropagation(); cat.parentId ? setSubcatModal({ groupId: cat.group, parentId: cat.parentId, cat }) : setCatModal({ groupId: cat.group, cat }) })}
                     {actionBtn('✕', (e) => { e.stopPropagation(); setConfirmDel({ msg: t('confirmDeleteCat', { name: cat.name }), onConfirm: () => deleteBudgetCategory(cat.id) }) }, true)}
                   </>
@@ -1142,18 +1145,49 @@ export default function ImpostazioniPage() {
             <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 4 }}>{t('marketsTitle')}</h2>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 28 }}>{t('marketsSub')}</p>
             <SettingRow label={t('refreshInterval')} desc={t('refreshIntervalDesc')}>
-              <select
-                className="ledgernest-input ledgernest-select"
-                value={settings.refreshInterval}
-                onChange={(e) => updateSettings({ refreshInterval: parseInt(e.target.value) })}
-                style={{ width: 150 }}
-              >
-                <option value={0}>{t('refreshManual')}</option>
-                <option value={30}>30 sec</option>
-                <option value={60}>1 min</option>
-                <option value={300}>5 min</option>
-                <option value={600}>10 min</option>
-              </select>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <select
+                  className="ledgernest-input ledgernest-select"
+                  value={settings.refreshInterval}
+                  onChange={(e) => updateSettings({ refreshInterval: parseInt(e.target.value) })}
+                  style={{ width: 150 }}
+                >
+                  <option value={0}>{t('refreshManual')}</option>
+                  <option value={30}>30 sec</option>
+                  <option value={60}>1 min</option>
+                  <option value={300}>5 min</option>
+                  <option value={600}>10 min</option>
+                </select>
+                <span
+                  title={pricesLastUpdated
+                    ? `Ultimi aggiornamenti prezzi:\n${[pricesLastUpdated].map(ts => new Date(ts).toLocaleTimeString('it-IT')).join('\n')}`
+                    : 'Nessun aggiornamento ancora'}
+                  style={{ cursor: 'help', color: 'var(--text-tertiary)', fontSize: 15, lineHeight: 1, userSelect: 'none' }}
+                >ℹ</span>
+              </div>
+            </SettingRow>
+            <SettingRow label={t('snapshotInterval')} desc={t('snapshotIntervalDesc')}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <select
+                  className="ledgernest-input ledgernest-select"
+                  value={settings.snapshotInterval ?? 600}
+                  onChange={(e) => updateSettings({ snapshotInterval: parseInt(e.target.value) })}
+                  style={{ width: 150 }}
+                >
+                  <option value={0}>{t('snapshotEveryTick')}</option>
+                  <option value={600}>10 min</option>
+                  <option value={900}>15 min</option>
+                  <option value={1800}>30 min</option>
+                  <option value={3600}>1 ora</option>
+                  <option value={7200}>2 ore</option>
+                </select>
+                <span
+                  title={snapshots.length > 0
+                    ? `Ultimi 3 snapshot:\n${[...snapshots].slice(-3).reverse().map(s => new Date(s.ts).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })).join('\n')}`
+                    : 'Nessuno snapshot ancora'}
+                  style={{ cursor: 'help', color: 'var(--text-tertiary)', fontSize: 15, lineHeight: 1, userSelect: 'none' }}
+                >ℹ</span>
+              </div>
             </SettingRow>
             <SettingRow label={t('showPrePostMarket')} desc={t('showPrePostDesc')}>
               <Toggle checked={settings.showPrePostMarket} onChange={(v) => updateSettings({ showPrePostMarket: v })} />

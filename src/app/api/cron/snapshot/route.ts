@@ -9,7 +9,7 @@ interface StoredPortfolio {
 }
 
 interface StoredSettings {
-  settings?: { refreshInterval?: number }
+  settings?: { refreshInterval?: number; snapshotInterval?: number }
 }
 
 interface StoredSnapshots {
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
         .prepare("SELECT data FROM user_data WHERE user_email = ? AND key = 'settings'")
         .get(user_email) as { data: string } | undefined
       const { settings } = settRow ? JSON.parse(settRow.data) as StoredSettings : { settings: undefined }
-      const intervalMs = (settings?.refreshInterval ?? 600) * 1_000
+      const intervalMs = (settings?.snapshotInterval ?? settings?.refreshInterval ?? 600) * 1_000
 
       // Load existing snapshots — skip if last snapshot is too recent
       const snapRow = db

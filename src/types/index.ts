@@ -211,6 +211,7 @@ export interface AppSettings {
   locale: Locale
   currency: Currency
   refreshInterval: number
+  snapshotInterval: number
   showPrePostMarket: boolean
   accentColor: string
   density: 'compact' | 'normal' | 'comfortable'

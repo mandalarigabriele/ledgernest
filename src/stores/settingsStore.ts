@@ -16,6 +16,7 @@ const defaultSettings: AppSettings = {
   locale: 'it',
   currency: 'EUR',
   refreshInterval: 600,
+  snapshotInterval: 600,
   showPrePostMarket: true,
   accentColor: '#5bc8d0',
   density: 'normal',
