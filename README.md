@@ -256,51 +256,7 @@ npm run db:reset     # ⚠️ FULL RESET (deletes all data)
 
 ## 📝 Changelog
 
-### v0.3.5 (May 2026)
-- **Commodity portfolio page** — new `/portfolio/commodity` page with category-aware breakdown (precious metals, energy, agriculture, industrial metals), KPI strip, interactive value chart, allocation sidebar, position table with USD sub-price and P&L, category filter buttons, and delete confirm modal
-
-### v0.3.4 (May 2026)
-- **Budget investment configurator UX** — allocations are no longer auto-redistributed while editing; "Applica" is enabled only when the total equals exactly 100%
-
-### v0.3.3 (May 2026)
-- **PM/AH P&L for stocks** — when a pre-market or after-hours price is available, position value and P&L use the extended-hours price instead of the regular close
-
-### v0.3.2 (May 2026)
-- **USD sub-price in stocks and crypto** — price column now shows the raw USD value below the EUR amount for USD-denominated assets
-- **Crypto chart fix** — fixed flat-line chart caused by `setQuotes` replacing the entire quotes map on CoinGecko failure; now merges incoming quotes into existing state
-- **NVDA upcoming dividend fix** — frequency detection window extended to 2 years; annual income falls back to last N historical payments when no payments received in the past 12 months
-
-### v0.3.1 (May 2026)
-- **Dividends loading state** — show progress bar and spinner while auto-import runs; previously the page showed the empty screen with no feedback during the ~10s import
-
-### v0.3.0 (May 2026)
-- **CSV import wizard** — multi-step wizard with ticker validation against Yahoo Finance/CoinGecko, bulk update detection, and ticker search input
-- **Portfolio grid UX** — ticker/asset column first, P&L with % as subtitle, daily var% in dedicated 3rd column, default sort by P&L descending
-- **% Port. column** — portfolio weight with mini progress bar, shown in Stocks grid
-- **"Top rendimento" widget** — replaces "Top in salita": shows best unrealized P&L% across all positions (total return, not just today)
-- **"Top in discesa" fix** — widget now only shows positions with a negative daily change; shows a friendly message when all positions are green
-- **P&L currency fix** — EUR/USD exchange-rate correction applied to `avgPrice` when computing cost basis for USD-denominated positions
-- **Budget "copia dai ricorrenti"** — fixed parent-category resolution (falls back to first leaf child) and added date filter (skips items whose next occurrence is after the target month)
-- **Portfolio snapshot store** — `clearSnapshots()` wired to full portfolio reset
-- **Cross-device sync** — portfolio snapshots and settings now synced to server DB; charts and preferences available on all devices
-- **Budget investment configurator** — set a % of income to invest, split it across investment categories (ETF, Stocks, Crypto…) with auto-proportioning, then apply to budgets in one click
-
-### v0.2.0 (May 2026)
-- **Full internationalisation** — EN/IT via next-intl; zero hardcoded strings in components
-- **Route refactor** — all routes renamed to English (`/finance/accounts`, `/portfolio/stocks`, …)
-- **Settings page** — appearance, profile, categories, merchants, markets, data management
-- **Category manager** — hierarchical groups → categories → subcategories with emoji and colour
-- **Merchant manager** — logo editor, name normalisation, merge/alias rules
-- **Search palette** — fully translated quick actions and section labels
-- **`useFormatters` hook** — currency-aware formatting tied to user settings
-
-### v0.1.0 (May 2026)
-- Initial release
-- Dashboard with interactive charts and time ranges
-- Stock / ETF / crypto portfolio with EUR/USD-corrected P&L
-- Monthly budget with group/category planning
-- Google OAuth authentication with email whitelist
-- Mobile-first layout with bottom navigation
+Full release history with notes for every version is available on the [GitHub Releases page](https://github.com/mandalarigabriele/ledgernest/releases).
 
 ---
 
