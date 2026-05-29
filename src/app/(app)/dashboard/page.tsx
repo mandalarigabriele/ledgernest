@@ -26,7 +26,8 @@ const HEATMAP_ROWS = ['Stocks', 'ETF', 'Crypto']
 
 export default function DashboardPage() {
   usePrices()
-  const t = useTranslations('dashboard')
+  const t  = useTranslations('dashboard')
+  const tn = useTranslations('nav')
   const { fmt, fmt0, fmtCpt, fmtDlt } = useFormatters()
 
   const { positions } = usePortfolioStore()
@@ -92,16 +93,25 @@ export default function DashboardPage() {
   }, [transactions, budgetPlans]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ─── Allocation ─── */
+  const TYPE_LABEL: Record<string, string> = {
+    stock:     tn('azioni'),
+    etf:       'ETF',
+    crypto:    'Crypto',
+    commodity: tn('commodity'),
+    bond:      'Bond',
+  }
+
   const byType = useMemo(() => {
     const map: Record<string, number> = {}
     for (const p of positions) {
       const q     = quotes[p.ticker]
       const price = q?.priceEur ?? q?.price ?? p.avgPrice
-      map[p.type] = (map[p.type] ?? 0) + price * p.quantity
+      const label = TYPE_LABEL[p.type] ?? p.type
+      map[label] = (map[label] ?? 0) + price * p.quantity
     }
-    if (cash > 0) map['Liquidità'] = (map['Liquidità'] ?? 0) + cash
+    if (cash > 0) map[t('cash')] = (map[t('cash')] ?? 0) + cash
     return map
-  }, [positions, quotes, cash])
+  }, [positions, quotes, cash]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalAlloc = Object.values(byType).reduce((s, v) => s + v, 0)
   const donutData  = Object.entries(byType).map(([label, value], i) => ({ label, value, color: PALETTE[i % PALETTE.length] }))
@@ -200,6 +210,8 @@ export default function DashboardPage() {
 
   /* ─── Sparklines — real 10-day closes per ticker ─── */
   const [sparkData, setSparkData] = useState<Record<string, number[]>>({})
+  const [showAllPositions, setShowAllPositions] = useState(false)
+  const POSITIONS_PREVIEW = 5
 
   useEffect(() => {
     if (positions.length === 0) return
@@ -321,8 +333,8 @@ export default function DashboardPage() {
                 {donutData.map((d) => (
                   <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{ width: 10, height: 10, borderRadius: '50%', background: d.color, flexShrink: 0 }} />
-                    <span style={{ fontSize: 13, fontWeight: 600, width: 60 }}>{d.label}</span>
-                    <span style={{ flex: 1, fontSize: 12, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fmt0(d.value)}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, flex: 1, minWidth: 0 }}>{d.label}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', marginRight: 8 }}>{fmt0(d.value)}</span>
                     <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)' }}>
                       {totalAlloc > 0 ? ((d.value / totalAlloc) * 100).toFixed(1) : '0'}%
                     </span>
@@ -342,10 +354,12 @@ export default function DashboardPage() {
               <div className="ledgernest-card-title">{t('yourPositions')}</div>
               <div className="ledgernest-card-sub">{positions.length} · {t('sortByValue')}</div>
             </div>
-            <button className="ledgernest-btn-ghost">
-              <span>{t('viewAll')}</span>
-              <Icon name="chevron" size={14} />
-            </button>
+            {positions.length > POSITIONS_PREVIEW && (
+              <button className="ledgernest-btn-ghost" onClick={() => setShowAllPositions(v => !v)}>
+                <span>{showAllPositions ? t('showLess') : t('viewAll')}</span>
+                <Icon name="chevron" size={14} style={{ transform: showAllPositions ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
+              </button>
+            )}
           </div>
           {positions.length === 0 ? (
             <div className="ledgernest-empty"><div className="ledgernest-empty-icon">📈</div>{t('noPositions')}</div>
@@ -359,7 +373,7 @@ export default function DashboardPage() {
                 <div className="ta-r"></div>
                 <div className="ta-r"></div>
               </div>
-              {sortedPositions.map((p) => (
+              {(showAllPositions ? sortedPositions : sortedPositions.slice(0, POSITIONS_PREVIEW)).map((p) => (
                 <div key={p.id} className="ledgernest-trow">
                   <div className="ledgernest-ticker">
                     <div className="ledgernest-ticker-badge">{p.ticker.slice(0, 2)}</div>
