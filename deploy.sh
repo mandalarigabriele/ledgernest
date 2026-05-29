@@ -13,9 +13,9 @@ cd "$APP_DIR"
 
 # Load CRON_SECRET and SNAPSHOT_INTERVAL from .env.local if not already in environment
 if [ -f "$APP_DIR/.env.local" ]; then
-  _val=$(grep -E '^CRON_SECRET=' "$APP_DIR/.env.local" | head -1 | sed 's/^CRON_SECRET=//' | tr -d '"' | tr -d "'")
+  _val=$(grep -E '^CRON_SECRET=' "$APP_DIR/.env.local" 2>/dev/null | head -1 | sed 's/^CRON_SECRET=//' | tr -d '"' | tr -d "'") || true
   [ -n "$_val" ] && export CRON_SECRET="$_val"
-  _val=$(grep -E '^SNAPSHOT_INTERVAL=' "$APP_DIR/.env.local" | head -1 | sed 's/^SNAPSHOT_INTERVAL=//' | tr -d '"' | tr -d "'")
+  _val=$(grep -E '^SNAPSHOT_INTERVAL=' "$APP_DIR/.env.local" 2>/dev/null | head -1 | sed 's/^SNAPSHOT_INTERVAL=//' | tr -d '"' | tr -d "'") || true
   [ -n "$_val" ] && export SNAPSHOT_INTERVAL="$_val"
   unset _val
 fi
