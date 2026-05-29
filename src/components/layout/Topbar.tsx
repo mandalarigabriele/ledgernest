@@ -24,6 +24,7 @@ export default function Topbar() {
     "/portfolio/etf":          { title: tn("etf"),           sub: tb("subEtf") },
     "/portfolio/crypto":       { title: tn("crypto"),        sub: tb("subCrypto") },
     "/portfolio/dividends":    { title: tn("dividendi"),     sub: tb("subDividendi") },
+    "/portfolio/commodity":    { title: tn("commodity"),     sub: tb("subCommodity") },
     "/portfolio/heatmap":      { title: tn("heatmap"),       sub: tb("subHeatmap") },
     "/portfolio/screener":     { title: tn("screener"),      sub: tb("subScreener") },
     "/finance/accounts":       { title: tn("conti"),         sub: tb("subConti") },

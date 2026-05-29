@@ -36,6 +36,14 @@ const icons: Record<string, (size: number) => React.ReactElement> = {
       <path d="M8 9.5h3c1.2 0 2 .7 2 1.8S12.2 13 11 13H8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   ),
+  commodity: (s) => (
+    <svg width={s} height={s} viewBox="0 0 20 20" fill="none">
+      <rect x="3" y="12" width="3" height="6" rx="1" fill="currentColor" opacity=".9"/>
+      <rect x="8.5" y="8" width="3" height="10" rx="1" fill="currentColor" opacity=".7"/>
+      <rect x="14" y="4" width="3" height="14" rx="1" fill="currentColor" opacity=".5"/>
+      <path d="M2 12l4-4 5-2 5-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
   dividendi: (s) => (
     <svg width={s} height={s} viewBox="0 0 20 20" fill="none">
       <circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="1.5"/>

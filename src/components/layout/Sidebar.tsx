@@ -21,6 +21,7 @@ const portfolioItems: NavItem[] = [
   { href: '/portfolio/dividends',    icon: 'dividendi',  labelKey: 'dividendi' },
   { href: '/portfolio/crypto',       icon: 'crypto',     labelKey: 'crypto' },
   { href: '/portfolio/etf',          icon: 'etf',        labelKey: 'etf' },
+  { href: '/portfolio/commodity',    icon: 'commodity',  labelKey: 'commodity' },
 ]
 
 const analisiItems: NavItem[] = [

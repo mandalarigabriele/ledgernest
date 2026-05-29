@@ -4,7 +4,7 @@
 
 **Personal finance dashboard — portfolio, budget, net worth and cashflow in one place.**
 
-![Version](https://img.shields.io/badge/version-0.3.4-blue)
+![Version](https://img.shields.io/badge/version-0.3.5-blue)
 ![Next.js](https://img.shields.io/badge/Next.js-14-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.5-blue)
 ![License](https://img.shields.io/badge/license-private-lightgrey)
@@ -202,6 +202,7 @@ ledgernest/
 │   │   │   │   ├── stocks/          # Stock positions
 │   │   │   │   ├── etf/             # ETF positions
 │   │   │   │   ├── crypto/          # Crypto positions
+│   │   │   │   ├── commodity/       # Commodity positions
 │   │   │   │   ├── dividends/       # Dividend calendar
 │   │   │   │   ├── heatmap/         # Performance heatmap
 │   │   │   │   └── screener/        # Market screener
@@ -254,6 +255,20 @@ npm run db:reset     # ⚠️ FULL RESET (deletes all data)
 ---
 
 ## 📝 Changelog
+
+### v0.3.5 (May 2026)
+- **Commodity portfolio page** — new `/portfolio/commodity` page with category-aware breakdown (precious metals, energy, agriculture, industrial metals), KPI strip, interactive value chart, allocation sidebar, position table with USD sub-price and P&L, category filter buttons, and delete confirm modal
+
+### v0.3.4 (May 2026)
+- **Budget investment configurator UX** — allocations are no longer auto-redistributed while editing; "Applica" is enabled only when the total equals exactly 100%
+
+### v0.3.3 (May 2026)
+- **PM/AH P&L for stocks** — when a pre-market or after-hours price is available, position value and P&L use the extended-hours price instead of the regular close
+
+### v0.3.2 (May 2026)
+- **USD sub-price in stocks and crypto** — price column now shows the raw USD value below the EUR amount for USD-denominated assets
+- **Crypto chart fix** — fixed flat-line chart caused by `setQuotes` replacing the entire quotes map on CoinGecko failure; now merges incoming quotes into existing state
+- **NVDA upcoming dividend fix** — frequency detection window extended to 2 years; annual income falls back to last N historical payments when no payments received in the past 12 months
 
 ### v0.3.1 (May 2026)
 - **Dividends loading state** — show progress bar and spinner while auto-import runs; previously the page showed the empty screen with no feedback during the ~10s import
