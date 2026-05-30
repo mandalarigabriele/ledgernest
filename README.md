@@ -31,7 +31,7 @@
 ### 🏦 Finances
 - **Accounts** — bank accounts, brokers, crypto wallets with aggregated balance
 - **Transactions** — merchant logo, categories, CSV import
-- **Budget** — monthly planning by group/category, planned vs actual comparison
+- **Budget** — monthly planning by group/category, planned vs actual, 50/30/20 targets, per-category notes, pinnable default month, dynamic date range (first data month → +11 months)
 - **Recurring** — recurring income and expenses with annual projection
 - **Goals** — savings targets with progress tracking
 - **Net Worth** — historical net worth with assets and liabilities
@@ -42,8 +42,8 @@
 - **Profile** — language (EN/IT), currency display, account holder name for transfer detection
 - **Categories** — full category/subcategory manager with emoji, colour and group assignment
 - **Merchants** — logo management, name normalisation, merchant merge/alias rules
-- **Markets** — price refresh interval, pre/post market display, portfolio visibility
-- **Data** — CSV import, portfolio reset, full data reset
+- **Markets** — price refresh interval (UI), snapshot interval (server cron), pre/post market prices, portfolio visibility
+- **Data** — CSV import, portfolio reset, snapshot reset, full data reset
 
 ### 🌐 Internationalisation
 - Full EN/IT support via `next-intl`
@@ -220,9 +220,10 @@ ledgernest/
 │   ├── components/
 │   │   ├── charts/                  # LineChart, Donut, Sparkline, …
 │   │   ├── layout/                  # Sidebar, Topbar, BottomNav
-│   │   └── shared/                  # Modals, Icon, SearchPalette, Wizard
+│   │   └── shared/                  # Modals, Icon, SearchPalette, EmojiPicker, Wizard
 │   ├── hooks/
-│   │   └── useFormatters.ts         # Currency-aware number formatters
+│   │   ├── useFormatters.ts         # Currency-aware number formatters
+│   │   └── usePortfolioChart.ts     # Portfolio chart data with live now-point
 │   ├── i18n/
 │   │   ├── locales/
 │   │   │   ├── en.json              # English strings
@@ -232,7 +233,7 @@ ledgernest/
 │   ├── lib/
 │   │   ├── db/                      # SQLite schema + migrations
 │   │   ├── services/                # Yahoo Finance, CoinGecko
-│   │   └── utils/                   # Formatters, CSV import
+│   │   └── utils/                   # Formatters, CSV import, price helpers
 │   └── types/                       # TypeScript types
 ├── .env.example                     # Environment variable template
 └── README.md
