@@ -11,6 +11,7 @@ interface BudgetMonthPlan {
   assetAllocation: Record<string, number>  // assetType key → target %
   investPct?: number                       // % of income to allocate to investments
   investCatAlloc?: Record<string, number>  // catId → % share of invest quota (should sum to 100)
+  categoryNotes?: Record<string, string>   // catId → free text note for this month
 }
 
 interface FinanceStore {
@@ -52,6 +53,7 @@ interface FinanceStore {
   setMonthPlanInvestConfig: (month: string, investPct: number, investCatAlloc: Record<string, number>) => void
   setMonthPlanIncomeSources: (month: string, sources: Record<string, number>) => void
   setGroupBudget: (month: string, groupKey: string, amount: number) => void
+  setMonthPlanCategoryNote: (month: string, catId: string, note: string) => void
   resetMonthPlan: (month: string) => void
 
   // Recurring
@@ -327,6 +329,17 @@ export const useFinanceStore = create<FinanceStore>()(
           budgetPlans: {
             ...s.budgetPlans,
             [month]: { ...plan, groupBudgets: { ...(plan.groupBudgets ?? {}), [groupKey]: amount } },
+          },
+        }
+      }),
+      setMonthPlanCategoryNote: (month, catId, note) => set((s) => {
+        const plan = s.budgetPlans[month] ?? { income: 0, categories: {}, assetAllocation: {} }
+        const notes = { ...(plan.categoryNotes ?? {}), [catId]: note }
+        if (!note) delete notes[catId]
+        return {
+          budgetPlans: {
+            ...s.budgetPlans,
+            [month]: { ...plan, categoryNotes: notes },
           },
         }
       }),

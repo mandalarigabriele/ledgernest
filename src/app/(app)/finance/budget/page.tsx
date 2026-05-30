@@ -73,21 +73,25 @@ function AttesoPill({ planned, received }: { planned: number; received: number }
   )
 }
 
-function LeafCategoryRow({ cat, budget, spent, onBudgetChange, income = 0 }: {
+function LeafCategoryRow({ cat, budget, spent, note, onBudgetChange, onNoteChange, income = 0 }: {
   cat: BudgetCategory
   budget: number
   spent: number
+  note?: string
   onBudgetChange: (v: number) => void
+  onNoteChange: (v: string) => void
   income?: number
 }) {
   const { fmt } = useFormatters()
-  const rem     = budget - spent
-  const isOver  = budget > 0 && spent > budget
-  const incPct  = income > 0 && budget > 0 ? Math.round((budget / income) * 100) : null
+  const [noteOpen, setNoteOpen] = useState(false)
+  const rem      = budget - spent
+  const isOver   = budget > 0 && spent > budget
+  const incPct   = income > 0 && budget > 0 ? Math.round((budget / income) * 100) : null
   const spentPct = budget > 0 && spent > 0  ? Math.round((spent  / budget) * 100) : null
+  const hasNote  = !!note
+
   return (
-    <div
-      style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background .1s' }}
+    <div style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background .1s' }}
       onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-elevated)')}
       onMouseLeave={(e) => (e.currentTarget.style.background = '')}
     >
@@ -97,7 +101,21 @@ function LeafCategoryRow({ cat, budget, spent, onBudgetChange, income = 0 }: {
           <div style={{ width: 28, height: 28, borderRadius: 7, background: `${cat.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>
             {cat.emoji}
           </div>
-          <span className="ledgernest-budget-cat-name" style={{ fontWeight: 600, fontSize: 13 }}>{cat.name}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+            <span className="ledgernest-budget-cat-name" style={{ fontWeight: 600, fontSize: 13 }}>{cat.name}</span>
+            <button
+              onClick={() => setNoteOpen(v => !v)}
+              title={hasNote ? note : 'Aggiungi nota'}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px',
+                fontSize: 11, borderRadius: 5, lineHeight: 1, flexShrink: 0,
+                color: hasNote ? 'var(--accent)' : 'var(--text-tertiary)',
+                background: noteOpen ? 'var(--accent-dim)' : 'none',
+              } as React.CSSProperties}
+            >
+              ✎
+            </button>
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg-elevated)', borderRadius: 8, padding: '3px 8px', border: '1px solid var(--border-subtle)' }}>
@@ -121,6 +139,33 @@ function LeafCategoryRow({ cat, budget, spent, onBudgetChange, income = 0 }: {
           }
         </div>
       </div>
+      {/* Inline note row */}
+      {(noteOpen || hasNote) && (
+        <div style={{ padding: '0 20px 8px', paddingLeft: 64 }}>
+          {noteOpen ? (
+            <input
+              autoFocus
+              type="text"
+              value={note ?? ''}
+              onChange={(e) => onNoteChange(e.target.value)}
+              onBlur={() => { if (!note) setNoteOpen(false) }}
+              placeholder="Aggiungi una nota per questo mese…"
+              style={{
+                width: '100%', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
+                borderRadius: 7, padding: '5px 10px', fontSize: 12, color: 'var(--text-primary)',
+                outline: 'none', boxSizing: 'border-box',
+              }}
+            />
+          ) : (
+            <span
+              onClick={() => setNoteOpen(true)}
+              style={{ fontSize: 11, color: 'var(--text-tertiary)', cursor: 'text', fontStyle: 'italic' }}
+            >
+              {note}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -148,7 +193,7 @@ export default function BudgetPage() {
 
   const {
     budgetCategories, budgetGroups, transactions, goals, updateGoal, recurringItems,
-    budgetPlans, setMonthPlanIncome, setMonthPlanCategory, setGroupBudget,
+    budgetPlans, setMonthPlanIncome, setMonthPlanCategory, setGroupBudget, setMonthPlanCategoryNote,
     setMonthPlanAssetAllocation, setMonthPlanIncomeSources, setMonthPlanInvestConfig, resetMonthPlan,
   } = useFinanceStore()
 
@@ -853,7 +898,7 @@ export default function BudgetPage() {
                         <div /><div /><div />
                       </div>
                       {subLeaves.map((cat) => (
-                        <LeafCategoryRow key={cat.id} cat={cat} budget={getCatBudget(cat.id)} spent={spentByCategory[cat.id] ?? 0} onBudgetChange={(v) => setMonthPlanCategory(month, cat.id, v)} income={income} />
+                        <LeafCategoryRow key={cat.id} cat={cat} budget={getCatBudget(cat.id)} spent={spentByCategory[cat.id] ?? 0} note={plan.categoryNotes?.[cat.id]} onBudgetChange={(v) => setMonthPlanCategory(month, cat.id, v)} onNoteChange={(v) => setMonthPlanCategoryNote(month, cat.id, v)} income={income} />
                       ))}
                     </div>
                   )
