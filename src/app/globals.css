@@ -2896,9 +2896,15 @@ ul, ol { list-style: none; }
     left: 0;
   }
 
-  /* Topbar: compact + no subtitle wrapping */
+  /* Topbar: fixed on mobile — sticky doesn't work inside overflow:hidden parent */
   .ledgernest-top {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
     padding: 12px 16px;
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
     gap: 8px;
   }
   .ledgernest-page-title {
@@ -2915,7 +2921,9 @@ ul, ol { list-style: none; }
   .ledgernest-search-btn { min-width: unset; padding: 8px 10px; }
 
   .ledgernest-page {
+    /* 56px topbar + safe-area-inset-top + 12px gap */
     padding: 12px;
+    padding-top: calc(56px + env(safe-area-inset-top, 0px) + 12px);
     padding-bottom: 80px; /* space for bottom nav */
   }
   /* Reduce card padding on mobile so content has more breathing room */

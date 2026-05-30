@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { useFinanceStore } from '@/stores/financeStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { usePricesStore } from '@/stores/pricesStore'
+import { useSettingsStore } from '@/stores/settingsStore'
 import { useFormatters } from '@/hooks/useFormatters'
 import Icon from '@/components/shared/Icon'
 import { useTranslations } from 'next-intl'
@@ -31,8 +32,8 @@ const ASSET_CLASSES = [
 
 const DEFAULT_ASSET_ALLOC: Record<string, number> = { etf: 60, stock: 30, crypto: 10 }
 
-type SidebarTab = 'riepilogo' | 'confronto' | 'moneyflow'
-const SIDEBAR_TABS: SidebarTab[] = ['riepilogo', 'confronto', 'moneyflow']
+type SidebarTab = 'riepilogo' | 'confronto' | 'moneyflow' | 'dovevanno'
+const SIDEBAR_TABS: SidebarTab[] = ['riepilogo', 'confronto', 'moneyflow', 'dovevanno']
 
 const colLabelStyle: React.CSSProperties = {
   fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)',
@@ -132,10 +133,17 @@ export default function BudgetPage() {
   const now = new Date()
   const currentMonthKey = now.toISOString().slice(0, 7)
 
-  const [month, setMonth] = useState(currentMonthKey)
+  const { settings, updateSettings } = useSettingsStore()
+  const pinnedMonth = settings.pinnedBudgetMonth ?? null
+
+  const [month, setMonth] = useState(() => pinnedMonth ?? currentMonthKey)
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set())
   const [activeTab, setActiveTab] = useState<SidebarTab>('riepilogo')
   const [groupTab, setGroupTab] = useState<string>('income')
+
+  function togglePin(m: string) {
+    updateSettings({ pinnedBudgetMonth: pinnedMonth === m ? null : m })
+  }
   const toggleSection = (key: string) => setCollapsed((p) => { const n = new Set(p); n.has(key) ? n.delete(key) : n.add(key); return n })
 
   const {
@@ -180,13 +188,38 @@ export default function BudgetPage() {
     [budgetCategories, parentCatIds]
   )
 
-  // ── planning months ───────────────────────────────────────
-  const planningMonths = useMemo(() =>
-    Array.from({ length: 4 }, (_, i) => {
-      const d = new Date(currentMonthKey + '-01T12:00:00')
-      d.setMonth(d.getMonth() + i)
-      return d.toISOString().slice(0, 7)
-    }), [currentMonthKey])
+  // ── first month with data (earliest tx or budget plan, capped at -24 months) ─
+  const firstDataMonth = useMemo(() => {
+    const candidates: string[] = [currentMonthKey]
+    for (const tx of transactions) {
+      if (tx.date) candidates.push(tx.date.slice(0, 7))
+    }
+    for (const key of Object.keys(budgetPlans ?? {})) {
+      candidates.push(key)
+    }
+    const earliest = candidates.reduce((a, b) => a < b ? a : b)
+    // Never go back more than 24 months
+    const cap = new Date(currentMonthKey + '-01T12:00:00')
+    cap.setMonth(cap.getMonth() - 24)
+    const capKey = cap.toISOString().slice(0, 7)
+    return earliest < capKey ? capKey : earliest
+  }, [transactions, budgetPlans, currentMonthKey])
+
+  // ── planning months: from firstDataMonth to +5 future ────────
+  const planningMonths = useMemo(() => {
+    const months: string[] = []
+    const d = new Date(firstDataMonth + '-01T12:00:00')
+    const last = new Date(currentMonthKey + '-01T12:00:00')
+    last.setMonth(last.getMonth() + 11)
+    while (d <= last) {
+      months.push(d.toISOString().slice(0, 7))
+      d.setMonth(d.getMonth() + 1)
+    }
+    return months
+  }, [firstDataMonth, currentMonthKey])
+
+  const firstMonth = planningMonths[0]
+  const lastMonth  = planningMonths[planningMonths.length - 1]
 
   function getCatBudget(catId: string): number { return plan.categories[catId] ?? 0 }
   function getGroupBudget(key: string): number  { return plan.groupBudgets?.[key] ?? 0 }
@@ -349,12 +382,13 @@ export default function BudgetPage() {
 
   // ── month navigation ──────────────────────────────────────
   function prevMonth() {
+    if (month <= firstMonth) return
     const pd = new Date(month + '-01')
     pd.setMonth(pd.getMonth() - 1)
     setMonth(pd.toISOString().slice(0, 7))
   }
   function nextMonth() {
-    if (month >= planningMonths[3]) return
+    if (month >= lastMonth) return
     const nd = new Date(month + '-01')
     nd.setMonth(nd.getMonth() + 1)
     setMonth(nd.toISOString().slice(0, 7))
@@ -428,13 +462,15 @@ export default function BudgetPage() {
   const lifestylePct = income > 0 ? (lifestyleBudgetTotal / income * 100) : 0
 
   const diagnostica: { type: 'warning' | 'info'; msg: string }[] = []
-  if (income > 0) {
+  if (income === 0) {
+    diagnostica.push({ type: 'info', msg: tl('diagNoIncome') })
+  } else {
     if (needsPct > 50)     diagnostica.push({ type: 'warning', msg: tl('diagNeeds', { pct: needsPct.toFixed(0) }) })
     if (lifestylePct > 30) diagnostica.push({ type: 'warning', msg: tl('diagLifestyle', { pct: lifestylePct.toFixed(0) }) })
     if (savingsPct < 10)   diagnostica.push({ type: 'warning', msg: tl('diagSavings', { pct: savingsPct.toFixed(0) }) })
     if (available < 0)     diagnostica.push({ type: 'warning', msg: tl('diagOver', { amt: fmt(Math.abs(available)) }) })
+    if (totalBudget === 0) diagnostica.push({ type: 'info', msg: tl('diagNoBudget') })
   }
-  if (totalBudget === 0 && income > 0) diagnostica.push({ type: 'info', msg: tl('diagNoBudget') })
 
   // ── summary-card derived ──────────────────────────────────
   const isCurrentMonth = month === currentMonthKey
@@ -454,218 +490,120 @@ export default function BudgetPage() {
     <div className="ledgernest-gap-5">
 
       {/* ── Month selector ────────────────────────── */}
-      <div className="ledgernest-card" style={{ padding: '14px 20px' }}>
+      <div className="ledgernest-card" style={{ padding: '14px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button style={{ ...navBtn, flexShrink: 0, height: 'auto', minHeight: 28, padding: '0 12px' }} onClick={prevMonth}>‹</button>
-          {planningMonths.map((m, i) => {
-            const md = new Date(m + '-01T12:00:00')
-            const mName = fmtMonthFull(md)
-            const mYear = md.getFullYear()
-            const isActive = m === month
-            const isCurrent = m === currentMonthKey
-            return (
-              <button key={m} onClick={() => setMonth(m)} style={{
-                flex: 1, padding: '10px 14px', borderRadius: 10, border: 'none',
-                background: isActive ? 'var(--accent)' : 'var(--bg-elevated)',
-                color: isActive ? 'var(--text-on-accent)' : 'var(--text-primary)',
-                cursor: 'pointer', textAlign: 'center', transition: 'all .15s',
-              }}>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.07em', opacity: 0.7, marginBottom: 4, textTransform: 'uppercase' }}>
-                  {isCurrent ? tl('monthThis') : i === 1 ? tl('monthPlus', { i }) : tl('monthPlusPlural', { i })}
-                </div>
-                <div style={{ fontSize: 15, fontWeight: isActive ? 800 : 600 }}>{mName}</div>
-                <div style={{ fontSize: 11, opacity: 0.6, marginTop: 1 }}>{mYear}</div>
-              </button>
-            )
-          })}
-          <button style={{ ...navBtn, flexShrink: 0, height: 'auto', minHeight: 28, padding: '0 12px', opacity: month >= planningMonths[3] ? 0.3 : 1 }}
-            onClick={nextMonth} disabled={month >= planningMonths[3]}>›</button>
-        </div>
-      </div>
-
-      {/* ── Summary cards ─────────────────────────── */}
-      <div className="ledgernest-budget-summary" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-
-        {/* Left — Budget di {monthName} */}
-        <div className="ledgernest-card" style={{ padding: '20px 22px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', background: 'var(--accent)', color: 'var(--text-on-accent)', borderRadius: 20, padding: '3px 12px' }}>{tl('summaryTitle', { monthName })}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-              {d0.getDate()} {monthName.slice(0,3).toLowerCase()}
-              {isCurrentMonth && ` · giorno ${dayOfMonth} di ${daysInMonth}`}
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
-            <div className="ledgernest-budget-bignum" style={{ fontSize: 42, fontWeight: 900, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.03em' }}>{fmt(totalSpent)}</div>
-            <div style={{ fontSize: 16, color: 'var(--text-secondary)', fontWeight: 600 }}>{tl('summaryOf', { total: fmt(totalBudget) })}</div>
-          </div>
-          {totalBudget > 0 && (
-            <div style={{ position: 'relative', height: 7, background: 'var(--bg-elevated)', borderRadius: 99, marginBottom: 8, overflow: 'visible' }}>
-              <div style={{ height: '100%', width: `${Math.min(100, totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0)}%`, background: totalSpent > totalBudget ? 'var(--danger)' : 'var(--accent)', borderRadius: 99, transition: 'width .3s' }} />
-              {isCurrentMonth && (
-                <div style={{ position: 'absolute', top: -4, bottom: -4, left: `${Math.min(99, (dayOfMonth / daysInMonth) * 100)}%`, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none' }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', marginBottom: 1 }}>{tl('summaryToday')}</div>
-                  <div style={{ width: 2, height: 15, background: 'rgba(255,255,255,0.45)', borderRadius: 1 }} />
-                </div>
-              )}
-            </div>
-          )}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: totalBudget - totalSpent >= 0 ? 'var(--text-secondary)' : 'var(--danger)', fontVariantNumeric: 'tabular-nums' }}>
-              {tl('summaryRemaining', { rem: fmt(Math.abs(totalBudget - totalSpent)) })}
-            </span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-            {vsLastMonth !== null && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, background: vsLastMonth <= 0 ? 'color-mix(in oklch, var(--success) 12%, transparent)' : 'color-mix(in oklch, var(--danger) 10%, transparent)', border: `1px solid ${vsLastMonth <= 0 ? 'color-mix(in oklch, var(--success) 30%, transparent)' : 'color-mix(in oklch, var(--danger) 25%, transparent)'}` }}>
-                <span style={{ fontSize: 13, color: vsLastMonth <= 0 ? 'var(--success)' : 'var(--danger)' }}>{vsLastMonth <= 0 ? '↓' : '↑'}</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: vsLastMonth <= 0 ? 'var(--success)' : 'var(--danger)' }}>
-                  {vsLastMonth <= 0 ? tl('badgeOnTrack') : tl('badgeOverLastMonth')} · {vsLastMonth > 0 ? '+' : ''}{vsLastMonth.toFixed(1)}% vs {fmtMonthShort((() => { const pd = new Date(month + '-01T12:00:00'); pd.setMonth(pd.getMonth() - 1); return pd; })())}
-                </span>
-              </div>
-            )}
-            {isCurrentMonth && projection > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, background: projection > totalBudget ? 'color-mix(in oklch, var(--danger) 10%, transparent)' : 'color-mix(in oklch, var(--success) 10%, transparent)', border: `1px solid ${projection > totalBudget ? 'color-mix(in oklch, var(--danger) 25%, transparent)' : 'color-mix(in oklch, var(--success) 25%, transparent)'}` }}>
-                <span style={{ fontSize: 13, color: projection > totalBudget ? 'var(--danger)' : 'var(--success)' }}>↗</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: projection > totalBudget ? 'var(--danger)' : 'var(--success)', fontVariantNumeric: 'tabular-nums' }}>
-                  {tl('projectionLabel', { amt: fmt(projection) })}
-                </span>
-              </div>
-            )}
-            {overrunCats.slice(0, 2).map((c) => (
-              <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, background: 'color-mix(in oklch, var(--warning) 10%, transparent)', border: '1px solid color-mix(in oklch, var(--warning) 25%, transparent)' }}>
-                <span style={{ fontSize: 13 }}>🔔</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--warning)', fontVariantNumeric: 'tabular-nums' }}>
-                  {tl('overrunMessage', { category: c.name, amt: fmt((spentByCategory[c.id] ?? 0) - getCatBudget(c.id)) })}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Right — Dove vanno i tuoi soldi (flow layout) */}
-        <div className="ledgernest-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>{tl('whereMoneyGoes')}</div>
-
-          {/* ── Entrate anchor ── */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#4ade80', flexShrink: 0 }} />
-              <span style={{ fontWeight: 700, fontSize: 13 }}>Entrate pianificate</span>
-            </div>
-            <span style={{ fontWeight: 800, fontSize: 15, fontVariantNumeric: 'tabular-nums', color: 'var(--success)' }}>{fmt(income)}</span>
-          </div>
-
-          {/* ── Group rows with mini-bar ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {summaryGroups.map((g) => {
-              const amt = leafExpenseCats.filter((c) => c.group === g.key).reduce((s, c) => s + getCatBudget(c.id), 0)
-              const total = amt
-              const pct   = income > 0 ? (total / income) * 100 : 0
-              const delta = pct - g.target
-              const isOver   = delta >  3
-              const isUnder  = delta < -3
-              const tagColor = isOver ? 'var(--danger)' : isUnder ? 'var(--text-tertiary)' : 'var(--success)'
-              const tagBg    = isOver
-                ? 'color-mix(in oklch, var(--danger) 12%, transparent)'
-                : isUnder ? 'var(--bg-elevated)'
-                : 'color-mix(in oklch, var(--success) 12%, transparent)'
+          <button style={{ ...navBtn, flexShrink: 0, height: 'auto', minHeight: 28, padding: '0 12px', opacity: month <= firstMonth ? 0.3 : 1 }} onClick={prevMonth} disabled={month <= firstMonth}>‹</button>
+          {/* Scrollable on mobile */}
+          <div style={{ flex: 1, display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
+            {planningMonths.map((m, i) => {
+              const md = new Date(m + '-01T12:00:00')
+              const mName = fmtMonthFull(md)
+              const mYear = md.getFullYear()
+              const isActive = m === month
+              const isCurrent = m === currentMonthKey
+              const isPinned = pinnedMonth === m
               return (
-                <div key={g.key}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: g.color, flexShrink: 0 }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ fontWeight: 700, fontSize: 13 }}>{g.label}</span>
-                      <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 6 }}>{g.desc}</span>
-                    </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <span style={{ fontWeight: 800, fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>{fmt(total)}</span>
-                      <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: tagBg, color: tagColor, border: `1px solid ${tagColor}40` }}>
-                        {pct.toFixed(0)}% / {g.target}%
-                      </span>
-                    </div>
-                  </div>
-                  {/* Mini bar: actual fill + target marker */}
-                  {income > 0 && (
-                    <div style={{ position: 'relative', height: 5, background: 'var(--bg-elevated)', borderRadius: 4, overflow: 'visible' }}>
-                      <div style={{ height: '100%', width: `${Math.min(pct, 100)}%`, background: g.color, borderRadius: 4, transition: 'width .3s', opacity: 0.85 }} />
-                      {/* target marker */}
-                      <div style={{ position: 'absolute', top: -3, left: `${Math.min(g.target, 100)}%`, width: 2, height: 11, background: g.color, borderRadius: 1, opacity: 0.5 }} title={`Target: ${g.target}%`} />
-                    </div>
-                  )}
+                <div key={m} style={{ position: 'relative', flexShrink: 0, minWidth: 100 }}>
+                  <button onClick={() => setMonth(m)} style={{
+                    width: '100%', padding: '10px 10px 10px', borderRadius: 10, border: 'none',
+                    background: isActive ? 'var(--accent)' : 'var(--bg-elevated)',
+                    color: isActive ? 'var(--text-on-accent)' : 'var(--text-primary)',
+                    cursor: 'pointer', textAlign: 'center', transition: 'all .15s',
+                  }}>
+                    {(() => {
+                      const offset = planningMonths.indexOf(m) - planningMonths.indexOf(currentMonthKey)
+                      const label = isCurrent ? tl('monthThis')
+                        : offset < 0 ? `${offset} mesi`
+                        : `+${offset} ${offset === 1 ? 'mese' : 'mesi'}`
+                      return <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.07em', opacity: 0.7, marginBottom: 4, textTransform: 'uppercase' }}>{label}</div>
+                    })()}
+                    <div style={{ fontSize: 15, fontWeight: isActive ? 800 : 600 }}>{mName}</div>
+                    <div style={{ fontSize: 11, opacity: 0.6, marginTop: 1 }}>{mYear}</div>
+                  </button>
+                  {/* Pin button — shown on hover (desktop) or always on active (mobile) */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); togglePin(m) }}
+                    title={isPinned ? 'Rimuovi pin' : 'Apri sempre questo mese'}
+                    style={{
+                      position: 'absolute', top: 4, right: 4,
+                      background: 'none', border: 'none', cursor: 'pointer', padding: 2, lineHeight: 1,
+                      fontSize: 12, opacity: isPinned ? 1 : 0.35,
+                      color: isActive ? 'var(--text-on-accent)' : 'var(--text-tertiary)',
+                    }}
+                  >
+                    📌
+                  </button>
                 </div>
               )
             })}
-
-            {/* ── Goals section ── */}
-            {goals.length > 0 && (
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#f77c3a', flexShrink: 0 }} />
-                  <span style={{ fontWeight: 700, fontSize: 13, flex: 1 }}>Goal mensili</span>
-                  <span style={{ fontWeight: 800, fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>{fmt(totalGoalContrib)}</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: 'var(--bg-elevated)', color: 'var(--text-tertiary)' }}>
-                    {income > 0 ? ((totalGoalContrib / income) * 100).toFixed(0) : 0}%
-                  </span>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, paddingLeft: 18 }}>
-                  {goals.map((goal) => {
-                    const goalPct = goal.targetAmount > 0 ? Math.min((goal.currentAmount / goal.targetAmount) * 100, 100) : 0
-                    return (
-                      <div key={goal.id}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                          <span style={{ fontSize: 13 }}>{goal.icon}</span>
-                          <span style={{ fontSize: 12, flex: 1, color: 'var(--text-primary)', fontWeight: 600 }}>{goal.name}</span>
-                          <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
-                            {fmt(goal.monthlyContribution ?? 0)}/mese
-                          </span>
-                          <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{goalPct.toFixed(0)}%</span>
-                        </div>
-                        <div style={{ height: 3, background: 'var(--bg-elevated)', borderRadius: 2 }}>
-                          <div style={{ height: '100%', width: `${goalPct}%`, background: goal.color, borderRadius: 2, transition: 'width .3s' }} />
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
           </div>
-
-          {/* ── Divider ── */}
-          <div style={{ height: 1, background: 'var(--border-subtle)', margin: '14px 0' }} />
-
-          {/* ── Saldo libero ── */}
-          {(() => {
-            const free    = income - leafExpenseCats.reduce((s, c) => s + getCatBudget(c.id), 0) - totalGoalContrib
-            const freePct = income > 0 ? (free / income) * 100 : 0
-            const isPos   = free >= 0
-            return (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 14 }}>{isPos ? '✓' : '⚠'}</span>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 13 }}>Saldo libero</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{allocPct}% allocato</div>
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontWeight: 800, fontSize: 15, fontVariantNumeric: 'tabular-nums', color: isPos ? 'var(--success)' : 'var(--danger)' }}>
-                    {isPos ? '+' : ''}{fmt(free)}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{freePct.toFixed(0)}% del reddito</div>
-                </div>
-              </div>
-            )
-          })()}
+          <button style={{ ...navBtn, flexShrink: 0, height: 'auto', minHeight: 28, padding: '0 12px', opacity: month >= lastMonth ? 0.3 : 1 }}
+            onClick={nextMonth} disabled={month >= lastMonth}>›</button>
         </div>
       </div>
 
-      {/* ── Two-column planning layout ─────────────── */}
-      <div className="ledgernest-budget-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20, alignItems: 'start' }}>
+      {/* ── 2-col layout 60/40: [Budget + Pianifica] | DA ASSEGNARE (sticky) ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 20, alignItems: 'start' }}>
 
-        {/* ── LEFT: unified planning block ──────────── */}
-        <div className="ledgernest-card ledgernest-budget-table-card" style={{ padding: 0, overflow: 'hidden' }}>
+        {/* Budget header + Pianifica — unica card col 1 */}
+        <div className="ledgernest-card ledgernest-budget-table-card" style={{ padding: 0, overflow: 'hidden', gridColumn: 1 }}>
+
+          {/* ── Budget header ── */}
+          <div style={{ padding: '20px 22px', borderBottom: '1px solid var(--border-subtle)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', background: 'var(--accent)', color: 'var(--text-on-accent)', borderRadius: 20, padding: '3px 12px' }}>{tl('summaryTitle', { monthName })}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                {d0.getDate()} {monthName.slice(0,3).toLowerCase()}
+                {isCurrentMonth && ` · giorno ${dayOfMonth} di ${daysInMonth}`}
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
+              <div className="ledgernest-budget-bignum" style={{ fontSize: 42, fontWeight: 900, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.03em' }}>{fmt(totalSpent)}</div>
+              <div style={{ fontSize: 16, color: 'var(--text-secondary)', fontWeight: 600 }}>{tl('summaryOf', { total: fmt(totalBudget) })}</div>
+            </div>
+            {totalBudget > 0 && (
+              <div style={{ position: 'relative', height: 7, background: 'var(--bg-elevated)', borderRadius: 99, marginBottom: 8, overflow: 'visible' }}>
+                <div style={{ height: '100%', width: `${Math.min(100, totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0)}%`, background: totalSpent > totalBudget ? 'var(--danger)' : 'var(--accent)', borderRadius: 99, transition: 'width .3s' }} />
+                {isCurrentMonth && (
+                  <div style={{ position: 'absolute', top: -4, bottom: -4, left: `${Math.min(99, (dayOfMonth / daysInMonth) * 100)}%`, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none' }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', marginBottom: 1 }}>{tl('summaryToday')}</div>
+                    <div style={{ width: 2, height: 15, background: 'rgba(255,255,255,0.45)', borderRadius: 1 }} />
+                  </div>
+                )}
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: (vsLastMonth !== null || (isCurrentMonth && projection > 0) || overrunCats.length > 0) ? 14 : 0 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: totalBudget - totalSpent >= 0 ? 'var(--text-secondary)' : 'var(--danger)', fontVariantNumeric: 'tabular-nums' }}>
+                {tl('summaryRemaining', { rem: fmt(Math.abs(totalBudget - totalSpent)) })}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              {vsLastMonth !== null && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, background: vsLastMonth <= 0 ? 'color-mix(in oklch, var(--success) 12%, transparent)' : 'color-mix(in oklch, var(--danger) 10%, transparent)', border: `1px solid ${vsLastMonth <= 0 ? 'color-mix(in oklch, var(--success) 30%, transparent)' : 'color-mix(in oklch, var(--danger) 25%, transparent)'}` }}>
+                  <span style={{ fontSize: 13, color: vsLastMonth <= 0 ? 'var(--success)' : 'var(--danger)' }}>{vsLastMonth <= 0 ? '↓' : '↑'}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: vsLastMonth <= 0 ? 'var(--success)' : 'var(--danger)' }}>
+                    {vsLastMonth <= 0 ? tl('badgeOnTrack') : tl('badgeOverLastMonth')} · {vsLastMonth > 0 ? '+' : ''}{vsLastMonth.toFixed(1)}% vs {fmtMonthShort((() => { const pd = new Date(month + '-01T12:00:00'); pd.setMonth(pd.getMonth() - 1); return pd; })())}
+                  </span>
+                </div>
+              )}
+              {isCurrentMonth && projection > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, background: projection > totalBudget ? 'color-mix(in oklch, var(--danger) 10%, transparent)' : 'color-mix(in oklch, var(--success) 10%, transparent)', border: `1px solid ${projection > totalBudget ? 'color-mix(in oklch, var(--danger) 25%, transparent)' : 'color-mix(in oklch, var(--success) 25%, transparent)'}` }}>
+                  <span style={{ fontSize: 13, color: projection > totalBudget ? 'var(--danger)' : 'var(--success)' }}>↗</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: projection > totalBudget ? 'var(--danger)' : 'var(--success)', fontVariantNumeric: 'tabular-nums' }}>
+                    {tl('projectionLabel', { amt: fmt(projection) })}
+                  </span>
+                </div>
+              )}
+              {overrunCats.slice(0, 2).map((c) => (
+                <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, background: 'color-mix(in oklch, var(--warning) 10%, transparent)', border: '1px solid color-mix(in oklch, var(--warning) 25%, transparent)' }}>
+                  <span style={{ fontSize: 13 }}>🔔</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--warning)', fontVariantNumeric: 'tabular-nums' }}>
+                    {tl('overrunMessage', { category: c.name, amt: fmt((spentByCategory[c.id] ?? 0) - getCatBudget(c.id)) })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
 
           {/* Toolbar */}
           <div className="ledgernest-budget-toolbar" style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
@@ -991,8 +929,8 @@ export default function BudgetPage() {
 
         </div>{/* end LEFT unified block */}
 
-        {/* ── RIGHT: sticky sidebar ─────────────────── */}
-        <div className="ledgernest-budget-sidebar" style={{ position: 'sticky', top: 80, maxHeight: 'calc(100vh - 100px)', overflowY: 'auto', borderRadius: 14 }}>
+        {/* DA ASSEGNARE — col 2, rows 1-2 (sticky) */}
+        <div className="ledgernest-budget-sidebar" style={{ gridColumn: 2, gridRow: '1 / 3', position: 'sticky', top: 80, maxHeight: 'calc(100vh - 100px)', overflowY: 'auto', borderRadius: 14 }}>
           <div className="ledgernest-card" style={{ padding: 0, overflow: 'hidden' }}>
 
             {/* Da assegnare header */}
@@ -1022,7 +960,7 @@ export default function BudgetPage() {
                   borderBottom: `2px solid ${activeTab === tab ? 'var(--accent)' : 'transparent'}`,
                   marginBottom: -1, transition: 'all .15s',
                 }}>
-                  {tab === 'riepilogo' ? tl('tabSummary') : tab === 'confronto' ? tl('tabComparison') : tl('tabMoneyFlow')}
+                  {tab === 'riepilogo' ? tl('tabSummary') : tab === 'confronto' ? tl('tabComparison') : tab === 'moneyflow' ? tl('tabMoneyFlow') : tl('whereMoneyGoes')}
                 </button>
               ))}
             </div>
@@ -1100,7 +1038,7 @@ export default function BudgetPage() {
                 )}
 
                 {/* Configuratore investimenti */}
-                {income > 0 && investLeafCats.length > 0 && (
+                {investLeafCats.length > 0 && (
                   <div style={{ padding: '14px 16px', borderRadius: 12, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
                     <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 12, textTransform: 'uppercase' }}>{tl('investCardTitle')}</div>
 
@@ -1316,10 +1254,111 @@ export default function BudgetPage() {
               </div>
             )}
 
-          </div>{/* end right card */}
-        </div>{/* end RIGHT sticky wrapper */}
+            {/* ── Dove vanno i tuoi soldi tab ──────── */}
+            {activeTab === 'dovevanno' && (
+              <div style={{ padding: '18px 22px', display: 'flex', flexDirection: 'column', gap: 0 }}>
+                {/* Entrate anchor */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#4ade80', flexShrink: 0 }} />
+                    <span style={{ fontWeight: 700, fontSize: 13 }}>Entrate pianificate</span>
+                  </div>
+                  <span style={{ fontWeight: 800, fontSize: 13, fontVariantNumeric: 'tabular-nums', color: 'var(--success)' }}>{fmt(income)}</span>
+                </div>
 
-      </div>{/* end two-column grid */}
+                {/* Group rows with mini-bar */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {summaryGroups.map((g) => {
+                    const amt = leafExpenseCats.filter((c) => c.group === g.key).reduce((s, c) => s + getCatBudget(c.id), 0)
+                    const pct = income > 0 ? (amt / income) * 100 : 0
+                    const delta = pct - g.target
+                    const isOver = delta > 3
+                    const isUnder = delta < -3
+                    const tagColor = isOver ? 'var(--danger)' : isUnder ? 'var(--text-tertiary)' : 'var(--success)'
+                    const tagBg = isOver ? 'color-mix(in oklch, var(--danger) 12%, transparent)' : isUnder ? 'var(--bg-elevated)' : 'color-mix(in oklch, var(--success) 12%, transparent)'
+                    return (
+                      <div key={g.key}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: g.color, flexShrink: 0 }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <span style={{ fontWeight: 700, fontSize: 12 }}>{g.label}</span>
+                            <span style={{ fontSize: 10, color: 'var(--text-tertiary)', marginLeft: 5 }}>{g.desc}</span>
+                          </div>
+                          <span style={{ fontWeight: 800, fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{fmt(amt)}</span>
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 20, background: tagBg, color: tagColor, border: `1px solid ${tagColor}40`, whiteSpace: 'nowrap' }}>
+                            {pct.toFixed(0)}%/{g.target}%
+                          </span>
+                        </div>
+                        {income > 0 && (
+                          <div style={{ position: 'relative', height: 4, background: 'var(--bg-elevated)', borderRadius: 4, overflow: 'visible' }}>
+                            <div style={{ height: '100%', width: `${Math.min(pct, 100)}%`, background: g.color, borderRadius: 4, opacity: 0.85 }} />
+                            <div style={{ position: 'absolute', top: -2, left: `${Math.min(g.target, 100)}%`, width: 2, height: 8, background: g.color, borderRadius: 1, opacity: 0.5 }} />
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+
+                  {/* Goals */}
+                  {goals.length > 0 && (
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#f77c3a', flexShrink: 0 }} />
+                        <span style={{ fontWeight: 700, fontSize: 12, flex: 1 }}>Goal mensili</span>
+                        <span style={{ fontWeight: 800, fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{fmt(totalGoalContrib)}</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 16 }}>
+                        {goals.map((goal) => {
+                          const goalPct = goal.targetAmount > 0 ? Math.min((goal.currentAmount / goal.targetAmount) * 100, 100) : 0
+                          return (
+                            <div key={goal.id}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                                <span style={{ fontSize: 12 }}>{goal.icon}</span>
+                                <span style={{ fontSize: 11, flex: 1, fontWeight: 600 }}>{goal.name}</span>
+                                <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(goal.monthlyContribution ?? 0)}/mese</span>
+                              </div>
+                              <div style={{ height: 3, background: 'var(--bg-elevated)', borderRadius: 2 }}>
+                                <div style={{ height: '100%', width: `${goalPct}%`, background: goal.color, borderRadius: 2 }} />
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Saldo libero */}
+                <div style={{ height: 1, background: 'var(--border-subtle)', margin: '14px 0' }} />
+                {(() => {
+                  const free = income - leafExpenseCats.reduce((s, c) => s + getCatBudget(c.id), 0) - totalGoalContrib
+                  const freePct = income > 0 ? (free / income) * 100 : 0
+                  const isPos = free >= 0
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 13 }}>{isPos ? '✓' : '⚠'}</span>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 12 }}>Saldo libero</div>
+                          <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{allocPct}% allocato</div>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontWeight: 800, fontSize: 14, fontVariantNumeric: 'tabular-nums', color: isPos ? 'var(--success)' : 'var(--danger)' }}>
+                          {isPos ? '+' : ''}{fmt(free)}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{freePct.toFixed(0)}% del reddito</div>
+                      </div>
+                    </div>
+                  )
+                })()}
+              </div>
+            )}
+
+          </div>{/* end right card */}
+        </div>{/* end DA ASSEGNARE col 2 */}
+
+      </div>{/* end 2-col layout */}
 
     </div>
   )

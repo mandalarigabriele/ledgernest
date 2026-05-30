@@ -879,7 +879,8 @@
     "diagLifestyle": "Stile di vita al {pct}% del reddito · target ≤30%",
     "diagSavings": "Risparmio al {pct}% del reddito · target ≥20%",
     "diagOver": "Budget ecceduto di {amt}",
-    "diagNoBudget": "Nessuna categoria con budget impostato"
+    "diagNoBudget": "Nessuna categoria con budget impostato",
+    "diagNoIncome": "Nessun reddito pianificato — imposta il reddito per attivare la diagnostica"
   },
   "patrimonio": {
     "liabilityTitle": "Nuova passività",

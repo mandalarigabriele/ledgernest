@@ -224,6 +224,7 @@ export interface AppSettings {
   sidebarColor?: string
   selfName?: string
   ignoreTransfers?: boolean
+  pinnedBudgetMonth?: string | null
 }
 
 // ---- UI Store -----------------------------------------------

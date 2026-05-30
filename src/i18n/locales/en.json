@@ -878,6 +878,7 @@
     "diagNeeds": "Needs at {pct}% of income · target ≤50%",
     "diagLifestyle": "Lifestyle at {pct}% of income · target ≤30%",
     "diagSavings": "Savings at {pct}% of income · target ≥20%",
+    "diagNoIncome": "No planned income — set your income to activate diagnostics",
     "diagOver": "Budget exceeded by {amt}",
     "diagNoBudget": "No categories with budget set"
   },
