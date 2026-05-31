@@ -186,6 +186,8 @@ export interface Quote {
   preMarketChangePct?: number
   postMarketChange?: number
   postMarketChangePct?: number
+  high52?: number
+  low52?: number
   sparkline?: number[]   // 7-day hourly price history (from CoinGecko)
   timestamp: number
 }

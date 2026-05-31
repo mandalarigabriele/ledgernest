@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback } from 'react'
 import { usePortfolioStore } from '@/stores/portfolioStore'
+import { useWatchlistStore } from '@/stores/watchlistStore'
 import { usePricesStore } from '@/stores/pricesStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import type { Quote } from '@/types'
@@ -9,15 +10,23 @@ import type { Quote } from '@/types'
 const STALE_MS = 90_000 // skip fetch if data is < 90 s old
 
 export function usePrices() {
-  const { positions } = usePortfolioStore()
+  const { positions }           = usePortfolioStore()
+  const { items: watchlistItems } = useWatchlistStore()
   const { setQuotes, setLoading, setError, lastUpdated } = usePricesStore()
   const { settings } = useSettingsStore()
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchPrices = useCallback(async (force = false) => {
-    const tickers = Array.from(new Set(positions.map((p) => p.ticker)))
+    const tickers = Array.from(new Set([
+      ...positions.map((p) => p.ticker),
+      ...watchlistItems.map((w) => w.ticker),
+    ]))
     if (tickers.length === 0) return
-    if (!force && lastUpdated && Date.now() - lastUpdated < STALE_MS) return
+
+    // force if any ticker has no quote yet (e.g. newly added watchlist item)
+    const { quotes } = usePricesStore.getState()
+    const hasNewTickers = tickers.some((t) => !quotes[t])
+    if (!hasNewTickers && !force && lastUpdated && Date.now() - lastUpdated < STALE_MS) return
 
     setLoading(true)
     try {
@@ -28,7 +37,7 @@ export function usePrices() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
     }
-  }, [positions, lastUpdated, setQuotes, setLoading, setError])
+  }, [positions, watchlistItems, lastUpdated, setQuotes, setLoading, setError])
 
   useEffect(() => {
     fetchPrices()

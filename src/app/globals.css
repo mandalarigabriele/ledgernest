@@ -3688,8 +3688,18 @@ ul, ol { list-style: none; }
   to   { transform: rotate(360deg); }
 }
 
+@keyframes ledgernest-pulse {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 1;   }
+}
+
 .ledgernest-animate-in {
   animation: ledgernest-slide-up 0.3s ease;
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 
 .ledgernest-spinner {

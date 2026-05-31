@@ -61,9 +61,13 @@ export const CG_ID_MAP: Record<string, string> = {
   PYTH:   'pyth-network',
 }
 
-/** Convert Yahoo-style ticker (BTC-USD, ETH-EUR) to CoinGecko coin ID */
+/** Convert ticker to CoinGecko coin ID.
+ *  Accepts Yahoo-style (BTC-USD), bare (BTCUSD, BTCUSDT), or just the base symbol (BTC). */
 export function yahooToCgId(ticker: string): string | null {
-  const base = ticker.replace(/-USD$|-EUR$|-GBP$|-USDT$/, '').toUpperCase()
+  const base = ticker
+    .replace(/-USD$|-EUR$|-GBP$|-USDT$/, '') // BTC-USD → BTC
+    .replace(/USDT$|USD$|EUR$|GBP$/, '')      // BTCUSD / BTCUSDT → BTC (USDT before USD)
+    .toUpperCase()
   return CG_ID_MAP[base] ?? null
 }
 

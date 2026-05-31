@@ -8,7 +8,7 @@
     "dividendi": "Dividendi",
     "commodity": "Materie prime",
     "heatmap": "Heatmap",
-    "screener": "Screener",
+    "screener": "Watchlist",
     "finanze": "Finanze",
     "conti": "Conti",
     "movimenti": "Movimenti",
@@ -488,6 +488,8 @@
     "open": "Apri",
     "close": "Chiudi",
     "results": "risultati",
+    "openTickerGroup": "Ticker",
+    "openTickerSub": "Apri scheda analisi su TradingView",
     "qaNewMovement": "Nuovo movimento",
     "qaNewMovementSub": "Entrata o uscita",
     "qaBuyStock": "Acquista azione",
@@ -507,6 +509,7 @@
     "subCommodity": "Materie prime e metalli preziosi",
     "subHeatmap": "Rendimenti per asset class",
     "subScreener": "Analisi e ricerca titoli",
+    "subWatchlist": "Titoli osservati · alert di prezzo",
     "subConti": "Conti bancari, broker e wallet",
     "subMovimenti": "Tutte le transazioni",
     "subBudget": "Allocazione budget e pianificazione investimenti",
@@ -515,8 +518,12 @@
     "subRicorrenti": "Addebiti automatici e abbonamenti",
     "subReport": "Analisi delle finanze per periodo",
     "subImpostazioni": "Profilo, preferenze e account",
+    "subTicker": "Grafico, analisi e profilo aziendale",
     "searchPlaceholder": "Cerca un titolo, una transazione…",
-    "updatingPrices": "Aggiornamento prezzi…"
+    "updatingPrices": "Aggiornamento prezzi…",
+    "notifEmpty": "Nessuna notifica",
+    "notifClearAll": "Cancella tutto",
+    "notifJustNow": "adesso"
   },
   "errors": {
     "fetchPrices": "Errore nel recupero prezzi",
@@ -1140,11 +1147,39 @@
     "legendWorst": "Peggiore",
     "legendBest": "Migliore",
     "emptyTitle": "Nessuna posizione nella heatmap",
-    "marketHeatmap": "Heatmap di mercato (S&P 500)"
+    "marketHeatmap": "Heatmap di mercato (S&P 500)",
+    "tabStocks": "Azioni (S&P 500)",
+    "tabCrypto": "Crypto"
   },
   "screener": {
     "title": "Screener",
     "description": "Lo screener di titoli sarà disponibile prossimamente. Potrai filtrare azioni per settore, capitalizzazione, P/E e altri indicatori fondamentali."
+  },
+  "watchlist": {
+    "kpiTotal": "Titoli osservati", "kpiLists": "liste", "kpiAvg": "variazione media",
+    "kpiUp": "In rialzo · oggi", "kpiDown": "In ribasso · oggi",
+    "kpiAlerts": "Alert di prezzo", "kpiAlertsActive": "attivi · soglie impostate", "kpiAlertsNone": "nessuno attivo",
+    "tabAll": "Tutti",
+    "addButton": "Aggiungi titolo",
+    "addTitle": "Aggiungi alla watchlist",
+    "fieldTicker": "Ticker", "fieldTickerRequired": "Inserisci un ticker", "fieldName": "Nome", "fieldCurrency": "Valuta", "fieldTarget": "Target", "fieldLists": "Liste",
+    "newList": "nuova lista",
+    "cancel": "Annulla", "add": "Aggiungi",
+    "colTicker": "TITOLO", "colPrice": "PREZZO", "colChange": "VAR. OGGI",
+    "colTrend": "TREND 30G", "col52w": "POSIZIONE 52 SETT.", "colTarget": "TARGET", "colAlert": "ALERT",
+    "alertFor": "Alert per", "above": "sopra", "below": "sotto", "alertPrice": "Prezzo soglia", "setAlert": "Imposta alert",
+    "alertBell": "Imposta alert di prezzo",
+    "useCurrentPrice": "usa prezzo attuale",
+    "addToWatchlist": "Aggiungi alla watchlist",
+    "inWatchlist": "In watchlist",
+    "empty": "Nessun titolo nella watchlist. Aggiungine uno con il pulsante in alto."
+  },
+  "ticker": {
+    "chart": "Grafico",
+    "technicalAnalysis": "Analisi tecnica",
+    "companyProfile": "Profilo aziendale",
+    "fundamentals": "Dati fondamentali",
+    "news": "Notizie"
   },
   "quickAdd": {
     "header": "Cosa vuoi aggiungere?",

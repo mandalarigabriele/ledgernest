@@ -9,6 +9,7 @@ import { useFinanceStore } from '@/stores/financeStore'
 import { usePricesStore } from '@/stores/pricesStore'
 import { useFormatters } from '@/hooks/useFormatters'
 import Icon from './Icon'
+import type { TickerSuggestion } from '@/app/api/ticker/search/route'
 
 // ── static data (hrefs and icons only — labels come from translations) ────
 
@@ -50,8 +51,25 @@ export default function SearchPalette() {
 
   const [query, setQuery] = useState('')
   const [focused, setFocused] = useState(0)
+  const [tickerSuggestions, setTickerSuggestions] = useState<TickerSuggestion[]>([])
+  const [tickerLoading, setTickerLoading]         = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
-  const listRef = useRef<HTMLDivElement>(null)
+  const listRef  = useRef<HTMLDivElement>(null)
+
+  // debounced Yahoo Finance ticker search — show nothing until resolved
+  useEffect(() => {
+    const q = query.trim()
+    if (!q) { setTickerSuggestions([]); setTickerLoading(false); return }
+    setTickerLoading(true)
+    setTickerSuggestions([])
+    const id = setTimeout(() => {
+      fetch(`/api/ticker/search?q=${encodeURIComponent(q)}`)
+        .then((r) => r.json())
+        .then((d: TickerSuggestion[]) => { setTickerSuggestions(d); setTickerLoading(false) })
+        .catch(() => { setTickerSuggestions([]); setTickerLoading(false) })
+    }, 300)
+    return () => clearTimeout(id)
+  }, [query])
 
   const close = useCallback(() => setSearchOpen(false), [setSearchOpen])
 
@@ -117,6 +135,32 @@ export default function SearchPalette() {
       })
     })
 
+    // Ticker suggestions — shown only after API resolves (no flicker)
+    const iconFor = (t: TickerSuggestion['type']) =>
+      t === 'crypto' ? 'crypto' : t === 'etf' ? 'etf' : 'azioni'
+
+    if (tickerLoading) {
+      out.push({
+        kind:  'ticker-loading',
+        id:    'ticker-loading',
+        label: '…',
+        sub:   '',
+        icon:  'screener',
+        href:  undefined,
+        group: ts('openTickerGroup'),
+      })
+    } else if (tickerSuggestions.length > 0) {
+      tickerSuggestions.forEach((s) => out.push({
+        kind:  'ticker',
+        id:    `ticker-${s.symbol}`,
+        label: s.symbol,
+        sub:   s.name,
+        icon:  iconFor(s.type),
+        href:  `/ticker/${encodeURIComponent(s.tvSymbol)}`,
+        group: ts('openTickerGroup'),
+      }))
+    }
+
     // Transactions
     const matchTx = transactions
       .filter((t) => t.description.toLowerCase().includes(q) || t.category.toLowerCase().includes(q))
@@ -134,7 +178,7 @@ export default function SearchPalette() {
     }))
 
     return out
-  }, [query, positions, transactions, quotes, eurUsd, ts, tn])
+  }, [query, positions, transactions, quotes, eurUsd, tickerSuggestions, tickerLoading, ts, tn])
 
   // Group items for display
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -203,6 +247,18 @@ export default function SearchPalette() {
                 <div className="ledgernest-cmd-section-label">{group}</div>
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 {(groupItems as any[]).map((item: any) => {
+                  if (item.kind === 'ticker-loading') {
+                    return (
+                      <div key="ticker-loading" style={{ padding: '10px 12px', display: 'flex', gap: 10, alignItems: 'center' }}>
+                        <div style={{ width: 28, height: 28, borderRadius: 6, background: 'var(--bg-elevated)', flexShrink: 0 }} />
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                          <div style={{ height: 12, width: '30%', borderRadius: 4, background: 'var(--bg-elevated)', animation: 'ledgernest-pulse 1.4s ease-in-out infinite' }} />
+                          <div style={{ height: 10, width: '55%', borderRadius: 4, background: 'var(--bg-elevated)', animation: 'ledgernest-pulse 1.4s ease-in-out infinite 0.2s' }} />
+                        </div>
+                      </div>
+                    )
+                  }
+
                   const li = globalIdx++
                   const isFocused = li === focused
                   const isPrimary = item.kind === 'action' && (item as { primary?: boolean }).primary

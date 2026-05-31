@@ -6,6 +6,7 @@ import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { usePricesStore } from '@/stores/pricesStore'
 import { usePortfolioSnapshotStore } from '@/stores/portfolioSnapshotStore'
+import { useWatchlistStore } from '@/stores/watchlistStore'
 
 type FinanceData = Parameters<ReturnType<typeof useFinanceStore.getState>['hydrate']>[0]
 type PortfolioData = Parameters<ReturnType<typeof usePortfolioStore.getState>['hydrate']>[0]
@@ -32,11 +33,12 @@ export function useServerSync() {
 
     async function load() {
       try {
-        const [finRes, portRes, snapRes, settRes] = await Promise.all([
+        const [finRes, portRes, snapRes, settRes, watchRes] = await Promise.all([
           fetch('/api/sync?key=finance'),
           fetch('/api/sync?key=portfolio'),
           fetch('/api/sync?key=snapshots'),
           fetch('/api/sync?key=settings'),
+          fetch('/api/watchlist'),
         ])
 
         if (finRes.ok) {
@@ -89,6 +91,10 @@ export function useServerSync() {
             const { settings, ignoredImportIds } = useSettingsStore.getState()
             syncPut('settings', { settings, ignoredImportIds })
           }
+        }
+        if (watchRes.ok) {
+          const data = await watchRes.json()
+          useWatchlistStore.getState().hydrate(data)
         }
       } catch {
         // Fallback silenzioso: rimangono i dati da localStorage

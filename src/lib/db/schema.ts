@@ -104,6 +104,32 @@ function initSchema(db: Database.Database) {
       FOREIGN KEY (session_id) REFERENCES banking_sessions(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS watchlist_items (
+      id TEXT PRIMARY KEY,
+      user_email TEXT NOT NULL,
+      ticker TEXT NOT NULL,
+      name TEXT,
+      currency TEXT NOT NULL DEFAULT 'USD',
+      lists TEXT NOT NULL DEFAULT '[]',
+      target_price REAL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_watchlist_user ON watchlist_items(user_email);
+
+    CREATE TABLE IF NOT EXISTS price_alerts (
+      id TEXT PRIMARY KEY,
+      user_email TEXT NOT NULL,
+      ticker TEXT NOT NULL,
+      threshold REAL NOT NULL,
+      direction TEXT NOT NULL,
+      active INTEGER NOT NULL DEFAULT 1,
+      triggered_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_alerts_user ON price_alerts(user_email);
+
     CREATE TABLE IF NOT EXISTS banking_transactions (
       id TEXT PRIMARY KEY,
       account_uid TEXT NOT NULL,

@@ -4,7 +4,7 @@
 
 **Personal finance dashboard — portfolio, budget, net worth and cashflow in one place.**
 
-![Version](https://img.shields.io/badge/version-0.4.2-blue)
+![Version](https://img.shields.io/badge/version-0.5.0-blue)
 ![Next.js](https://img.shields.io/badge/Next.js-14-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.5-blue)
 ![License](https://img.shields.io/badge/license-private-lightgrey)
@@ -27,6 +27,20 @@
 - **ETF** — TER, regional exposure, historical chart, EUR/USD-corrected P&L
 - **Crypto** — live prices from CoinGecko, historical charts
 - Automatic EUR/USD exchange-rate correction on average cost basis
+- **Heatmap** — TradingView stock heatmap widget (S&P 500, by sector, size = market cap, colour = 1D change)
+
+### 📈 Watchlist & Alerts
+- Add any ticker (stocks, ETF, crypto) with autocomplete search — Yahoo Finance symbol resolved automatically
+- Per-ticker price alerts (above/below threshold) with **in-app toast notification** and **email via Resend**
+- Notification bell in the topbar with badge count and dismissable alert history
+- Target price per item with distance-to-target percentage
+- Lists (tags) for grouping watchlist items, 52-week range bar, 7-day sparkline
+- Clicking a watchlist ticker opens a full TradingView ticker page (chart, fundamentals, technical analysis, news)
+
+### 🔔 TradingView Integration
+- **Ticker page** (`/ticker/[symbol]`) — advanced chart, symbol info, company profile, financials, technical analysis, timeline news — all via TradingView embeds
+- Symbols resolved from Yahoo Finance format → TradingView exchange:symbol (e.g. `NEXI.MI` → `MIL:NEXI`, `BTC-USD` → `COINBASE:BTCUSD`)
+- Search palette opens ticker page directly
 
 ### 🏦 Finances
 - **Accounts** — bank accounts, brokers, crypto wallets with aggregated balance; Open Banking (PSD2) connection via Enable Banking
@@ -113,6 +127,7 @@ Copy `.env.example` → `.env.local` and fill in:
 | `GOOGLE_CLIENT_SECRET` | ✅ | Client Secret from Google Cloud Console |
 | `ALLOWED_EMAILS` | ✅ | Comma-separated list of authorised email addresses |
 | `CRON_SECRET` | ✅ | Secret for protecting `POST /api/cron/snapshot` — generate with `openssl rand -base64 32` |
+| `RESEND_API_KEY` | ➖ | API key from [resend.com](https://resend.com) — enables email delivery for price alert notifications |
 | `ENABLEBANKING_APP_ID` | ➖ | Enable Banking application ID (Open Banking only) |
 | `ENABLEBANKING_PRIVATE_KEY` | ➖ | RSA/EC private key in PEM format for Enable Banking JWT signing |
 
@@ -123,6 +138,49 @@ Copy `.env.example` → `.env.local` and fill in:
 3. Type: **Web application**
 4. Authorized redirect URIs: `http://YOUR-HOST:3000/api/auth/callback/google`
 5. Copy Client ID and Client Secret into `.env.local`
+
+---
+
+## 🔔 Price Alert Emails (Resend)
+
+LedgerNest uses [Resend](https://resend.com) to send email notifications when a watchlist price alert triggers. This is **optional** — alerts still fire in-app (toast + notification bell) without it.
+
+### Setup
+
+#### 1. Create a Resend account
+
+1. Sign up at [resend.com](https://resend.com) — the free tier allows 3 000 emails/month
+2. Go to **API Keys** → **Create API Key** with *Sending access*
+3. Copy the key (starts with `re_`)
+
+#### 2. Add to `.env.local`
+
+```bash
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxx
+```
+
+#### 3. (Optional) Verify a custom sender domain
+
+By default emails are sent from `onboarding@resend.dev` (Resend's shared domain). To send from your own domain (e.g. `alerts@yourdomain.com`):
+
+1. In Resend → **Domains** → **Add Domain** → follow DNS instructions (SPF, DKIM, DMARC)
+2. Once verified, update the `from` field in `src/app/api/watchlist/alerts/notify/route.ts`:
+
+```ts
+from: 'LedgerNest Alerts <alerts@yourdomain.com>',
+```
+
+### How it works
+
+| Event | What happens |
+|---|---|
+| Price crosses alert threshold | `usePriceAlerts` hook detects the crossing on next price refresh |
+| In-app | Toast notification pops up (bottom-right, 6 s auto-dismiss) + bell badge increments |
+| Email | `POST /api/watchlist/alerts/notify` → Resend sends HTML email to the logged-in user's address |
+| Persistence | Alert marked `active: false` + `triggeredAt` timestamp saved to SQLite |
+| Bell history | Triggered alerts visible in topbar bell dropdown — individually dismissable |
+
+> **Note:** price refreshes happen at the interval set in **Settings → Markets → Refresh interval** (default: every 90 seconds while the app is open in a browser tab). Alerts are client-side only — they do not fire if no browser session is active.
 
 ---
 
@@ -319,8 +377,16 @@ ledgernest/
 │   │   │   ├── snapshots/           # Portfolio & net worth snapshots
 │   │   │   ├── sparklines/          # 7-day sparklines
 │   │   │   ├── sync/                # Server-side Zustand state sync
-│   │   │   ├── ticker-info/         # Ticker metadata
-│   │   │   └── ticker-search/       # Ticker search
+│   │   │   ├── ticker/
+│   │   │   │   ├── [symbol]/        # GET — resolve Yahoo symbol → TradingView symbol
+│   │   │   │   └── search/          # GET — ticker autocomplete (Yahoo Finance → TV symbols)
+│   │   │   └── watchlist/
+│   │   │       ├── route.ts         # GET/POST — list + add watchlist items
+│   │   │       ├── [id]/route.ts    # PATCH/DELETE — update/remove item
+│   │   │       └── alerts/
+│   │   │           ├── route.ts     # GET/POST — list + add price alerts
+│   │   │           ├── [id]/route.ts# PATCH/DELETE — mark triggered / remove alert
+│   │   │           └── notify/      # POST — send Resend email on alert trigger
 │   │   ├── privacy/                 # Privacy policy page (public)
 │   │   ├── terms/                   # Terms of use page (public)
 │   │   ├── login/                   # Login page
@@ -338,13 +404,14 @@ ledgernest/
 │   │   ├── useFormatters.ts         # Currency-aware number formatters
 │   │   ├── usePortfolioChart.ts     # Portfolio chart data with live now-point
 │   │   ├── usePortfolioSnapshot.ts  # Snapshot polling & persistence
+│   │   ├── usePriceAlerts.ts        # Detects alert thresholds crossing → toast + email
 │   │   └── useServerSync.ts         # Server-side state sync hook
 │   ├── i18n/
 │   │   ├── locales/
 │   │   │   ├── en.json              # English strings
 │   │   │   └── it.json              # Italian strings
 │   │   └── request.ts               # next-intl config
-│   ├── stores/                      # Zustand stores (finance, portfolio, ui, prices, settings)
+│   ├── stores/                      # Zustand stores (finance, portfolio, ui, prices, settings, watchlist, notifications, toast)
 │   ├── lib/
 │   │   ├── db/                      # SQLite schema + migrations
 │   │   ├── services/
@@ -383,6 +450,8 @@ npm run db:reset     # ⚠️ FULL RESET (deletes all data)
 | `banking_sessions` | Enable Banking OAuth sessions (pending → active) |
 | `banking_accounts` | Bank accounts fetched from Enable Banking, linked to local accounts |
 | `banking_transactions` | Deduplication ledger for imported OB transactions |
+| `watchlist_items` | Watchlist entries with ticker, currency, target price and list tags |
+| `watchlist_alerts` | Per-ticker price alerts with threshold, direction, triggered state and timestamp |
 
 ---
 

@@ -58,6 +58,8 @@ export async function fetchQuotes(tickers: string[]): Promise<Quote[]> {
           currency: (meta.currency as string) ?? 'USD',
           name: (meta.longName as string) ?? (meta.shortName as string) ?? ticker,
           exchange: meta.fullExchangeName as string | undefined,
+          high52: meta.fiftyTwoWeekHigh as number | undefined,
+          low52:  meta.fiftyTwoWeekLow  as number | undefined,
           timestamp: Date.now(),
           ...extended,
         }
