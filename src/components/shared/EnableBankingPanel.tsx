@@ -27,7 +27,7 @@ interface SyncResult {
 }
 
 export default function EnableBankingPanel() {
-  const { accounts, addAccount, addTransaction, updateAccount } = useFinanceStore()
+  const { accounts, addAccount, addTransaction, updateAccount, updateTransaction } = useFinanceStore()
   const bankAccounts = accounts.filter((a) => a.type === 'bank')
 
   const [sessions, setSessions]     = useState<EBSession[]>([])
@@ -120,7 +120,7 @@ export default function EnableBankingPanel() {
     })
   }, [loadData, addAccount])
 
-  async function handleSync(acct: EBAccount) {
+  async function handleSync(acct: EBAccount, mode: 'delta' | 'force' | 'hard-reset' = 'delta') {
     if (!acct.finance_account_id) {
       showFlash('Collega prima il conto a un conto locale')
       return
@@ -130,20 +130,35 @@ export default function EnableBankingPanel() {
       const res  = await fetch('/api/banking/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountUid: acct.uid }),
+        body: JSON.stringify({ accountUid: acct.uid, financeAccountId: acct.finance_account_id, mode }),
       })
       const data = await res.json() as SyncResult
       if (!res.ok) { showFlash(data.error ?? 'Errore sync'); return }
 
+      // Client-side dedup: update accountId on existing matches, add only truly new ones
+      const { transactions } = useFinanceStore.getState()
+      let added = 0, fixed = 0
       for (const tx of data.newTransactions) {
         const { eb_id: _, ...txData } = tx
-        addTransaction({ ...txData, note: undefined })
+        const existing = transactions.find(
+          (t) => t.date === txData.date && Math.abs(t.amount - txData.amount) < 0.01
+            && t.type === txData.type && t.description === txData.description
+        )
+        if (existing) {
+          if (existing.accountId !== acct.finance_account_id || !existing.ebId) {
+            updateTransaction(existing.id, { accountId: acct.finance_account_id, ebId: txData.ebId })
+            fixed++
+          }
+        } else {
+          addTransaction({ ...txData, note: undefined })
+          added++
+        }
       }
-      if (acct.finance_account_id) {
-        updateAccount(acct.finance_account_id, { balance: data.newBalance })
-      }
+
+      updateAccount(acct.finance_account_id, { balance: data.newBalance })
       await loadData()
-      showFlash(`Importati ${data.imported} nuovi movimenti`)
+      const msg = [added > 0 && `+${added} movimenti`, fixed > 0 && `${fixed} corretti`].filter(Boolean).join(', ')
+      showFlash(msg || 'Nessun nuovo movimento')
     } catch {
       showFlash('Errore di rete')
     } finally {
@@ -160,7 +175,7 @@ export default function EnableBankingPanel() {
     setEbAccounts((prev) => prev.map((a) => a.uid === uid ? { ...a, finance_account_id: financeAccountId } : a))
   }
 
-  // Auto-sync on interval
+  // Auto-sync on interval (delta only — runs while app is open in browser)
   useEffect(() => {
     if (!obSyncInterval) return
     const id = setInterval(async () => {
@@ -168,19 +183,19 @@ export default function EnableBankingPanel() {
       if (!res.ok) return
       const data = await res.json() as { accounts: EBAccount[] }
       for (const acct of data.accounts ?? []) {
-        if (acct.finance_account_id) await handleSync(acct)
+        if (acct.finance_account_id) await handleSync(acct, 'delta')
       }
     }, obSyncInterval * 1000)
     return () => clearInterval(id)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [obSyncInterval])
 
-  // Expose sync for external use via window event
+  // Expose sync for external use via window event (used by AccountCard sync button)
   useEffect(() => {
     const handler = (e: Event) => {
-      const uid = (e as CustomEvent<string>).detail
+      const { uid, mode } = (e as CustomEvent<{ uid: string; mode?: 'delta' | 'force' | 'hard-reset' }>).detail
       const acct = ebAccounts.find((a) => a.uid === uid)
-      if (acct) handleSync(acct)
+      if (acct) handleSync(acct, mode ?? 'delta')
     }
     window.addEventListener('ob:sync', handler)
     return () => window.removeEventListener('ob:sync', handler)

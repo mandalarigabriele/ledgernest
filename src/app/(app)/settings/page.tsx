@@ -1127,7 +1127,7 @@ export default function ImpostazioniPage() {
                 >ℹ</span>
               </div>
             </SettingRow>
-            <SettingRow label="Sync Open Banking" desc="Sincronizza automaticamente i conti collegati via Open Banking">
+            <SettingRow label="Sync Open Banking" desc="Sincronizza automaticamente i conti OB mentre l'app è aperta nel browser (non è un cron server-side)">
               <select
                 className="ledgernest-input ledgernest-select"
                 value={settings.obSyncInterval ?? 0}

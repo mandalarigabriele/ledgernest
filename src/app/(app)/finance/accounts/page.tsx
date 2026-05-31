@@ -67,7 +67,8 @@ function EditAccountModal({ account, onClose }: { account: Account; onClose: () 
     updateAccount(account.id, {
       name: name.trim(),
       type,
-      balance: parseFloat(balance) || 0,
+      // OB accounts: balance is read-only, managed by banking API
+      ...(account.bankingUid ? {} : { balance: parseFloat(balance) || 0 }),
       currency,
       broker: broker.trim() || undefined,
       iban: iban.trim() || undefined,
@@ -115,7 +116,12 @@ function EditAccountModal({ account, onClose }: { account: Account; onClose: () 
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
           <div>
             <div style={labelStyle}>{t('editBalance')}</div>
-            <input type="number" step="0.01" value={balance} onChange={(e) => setBalance(e.target.value)} style={inputStyle} />
+            {account.bankingUid
+              ? <div style={{ ...inputStyle, color: 'var(--text-tertiary)', userSelect: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {balance} <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>— aggiornato dal sync</span>
+                </div>
+              : <input type="number" step="0.01" value={balance} onChange={(e) => setBalance(e.target.value)} style={inputStyle} />
+            }
           </div>
           <div>
             <div style={labelStyle}>{t('editCurrency')}</div>
@@ -169,27 +175,23 @@ function EditAccountModal({ account, onClose }: { account: Account; onClose: () 
 function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { account: Account; totalAssets: number; onEdit: () => void; onDelete: () => void; onClearTx: () => void }) {
   const t = useTranslations('conti')
   const { fmt } = useFormatters()
-  const { transactions, updateAccount, addTransaction } = useFinanceStore()
+  const { transactions, updateAccount, addTransaction, updateTransaction } = useFinanceStore()
   const txCount = transactions.filter((tx) => tx.accountId === account.id).length
   const [syncing, setSyncing]         = useState(false)
   const [syncMsg, setSyncMsg]         = useState<{ text: string; ok: boolean } | null>(null)
   const [rateLimited, setRateLimited] = useState(false)
+  const [syncMenuOpen, setSyncMenuOpen] = useState(false)
 
-  const handleObSync = useCallback(async () => {
+  const handleObSync = useCallback(async (mode: 'delta' | 'force' | 'hard-reset' = 'delta') => {
     if (!account.bankingUid) return
     setSyncing(true)
     setSyncMsg(null)
-    const force = txCount === 0
+    setSyncMenuOpen(false)
     try {
-      await fetch('/api/banking/accounts', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid: account.bankingUid, financeAccountId: account.id }),
-      })
       const res  = await fetch('/api/banking/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountUid: account.bankingUid, force }),
+        body: JSON.stringify({ accountUid: account.bankingUid, financeAccountId: account.id, mode }),
       })
       const data = await res.json() as { newBalance?: number; newTransactions?: Array<Record<string, unknown>>; imported?: number; total?: number; error?: string }
       if (!res.ok) {
@@ -199,19 +201,29 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
       }
       setRateLimited(false)
       if (data.newBalance != null) updateAccount(account.id, { balance: data.newBalance })
+      let added = 0, fixed = 0
       for (const tx of data.newTransactions ?? []) {
         const { eb_id: _, ...txData } = tx as { eb_id: string } & Parameters<typeof addTransaction>[0]
-        addTransaction({ ...txData, note: undefined })
+        const existing = transactions.find(
+          (t) => t.date === txData.date && Math.abs(t.amount - (txData.amount as number)) < 0.01
+            && t.type === txData.type && t.description === txData.description
+        )
+        if (existing) {
+          const needsFix = existing.accountId !== account.id || !existing.ebId
+          if (needsFix) { updateTransaction(existing.id, { accountId: account.id, ebId: (txData as { ebId?: string }).ebId }); fixed++ }
+        } else {
+          addTransaction({ ...txData, note: undefined }); added++
+        }
       }
-      const imp = data.imported ?? 0
-      setSyncMsg({ text: imp > 0 ? `+${imp} movimenti importati` : 'Nessun nuovo movimento', ok: true })
+      const msg = [added > 0 && `+${added} movimenti`, fixed > 0 && `${fixed} corretti`].filter(Boolean).join(', ')
+      setSyncMsg({ text: msg || 'Nessun nuovo movimento', ok: true })
     } catch (e) {
       setSyncMsg({ text: e instanceof Error ? e.message : 'Errore di rete', ok: false })
     } finally {
       setSyncing(false)
       setTimeout(() => setSyncMsg(null), 5000)
     }
-  }, [account.bankingUid, account.id, txCount, updateAccount, addTransaction])
+  }, [account.bankingUid, account.id, transactions, updateAccount, addTransaction, updateTransaction])
   const TYPE_CONFIG: Record<Account['type'], {
     label: string; icon: string; color: string; bg: string
   }> = {
@@ -228,30 +240,48 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
     <div className="ledgernest-card" style={{ display: 'flex', flexDirection: 'column', gap: 0, padding: 0, overflow: 'hidden', minWidth: 0 }}>
       {/* Card body */}
       <div style={{ padding: '18px 20px 14px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {/* Header: icon + name + badges */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+        {/* Header: single line — icon + name + type badge + OB badge */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
           <div style={{
-            width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+            width: 36, height: 36, borderRadius: 10, flexShrink: 0,
             background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: cfg.color,
           }}>
-            <Icon name={cfg.icon} size={20} />
+            <Icon name={cfg.icon} size={17} />
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {account.name}
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <span>{cfg.label}</span>
-              {account.broker && <><span style={{ opacity: 0.4 }}>·</span><span>{account.broker}</span></>}
-              {account.bankingUid && (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: '#2dd4bf', fontSize: 11 }}>
-                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#2dd4bf', flexShrink: 0 }} />
-                  Open Banking
-                </span>
-              )}
-            </div>
+
+          <div style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+            {account.name}
           </div>
+
+          {/* Type badge */}
+          <span style={{
+            flexShrink: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
+            padding: '2px 7px', borderRadius: 20,
+            color: cfg.color, background: cfg.bg,
+          }}>
+            {cfg.label}
+          </span>
+
+          {/* OB badge */}
+          {account.bankingUid && (
+            <span style={{
+              flexShrink: 0, fontSize: 10, fontWeight: 700,
+              padding: '2px 7px', borderRadius: 20,
+              color: '#2dd4bf', background: 'rgba(45,212,191,.12)',
+              display: 'inline-flex', alignItems: 'center', gap: 3,
+            }}>
+              <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#2dd4bf' }} />
+              OB
+            </span>
+          )}
         </div>
+
+        {/* Broker subtitle — only if set */}
+        {account.broker && (
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: -8 }}>
+            {account.broker}
+          </div>
+        )}
 
         {/* Balance */}
         <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums' }}>
@@ -294,16 +324,54 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
         </button>
         {account.bankingUid && (
           <>
-            <button
-              className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm"
-              style={{ justifyContent: 'center', fontSize: '12px', gap: '5px', gridColumn: '1 / -1', opacity: rateLimited ? 0.5 : 1 }}
-              onClick={handleObSync}
-              disabled={syncing || rateLimited}
-              title={rateLimited ? 'Limite giornaliero raggiunto — riprova domani' : undefined}
-            >
-              <Icon name="refresh" size={12} />
-              {syncing ? 'Sincronizzando…' : rateLimited ? 'Limite giornaliero raggiunto' : 'Sync Open Banking'}
-            </button>
+            {/* Sync button + mode dropdown */}
+            <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 4, opacity: rateLimited ? 0.5 : 1 }}>
+              <button
+                className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm"
+                style={{ flex: 1, justifyContent: 'center', fontSize: '12px', gap: '5px' }}
+                onClick={() => handleObSync('delta')}
+                disabled={syncing || rateLimited}
+                title={rateLimited ? 'Limite giornaliero raggiunto — riprova domani' : 'Importa solo movimenti nuovi'}
+              >
+                <Icon name="refresh" size={12} />
+                {syncing ? 'Sincronizzando…' : rateLimited ? 'Limite raggiunto' : 'Sincronizza'}
+              </button>
+              <div style={{ position: 'relative' }}>
+                <button
+                  className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm"
+                  style={{ padding: '0 8px', fontSize: 12 }}
+                  onClick={() => setSyncMenuOpen((v) => !v)}
+                  disabled={syncing || rateLimited}
+                  title="Opzioni sync"
+                >▾</button>
+                {syncMenuOpen && (
+                  <div
+                    style={{
+                      position: 'absolute', bottom: '100%', right: 0, marginBottom: 4,
+                      background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+                      borderRadius: 10, padding: '4px', display: 'flex', flexDirection: 'column',
+                      gap: 2, zIndex: 50, minWidth: 190, boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                    }}
+                  >
+                    {([
+                      { mode: 'delta' as const,      label: 'Delta',      desc: 'Solo nuovi, rispetta eliminati' },
+                      { mode: 'force' as const,       label: 'Force',      desc: 'Riallinea tutto, salta eliminati' },
+                      { mode: 'hard-reset' as const,  label: 'Hard reset', desc: 'Reimporta tutto inclusi eliminati' },
+                    ] as const).map(({ mode, label, desc }) => (
+                      <button
+                        key={mode}
+                        className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm"
+                        style={{ justifyContent: 'flex-start', flexDirection: 'column', alignItems: 'flex-start', padding: '6px 10px', gap: 1 }}
+                        onClick={() => handleObSync(mode)}
+                      >
+                        <span style={{ fontWeight: 600, fontSize: 12 }}>{label}</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 400 }}>{desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
             {syncMsg && (
               <div style={{
                 gridColumn: '1 / -1', fontSize: 11, textAlign: 'center', padding: '4px 8px',

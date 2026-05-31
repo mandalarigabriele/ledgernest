@@ -221,10 +221,10 @@ export const useFinanceStore = create<FinanceStore>()(
       addTransaction: (tx) => {
         const now = new Date().toISOString()
         set((s) => ({ transactions: [{ ...tx, id: nanoid(), createdAt: now }, ...s.transactions] }))
-        // Update account balance
+        // OB-synced accounts: balance is managed by the banking API — never modify locally
         const { accounts } = get()
         const acct = accounts.find((a) => a.id === tx.accountId)
-        if (acct) {
+        if (acct && !acct.bankingUid) {
           const delta = tx.type === 'income' ? tx.amount : -tx.amount
           set((s) => ({
             accounts: s.accounts.map((a) =>
@@ -236,7 +236,18 @@ export const useFinanceStore = create<FinanceStore>()(
       updateTransaction: (id, patch) => {
         set((s) => ({ transactions: s.transactions.map((t) => (t.id === id ? { ...t, ...patch } : t)) }))
       },
-      deleteTransaction: (id) => set((s) => ({ transactions: s.transactions.filter((t) => t.id !== id) })),
+      deleteTransaction: (id) => {
+        const tx = get().transactions.find((t) => t.id === id)
+        // Mark as user-deleted in DB so force-sync won't reimport it
+        if (tx?.ebId) {
+          fetch('/api/banking/transactions', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ebId: tx.ebId, userDeleted: true }),
+          }).catch(() => {/* best-effort */})
+        }
+        set((s) => ({ transactions: s.transactions.filter((t) => t.id !== id) }))
+      },
 
       mergeMerchants: (aliases, canonical) => set((s) => {
         const updated = s.transactions.map((t) =>

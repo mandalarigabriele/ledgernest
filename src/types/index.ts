@@ -33,6 +33,7 @@ export interface Transaction {
   category: string
   accountId: string
   note?: string
+  ebId?: string   // Enable Banking transaction ID — present only on OB-synced transactions
   createdAt: string
 }
 

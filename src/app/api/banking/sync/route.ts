@@ -43,8 +43,11 @@ function mapTransaction(
   const type: 'income' | 'expense' | 'transfer' =
     guessedType === 'transfer' ? 'transfer' : amount < 0 ? 'expense' : 'income'
 
+  const eb_id = resolveTransactionId(eb) || `eb-${resolveTransactionDate(eb)}-${amount}`
+
   return {
-    eb_id: resolveTransactionId(eb) || `eb-${resolveTransactionDate(eb)}-${amount}`,
+    eb_id,
+    ebId: eb_id,
     date: resolveTransactionDate(eb),
     description,
     merchant,
@@ -56,12 +59,22 @@ function mapTransaction(
 }
 
 // POST /api/banking/sync
+// Body: { accountUid, financeAccountId?, dateFrom?, dateTo?, mode?: 'delta' | 'force' | 'hard-reset' }
+//   delta      — only new transactions, skip user-deleted (default)
+//   force      — clear dedup for non-deleted rows, reimport all except user-deleted
+//   hard-reset — clear entire dedup including user-deleted, reimport everything
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await req.json() as { accountUid: string; dateFrom?: string; dateTo?: string; force?: boolean }
-  const { accountUid, force } = body
+  const body = await req.json() as {
+    accountUid: string
+    dateFrom?: string
+    dateTo?: string
+    mode?: 'delta' | 'force' | 'hard-reset'
+    financeAccountId?: string
+  }
+  const { accountUid, mode = 'delta' } = body
   if (!accountUid) return NextResponse.json({ error: 'Missing accountUid' }, { status: 400 })
 
   const dateTo   = body.dateTo   ?? new Date().toISOString().slice(0, 10)
@@ -73,7 +86,15 @@ export async function POST(req: NextRequest) {
   ).get(accountUid, session.user.email) as BankingAccountRow | undefined
 
   if (!acctRow) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
-  if (!acctRow.finance_account_id) return NextResponse.json({ error: 'Account not linked to a local account' }, { status: 400 })
+
+  // Allow caller to override finance_account_id (e.g. after re-link)
+  const financeAccountId = body.financeAccountId ?? acctRow.finance_account_id
+  if (!financeAccountId) return NextResponse.json({ error: 'Account not linked to a local account' }, { status: 400 })
+
+  // Persist the link if caller supplied an override
+  if (body.financeAccountId && body.financeAccountId !== acctRow.finance_account_id) {
+    db.prepare(`UPDATE banking_accounts SET finance_account_id = ? WHERE uid = ?`).run(body.financeAccountId, accountUid)
+  }
 
   const sessionRow = db.prepare(
     `SELECT id FROM banking_sessions WHERE id = ? AND status = 'active'`
@@ -87,19 +108,29 @@ export async function POST(req: NextRequest) {
     const newBalance = getClosingBalance(balances)
     db.prepare(`UPDATE banking_accounts SET balance = ?, last_synced_at = datetime('now') WHERE uid = ?`).run(newBalance, accountUid)
 
+    // Clear dedup table according to mode
+    if (mode === 'hard-reset') {
+      // Wipe everything — user-deleted entries are also reset
+      db.prepare(`DELETE FROM banking_transactions WHERE account_uid = ? AND user_email = ?`).run(accountUid, session.user.email)
+    } else if (mode === 'force') {
+      // Wipe only non-deleted entries so user-deleted ones are still skipped
+      db.prepare(`DELETE FROM banking_transactions WHERE account_uid = ? AND user_email = ? AND user_deleted = 0`).run(accountUid, session.user.email)
+    }
+    // delta: no clearing — dedup table is authoritative
+
     // Fetch & import transactions
     const ebTxs = await getTransactions(accountUid, dateFrom, dateTo)
     const newTransactions: (Omit<Transaction, 'createdAt'> & { eb_id: string })[] = []
 
-    // force=true: clear dedup records so all transactions are re-imported
-    if (force) {
-      db.prepare(`DELETE FROM banking_transactions WHERE account_uid = ? AND user_email = ?`).run(accountUid, session.user.email)
-    }
-
     for (const eb of ebTxs) {
-      const mapped  = mapTransaction(eb, acctRow.finance_account_id)
-      const already = db.prepare(`SELECT id FROM banking_transactions WHERE id = ? AND user_email = ?`).get(mapped.eb_id, session.user.email)
-      if (already) continue
+      const mapped = mapTransaction(eb, financeAccountId)
+
+      const existing = db.prepare(
+        `SELECT id, user_deleted FROM banking_transactions WHERE id = ? AND user_email = ?`
+      ).get(mapped.eb_id, session.user.email) as { id: string; user_deleted: number } | undefined
+
+      // Skip if already in dedup (includes user-deleted entries in delta/force modes)
+      if (existing) continue
 
       const txId = crypto.randomUUID()
       db.prepare(`
@@ -120,6 +151,7 @@ export async function POST(req: NextRequest) {
       newTransactions,
       total: ebTxs.length,
       imported: newTransactions.length,
+      mode,
     })
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Sync error'

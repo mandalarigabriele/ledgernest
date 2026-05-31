@@ -26,6 +26,7 @@ function migrateSchema(db: Database.Database) {
   }
   addIfMissing('banking_sessions', 'oauth_state', 'TEXT')
   addIfMissing('banking_sessions', 'eb_session_id', 'TEXT')
+  addIfMissing('banking_transactions', 'user_deleted', 'INTEGER NOT NULL DEFAULT 0')
 }
 
 function initSchema(db: Database.Database) {
