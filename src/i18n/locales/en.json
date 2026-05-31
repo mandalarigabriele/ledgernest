@@ -1139,7 +1139,8 @@
     "kpiValue": "Total value",
     "legendWorst": "Worst",
     "legendBest": "Best",
-    "emptyTitle": "No positions in heatmap"
+    "emptyTitle": "No positions in heatmap",
+    "marketHeatmap": "Market Heatmap (S&P 500)"
   },
   "screener": {
     "title": "Screener",

@@ -1139,7 +1139,8 @@
     "kpiValue": "Valore totale",
     "legendWorst": "Peggiore",
     "legendBest": "Migliore",
-    "emptyTitle": "Nessuna posizione nella heatmap"
+    "emptyTitle": "Nessuna posizione nella heatmap",
+    "marketHeatmap": "Heatmap di mercato (S&P 500)"
   },
   "screener": {
     "title": "Screener",
