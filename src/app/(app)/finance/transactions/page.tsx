@@ -297,7 +297,7 @@ type TxActions = {
 function TxRowMenu({ actions }: { actions: TxActions }) {
   const tl = useTranslations('movimenti')
   const [open, setOpen] = useState(false)
-  const [pos, setPos] = useState({ top: 0, right: 0 })
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; right: number }>({ top: 0, right: 0 })
   const btnRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -314,7 +314,14 @@ function TxRowMenu({ actions }: { actions: TxActions }) {
   function handleToggle() {
     if (!open && btnRef.current) {
       const r = btnRef.current.getBoundingClientRect()
-      setPos({ top: r.bottom + 4, right: window.innerWidth - r.right })
+      const right = window.innerWidth - r.right
+      const MENU_HEIGHT = 170
+      if (window.innerHeight - r.bottom < MENU_HEIGHT) {
+        // Not enough space below — open upward
+        setPos({ bottom: window.innerHeight - r.top + 4, right })
+      } else {
+        setPos({ top: r.bottom + 4, right })
+      }
     }
     setOpen((v) => !v)
   }
@@ -337,7 +344,7 @@ function TxRowMenu({ actions }: { actions: TxActions }) {
         <Icon name="kebab" size={15} />
       </button>
       {open && (
-        <div ref={menuRef} style={{ position: 'fixed', top: pos.top, right: pos.right, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 10, padding: 4, minWidth: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.45)', zIndex: 9999 }}>
+        <div ref={menuRef} style={{ position: 'fixed', top: pos.top, bottom: pos.bottom, right: pos.right, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 10, padding: 4, minWidth: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.45)', zIndex: 9999 }}>
           <button onClick={() => { setOpen(false); actions.onAddRecurring() }} style={{ ...menuItem, color: 'var(--text-primary)' }}
             onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-elevated)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>

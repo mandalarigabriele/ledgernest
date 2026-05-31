@@ -10,15 +10,15 @@ import Icon from '../Icon'
 const CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF'] as const
 
 const OB_BANKS = [
-  { name: 'Credit Agricole Cariparma', country: 'IT', emoji: '🌾' },
-  { name: 'UniCredit',                 country: 'IT', emoji: '🔴' },
-  { name: 'Banca Mediolanum',          country: 'IT', emoji: '🔵' },
-  { name: 'Banco BPM',                 country: 'IT', emoji: '🏦' },
-  { name: 'Banca Nazionale del Lavoro',country: 'IT', emoji: '🏛️' },
-  { name: 'BPER Banca',                country: 'IT', emoji: '🟢' },
-  { name: 'N26',                       country: 'IT', emoji: '⬛' },
-  { name: 'Revolut',                   country: 'IT', emoji: '🌐' },
-]
+  { name: 'Banca Mediolanum',           country: 'IT' },
+  { name: 'Banca Nazionale del Lavoro', country: 'IT' },
+  { name: 'Banco BPM',                  country: 'IT' },
+  { name: 'BPER Banca',                 country: 'IT' },
+  { name: 'Credit Agricole Cariparma',  country: 'IT' },
+  { name: 'N26',                        country: 'IT' },
+  { name: 'Revolut',                    country: 'IT' },
+  { name: 'UniCredit',                  country: 'IT' },
+].sort((a, b) => a.name.localeCompare(b.name))
 
 export default function AccountModal() {
   const t = useTranslations('modals')
@@ -187,29 +187,21 @@ export default function AccountModal() {
 
               <div className="ledgernest-field">
                 <label className="ledgernest-label">Seleziona la tua banca</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {OB_BANKS.map((b) => {
-                    const key = `${b.name}-${b.country}`
-                    const selKey = `${obBank.name}-${obBank.country}`
-                    const active = key === selKey
-                    return (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => setObBank(b)}
-                        style={{
-                          padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 500,
-                          border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-                          background: active ? 'color-mix(in oklch, var(--accent) 15%, transparent)' : 'transparent',
-                          color: active ? 'var(--accent)' : 'var(--text-secondary)',
-                          cursor: 'pointer', transition: 'all .12s',
-                        }}
-                      >
-                        {b.emoji} {b.name}
-                      </button>
-                    )
-                  })}
-                </div>
+                <select
+                  className="ledgernest-input"
+                  value={`${obBank.name}|${obBank.country}`}
+                  onChange={(e) => {
+                    const [name, country] = e.target.value.split('|')
+                    setObBank({ name, country })
+                  }}
+                  style={{ height: 42 }}
+                >
+                  {OB_BANKS.map((b) => (
+                    <option key={`${b.name}|${b.country}`} value={`${b.name}|${b.country}`}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {obError && (

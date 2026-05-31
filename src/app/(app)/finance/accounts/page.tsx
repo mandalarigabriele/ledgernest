@@ -112,7 +112,7 @@ function EditAccountModal({ account, onClose }: { account: Account; onClose: () 
         </div>
 
         {/* Balance + Currency */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
           <div>
             <div style={labelStyle}>{t('editBalance')}</div>
             <input type="number" step="0.01" value={balance} onChange={(e) => setBalance(e.target.value)} style={inputStyle} />
@@ -122,21 +122,30 @@ function EditAccountModal({ account, onClose }: { account: Account; onClose: () 
             <select value={currency} onChange={(e) => setCurrency(e.target.value as 'EUR' | 'USD')} style={inputStyle}>
               <option value="EUR">EUR</option>
               <option value="USD">USD</option>
+              <option value="GBP">GBP</option>
+              <option value="CHF">CHF</option>
             </select>
           </div>
         </div>
 
-        {/* Broker / IBAN */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div>
-            <div style={labelStyle}>{t('editInstitution')}</div>
-            <input value={broker} onChange={(e) => setBroker(e.target.value)} placeholder="Es. Fineco, DeGiro…" style={inputStyle} />
-          </div>
+        {/* Broker */}
+        <div>
+          <div style={labelStyle}>{t('editInstitution')}</div>
+          <input value={broker} onChange={(e) => setBroker(e.target.value)} placeholder="Es. Fineco, DeGiro…" style={inputStyle} />
+        </div>
+
+        {/* IBAN — full width, only for bank accounts */}
+        {type === 'bank' && (
           <div>
             <div style={labelStyle}>{t('editIban')}</div>
-            <input value={iban} onChange={(e) => setIban(e.target.value)} placeholder="IT60 …" style={inputStyle} />
+            <input
+              value={iban}
+              onChange={(e) => setIban(e.target.value.toUpperCase())}
+              placeholder="IT60 X054 2811 1010 0000 0123 456"
+              style={{ ...inputStyle, fontFamily: 'monospace', fontSize: 12 }}
+            />
           </div>
-        </div>
+        )}
 
         {/* Note */}
         <div>
@@ -157,13 +166,13 @@ function EditAccountModal({ account, onClose }: { account: Account; onClose: () 
   )
 }
 
-function AccountCard({ account, onEdit, onDelete, onClearTx }: { account: Account; onEdit: () => void; onDelete: () => void; onClearTx: () => void }) {
+function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { account: Account; totalAssets: number; onEdit: () => void; onDelete: () => void; onClearTx: () => void }) {
   const t = useTranslations('conti')
   const { fmt } = useFormatters()
   const { transactions, updateAccount, addTransaction } = useFinanceStore()
   const txCount = transactions.filter((tx) => tx.accountId === account.id).length
-  const [syncing, setSyncing]     = useState(false)
-  const [syncMsg, setSyncMsg]     = useState<{ text: string; ok: boolean } | null>(null)
+  const [syncing, setSyncing]         = useState(false)
+  const [syncMsg, setSyncMsg]         = useState<{ text: string; ok: boolean } | null>(null)
   const [rateLimited, setRateLimited] = useState(false)
 
   const handleObSync = useCallback(async () => {
@@ -213,37 +222,59 @@ function AccountCard({ account, onEdit, onDelete, onClearTx }: { account: Accoun
   }
   const cfg = TYPE_CONFIG[account.type]
 
+  const pct = totalAssets > 0 ? (account.balance / totalAssets) * 100 : 0
+
   return (
-    <div className="ledgernest-card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', minWidth: 0 }}>
-      {/* Row 1: icon + name */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-        <div style={{
-          width: 38, height: 38, borderRadius: '10px', flexShrink: 0,
-          background: cfg.bg,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: cfg.color,
-        }}>
-          <Icon name={cfg.icon} size={18} />
-        </div>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {account.name}
+    <div className="ledgernest-card" style={{ display: 'flex', flexDirection: 'column', gap: 0, padding: 0, overflow: 'hidden', minWidth: 0 }}>
+      {/* Card body */}
+      <div style={{ padding: '18px 20px 14px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* Header: icon + name + badges */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+            background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: cfg.color,
+          }}>
+            <Icon name={cfg.icon} size={20} />
           </div>
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '1px' }}>
-            {account.broker ? `${cfg.label} · ${account.broker}` : cfg.label}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {account.name}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span>{cfg.label}</span>
+              {account.broker && <><span style={{ opacity: 0.4 }}>·</span><span>{account.broker}</span></>}
+              {account.bankingUid && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: '#2dd4bf', fontSize: 11 }}>
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#2dd4bf', flexShrink: 0 }} />
+                  Open Banking
+                </span>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Balance */}
+        <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums' }}>
+          {fmt(account.balance)}
+        </div>
+
+        {/* Progress bar */}
+        {totalAssets > 0 && (
+          <div>
+            <div style={{ height: 3, borderRadius: 2, background: 'var(--bg-elevated)', overflow: 'hidden' }}>
+              <div style={{ height: '100%', borderRadius: 2, background: cfg.color, width: `${Math.min(100, pct)}%`, transition: 'width .3s' }} />
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
+              {pct.toFixed(1)}% del patrimonio totale
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Row 2: balance */}
-      <div style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
-        {fmt(account.balance)}
-      </div>
-
-      {/* Row 3: actions */}
+      {/* Actions */}
       <div style={{
         display: 'grid', gridTemplateColumns: '1fr 1fr',
-        borderTop: '1px solid var(--border-subtle)', paddingTop: '10px', gap: '8px',
+        borderTop: '1px solid var(--border-subtle)', padding: '10px 14px', gap: '8px',
       }}>
         <button
           className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm"
@@ -300,45 +331,92 @@ function AccountCard({ account, onEdit, onDelete, onClearTx }: { account: Accoun
   )
 }
 
-// Two-series area chart (Assets vs Liabilities)
-function PatrimonioChart({ totalAssets }: { totalAssets: number }) {
-  const months = ['Dic', 'Gen', 'Feb', 'Mar', 'Apr', 'Mag']
-  const base = totalAssets || 50000
-  const assets  = months.map((_, i) => base * (0.88 + i * 0.024 + Math.sin(i) * 0.01))
-  const liab    = months.map(() => base * 0.28)
+// ── Balance trend from netWorthSnapshots ─────────────────────
+function BalanceTrendChart({ snapshots }: { snapshots: { date: string; totalAssets: number }[] }) {
+  const W = 520; const H = 140
+  const PAD = { t: 8, r: 4, b: 24, l: 4 }
 
-  const W = 600; const H = 160
-  const PAD = { t: 12, r: 8, b: 28, l: 8 }
-  const allVals = [...assets, ...liab]
-  const minV = Math.min(...allVals) * 0.95
-  const maxV = Math.max(...allVals) * 1.02
-  const xS = (i: number) => PAD.l + (i / (months.length - 1)) * (W - PAD.l - PAD.r)
+  if (snapshots.length < 2) {
+    return (
+      <div style={{ height: H, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+        Dati insufficienti — lo storico si accumula nel tempo
+      </div>
+    )
+  }
+
+  const vals = snapshots.map((s) => s.totalAssets)
+  const minV = Math.min(...vals) * 0.98
+  const maxV = Math.max(...vals) * 1.01
+  const xS = (i: number) => PAD.l + (i / (snapshots.length - 1)) * (W - PAD.l - PAD.r)
   const yS = (v: number) => PAD.t + (1 - (v - minV) / (maxV - minV)) * (H - PAD.t - PAD.b)
 
-  const aLine = assets.map((v, i) => `${i === 0 ? 'M' : 'L'}${xS(i)},${yS(v)}`).join(' ')
-  const aArea = `${aLine} L${xS(months.length-1)},${H-PAD.b} L${xS(0)},${H-PAD.b} Z`
-  const lLine = liab.map((v, i) => `${i === 0 ? 'M' : 'L'}${xS(i)},${yS(v)}`).join(' ')
-  const lArea = `${lLine} L${xS(months.length-1)},${H-PAD.b} L${xS(0)},${H-PAD.b} Z`
+  const line = snapshots.map((s, i) => `${i === 0 ? 'M' : 'L'}${xS(i)},${yS(s.totalAssets)}`).join(' ')
+  const area = `${line} L${xS(snapshots.length - 1)},${H - PAD.b} L${xS(0)},${H - PAD.b} Z`
+
+  // X-axis labels: first, mid, last
+  const labelIdxs = [0, Math.floor(snapshots.length / 2), snapshots.length - 1]
+  const fmtDate = (d: string) => {
+    const [, m, day] = d.split('-')
+    return `${day}/${m}`
+  }
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: H, display: 'block' }}>
       <defs>
-        <linearGradient id="ga" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#2dd4bf" stopOpacity="0.35"/>
-          <stop offset="100%" stopColor="#2dd4bf" stopOpacity="0.03"/>
-        </linearGradient>
-        <linearGradient id="gl" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#f85149" stopOpacity="0.3"/>
-          <stop offset="100%" stopColor="#f85149" stopOpacity="0.03"/>
+        <linearGradient id="btg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#5bc8d0" stopOpacity="0.3"/>
+          <stop offset="100%" stopColor="#5bc8d0" stopOpacity="0.02"/>
         </linearGradient>
       </defs>
-      <path d={aArea} fill="url(#ga)" />
-      <path d={aLine} fill="none" stroke="#2dd4bf" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-      <path d={lArea} fill="url(#gl)" />
-      <path d={lLine} fill="none" stroke="#f85149" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" strokeDasharray="5,4" />
-      {months.map((m, i) => (
-        <text key={m} x={xS(i)} y={H - 6} textAnchor="middle" fontSize="11" fill="var(--text-secondary)" fontFamily="inherit">{m}</text>
+      <path d={area} fill="url(#btg)" />
+      <path d={line} fill="none" stroke="#5bc8d0" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      {labelIdxs.map((i) => (
+        <text key={i} x={xS(i)} y={H - 6} textAnchor="middle" fontSize="10" fill="var(--text-tertiary)" fontFamily="inherit">
+          {fmtDate(snapshots[i].date)}
+        </text>
       ))}
+    </svg>
+  )
+}
+
+// ── Cashflow bars from transactions ───────────────────────────
+function CashflowChart({ transactions, fmt }: { transactions: { date: string; type: string; amount: number }[]; fmt: (n: number) => string }) {
+  const months = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date()
+    d.setDate(1)
+    d.setMonth(d.getMonth() - (5 - i))
+    return {
+      key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+      label: d.toLocaleDateString('it-IT', { month: 'short' }),
+    }
+  })
+
+  const data = months.map(({ key, label }) => ({
+    label,
+    income:   transactions.filter((t) => t.date.startsWith(key) && t.type === 'income').reduce((s, t) => s + t.amount, 0),
+    expenses: transactions.filter((t) => t.date.startsWith(key) && t.type === 'expense').reduce((s, t) => s + t.amount, 0),
+  }))
+
+  const maxVal = Math.max(...data.flatMap((d) => [d.income, d.expenses]), 1)
+  const W = 280; const H = 140; const PAD = { t: 8, r: 8, b: 24, l: 8 }
+  const plotH = H - PAD.t - PAD.b
+  const colW  = (W - PAD.l - PAD.r) / months.length
+  const barW  = colW * 0.35
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: H, display: 'block' }}>
+      {data.map((d, i) => {
+        const x = PAD.l + i * colW + colW / 2
+        const incH = (d.income / maxVal) * plotH
+        const expH = (d.expenses / maxVal) * plotH
+        return (
+          <g key={d.label}>
+            <rect x={x - barW - 1} y={PAD.t + plotH - incH} width={barW} height={incH} rx="2" fill="#2dd4bf" opacity="0.85" />
+            <rect x={x + 1} y={PAD.t + plotH - expH} width={barW} height={expH} rx="2" fill="#f85149" opacity="0.75" />
+            <text x={x} y={H - 6} textAnchor="middle" fontSize="10" fill="var(--text-tertiary)" fontFamily="inherit">{d.label}</text>
+          </g>
+        )
+      })}
     </svg>
   )
 }
@@ -346,7 +424,7 @@ function PatrimonioChart({ totalAssets }: { totalAssets: number }) {
 export default function ContiPage() {
   const t = useTranslations('conti')
   const { fmt } = useFormatters()
-  const { accounts, deleteAccount, clearAccountTransactions } = useFinanceStore()
+  const { accounts, transactions, netWorthSnapshots, deleteAccount, clearAccountTransactions } = useFinanceStore()
   const { positions } = usePortfolioStore()
   const { quotes, eurUsd } = usePricesStore()
   const showPrePostMarket = useSettingsStore((s) => s.settings.showPrePostMarket)
@@ -387,6 +465,28 @@ export default function ContiPage() {
   const totalCrypto = cryptoAccounts.reduce((s, a) => s + a.balance, 0)
   const totalAssets = accounts.reduce((s, a) => s + a.balance, 0)
 
+  // Monthly stats from transactions
+  const currentMonth = useMemo(() => new Date().toISOString().slice(0, 7), [])
+  const lastMonth    = useMemo(() => {
+    const d = new Date(); d.setMonth(d.getMonth() - 1)
+    return d.toISOString().slice(0, 7)
+  }, [])
+
+  const monthIncome   = useMemo(() => transactions.filter((t) => t.date.startsWith(currentMonth) && t.type === 'income').reduce((s, t) => s + t.amount, 0), [transactions, currentMonth])
+  const monthExpenses = useMemo(() => transactions.filter((t) => t.date.startsWith(currentMonth) && t.type === 'expense').reduce((s, t) => s + t.amount, 0), [transactions, currentMonth])
+  const lastIncome    = useMemo(() => transactions.filter((t) => t.date.startsWith(lastMonth) && t.type === 'income').reduce((s, t) => s + t.amount, 0), [transactions, lastMonth])
+  const lastExpenses  = useMemo(() => transactions.filter((t) => t.date.startsWith(lastMonth) && t.type === 'expense').reduce((s, t) => s + t.amount, 0), [transactions, lastMonth])
+
+  const incomePct   = lastIncome > 0   ? ((monthIncome - lastIncome) / lastIncome * 100)       : null
+  const expensesPct = lastExpenses > 0 ? ((monthExpenses - lastExpenses) / lastExpenses * 100) : null
+  const savingsRate = monthIncome > 0  ? Math.round((monthIncome - monthExpenses) / monthIncome * 100) : null
+
+  // Saldo % change from oldest available snapshot
+  const oldSnap  = netWorthSnapshots.length > 1 ? netWorthSnapshots[0] : null
+  const saldoPct = oldSnap && oldSnap.totalAssets > 0
+    ? ((totalAssets - oldSnap.totalAssets) / oldSnap.totalAssets * 100)
+    : null
+
   const filtered = filter === 'all' ? accounts : accounts.filter((a) => a.type === filter)
 
   const grouped = useMemo(() => {
@@ -408,46 +508,98 @@ export default function ContiPage() {
 
       {/* KPI strip — 4 cards */}
       <div className="ledgernest-fin-kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px' }}>
+
+        {/* Saldo totale */}
         <div className="ledgernest-kpi is-hl" style={{ padding: '18px 20px', gap: '6px' }}>
           <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>{t('kpiNetWorth')}</div>
           <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmt(totalAssets)}</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{accounts.length} {t('kpiAccounts')}</div>
+          <div style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            {saldoPct != null && (
+              <span style={{ fontWeight: 700, color: saldoPct >= 0 ? '#2dd4bf' : '#f85149' }}>
+                {saldoPct >= 0 ? '+' : ''}{saldoPct.toFixed(2)}%
+              </span>
+            )}
+            <span style={{ color: 'var(--text-secondary)' }}>{accounts.length} {t('kpiAccounts')}</span>
+          </div>
         </div>
 
+        {/* Liquidità */}
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: '6px' }}>
           <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>{t('kpiLiquidity')}</div>
           <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmt(totalCash)}</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{bankAccounts.length} {bankAccounts.length === 1 ? t('kpiAccount') : t('kpiAccounts')}</div>
-        </div>
-
-        <div className="ledgernest-card" style={{ padding: '18px 20px', gap: '6px' }}>
-          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>{t('kpiInvested')}</div>
-          <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmt(portfolioValue)}</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-            {brokerAccounts.length} {t('kpiBroker')} · {cryptoAccounts.length} {t('kpiWallet')}
+          <div style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            {accounts.some((a) => a.bankingUid && a.type === 'bank') && (
+              <span style={{ fontWeight: 700, color: '#2dd4bf' }}>● live</span>
+            )}
+            <span style={{ color: 'var(--text-secondary)' }}>
+              {bankAccounts.length} {bankAccounts.length === 1 ? t('kpiAccount') : t('kpiAccounts')}
+              {totalBroker > 0 ? ` · ${brokerAccounts.length} broker` : ''}
+              {totalCrypto > 0 ? ` · ${cryptoAccounts.length} crypto` : ''}
+            </span>
           </div>
         </div>
 
+        {/* Entrate mese */}
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: '6px' }}>
-          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>{t('kpiPositions')}</div>
-          <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em' }}>{positions.length}</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{t('kpiSecurities')}</div>
+          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>Entrate · mese</div>
+          <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmt(monthIncome)}</div>
+          <div style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            {incomePct != null && (
+              <span style={{ fontWeight: 700, color: incomePct > 2 ? '#2dd4bf' : incomePct < -2 ? '#f85149' : 'var(--text-secondary)' }}>
+                {incomePct >= 0 ? '+' : ''}{incomePct.toFixed(0)}%
+              </span>
+            )}
+            <span style={{ color: 'var(--text-secondary)' }}>vs mese scorso</span>
+          </div>
         </div>
+
+        {/* Uscite mese */}
+        <div className="ledgernest-card" style={{ padding: '18px 20px', gap: '6px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>Uscite · mese</div>
+          <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmt(monthExpenses)}</div>
+          <div style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            {expensesPct != null && (
+              <span style={{ fontWeight: 700, color: expensesPct > 5 ? '#f85149' : expensesPct < -5 ? '#2dd4bf' : 'var(--text-secondary)' }}>
+                {expensesPct >= 0 ? '+' : ''}{expensesPct.toFixed(0)}%
+              </span>
+            )}
+            {savingsRate != null && (
+              <span style={{ color: 'var(--text-secondary)' }}>risparmio {savingsRate}%</span>
+            )}
+          </div>
+        </div>
+
       </div>
 
-      {/* Area chart */}
-      <div className="ledgernest-card" style={{ padding: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: '15px' }}>{t('chartTitle')}</div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>{t('chartSubtitle')}</div>
+      {/* Charts row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
+        {/* Balance trend */}
+        <div className="ledgernest-card" style={{ padding: '18px 20px' }}>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontWeight: 700, fontSize: 15 }}>Andamento del saldo</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+              Totale conti, broker e wallet · {netWorthSnapshots.length} snapshot
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: '14px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ width: 10, height: 3, background: '#2dd4bf', borderRadius: 2, display: 'inline-block' }} />{t('chartAssets')}</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ width: 10, height: 3, background: '#f85149', borderRadius: 2, display: 'inline-block' }} />{t('chartLiabilities')}</span>
+          <BalanceTrendChart snapshots={netWorthSnapshots} />
+        </div>
+
+        {/* Cashflow */}
+        <div className="ledgernest-card" style={{ padding: '18px 20px' }}>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontWeight: 700, fontSize: 15 }}>Flusso di cassa</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>Entrate vs uscite · 6 mesi</div>
+          </div>
+          <CashflowChart transactions={transactions} fmt={fmt} />
+          <div style={{ display: 'flex', gap: 14, fontSize: 11, color: 'var(--text-secondary)', marginTop: 8 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 2, background: '#2dd4bf', display: 'inline-block' }} />Entrate
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 2, background: '#f85149', display: 'inline-block' }} />Uscite
+            </span>
           </div>
         </div>
-        <PatrimonioChart totalAssets={totalAssets} />
       </div>
 
       {/* invisible — handles banking_ok auto-import and sync state */}
@@ -456,9 +608,15 @@ export default function ContiPage() {
       {/* Header + filters */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <div style={{ fontWeight: 700, fontSize: '17px' }}>{t('sectionTitle', { n: accounts.length })}</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+          <div style={{ fontWeight: 700, fontSize: '17px' }}>{t('sectionTitle', { n: accounts.length })} · {fmt(totalAssets)}</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: 8 }}>
             {accounts.some((a) => a.bankingUid) ? 'Manuali e Open Banking' : t('sectionManual')}
+            {accounts.some((a) => a.bankingUid) && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#2dd4bf', fontSize: 11, fontWeight: 600 }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#2dd4bf' }} />
+                {accounts.filter((a) => a.bankingUid).length} sincronizzati
+              </span>
+            )}
           </div>
         </div>
         <div className="ledgernest-conti-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -520,11 +678,12 @@ export default function ContiPage() {
                   {items.length} {items.length === 1 ? t('groupItem') : t('groupItems')} · {fmt(groupTotal)}
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '12px' }}>
                 {items.map((a) => (
                   <AccountCard
                     key={a.id}
                     account={a}
+                    totalAssets={totalAssets}
                     onEdit={() => setEditingAccount(a)}
                     onDelete={() => setDeletingAccountId(a.id)}
                     onClearTx={() => setClearingAccountId(a.id)}

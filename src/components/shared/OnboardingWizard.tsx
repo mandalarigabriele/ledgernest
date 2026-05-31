@@ -202,13 +202,15 @@ function StepCurrency({ current, onSelect, onBack, onNext }: {
 }
 
 const OB_BANKS = [
-  { name: 'Credit Agricole Cariparma', country: 'IT', emoji: '🌾' },
-  { name: 'UniCredit',                 country: 'IT', emoji: '🔴' },
-  { name: 'Banca Mediolanum',          country: 'IT', emoji: '🔵' },
-  { name: 'Banco BPM',                 country: 'IT', emoji: '🏦' },
-  { name: 'N26',                       country: 'IT', emoji: '⬛' },
-  { name: 'Revolut',                   country: 'IT', emoji: '🌐' },
-]
+  { name: 'Banca Mediolanum',           country: 'IT' },
+  { name: 'Banca Nazionale del Lavoro', country: 'IT' },
+  { name: 'Banco BPM',                  country: 'IT' },
+  { name: 'BPER Banca',                 country: 'IT' },
+  { name: 'Credit Agricole Cariparma',  country: 'IT' },
+  { name: 'N26',                        country: 'IT' },
+  { name: 'Revolut',                    country: 'IT' },
+  { name: 'UniCredit',                  country: 'IT' },
+].sort((a, b) => a.name.localeCompare(b.name))
 
 // ── Step 4: Primo conto ───────────────────────────────────────
 
@@ -316,22 +318,21 @@ function StepAccount({ onBack, onFinish }: {
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
             Verrai reindirizzato alla pagina della tua banca per autorizzare l&apos;accesso in sola lettura. Al ritorno il conto verrà creato automaticamente.
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {OB_BANKS.map((b) => {
-              const active = b.name === obBank.name && b.country === obBank.country
-              return (
-                <button key={b.name} onClick={() => setObBank(b)} style={{
-                  padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 500,
-                  border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border-subtle)'}`,
-                  background: active ? 'color-mix(in oklch, var(--accent) 15%, transparent)' : 'transparent',
-                  color: active ? 'var(--accent)' : 'var(--text-secondary)',
-                  cursor: 'pointer',
-                }}>
-                  {b.emoji} {b.name}
-                </button>
-              )
-            })}
-          </div>
+          <select
+            className="ledgernest-input"
+            value={`${obBank.name}|${obBank.country}`}
+            onChange={(e) => {
+              const [name, country] = e.target.value.split('|')
+              setObBank({ name, country })
+            }}
+            style={{ height: 42, width: '100%', boxSizing: 'border-box' }}
+          >
+            {OB_BANKS.map((b) => (
+              <option key={`${b.name}|${b.country}`} value={`${b.name}|${b.country}`}>
+                {b.name}
+              </option>
+            ))}
+          </select>
           {obError && (
             <div style={{ fontSize: 12, color: 'var(--danger)' }}>{obError}</div>
           )}
