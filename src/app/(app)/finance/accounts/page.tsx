@@ -183,7 +183,6 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
 
   // Portfolio recap — match positions to this account via broker string
   const acctPositions = useMemo(() => {
-    if (account.type !== 'broker' && account.type !== 'crypto') return []
     const name   = account.name.toLowerCase()
     const broker = (account.broker ?? '').toLowerCase()
     return positions.filter((p) => {
@@ -263,56 +262,54 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
   return (
     <div className="ledgernest-card" style={{ display: 'flex', flexDirection: 'column', gap: 0, padding: 0, overflow: 'hidden', minWidth: 0, height: '100%' }}>
       {/* Card body */}
-      <div style={{ padding: '18px 20px 14px', display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
-        {/* Header: icon left, name + badges stacked right */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, minWidth: 0 }}>
+      <div style={{ padding: '16px 18px 12px', display: 'flex', flexDirection: 'column', gap: 0, flex: 1 }}>
+        {/* Header row: icon + name + OB dot */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
           <div style={{
-            width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+            width: 32, height: 32, borderRadius: 9, flexShrink: 0,
             background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: cfg.color,
           }}>
-            <Icon name={cfg.icon} size={17} />
+            <Icon name={cfg.icon} size={15} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            {/* Name — full width, wraps if needed */}
-            <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.3, wordBreak: 'break-word' }}>
+            <div style={{
+              fontWeight: 600, fontSize: 13,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
               {account.name || account.broker || 'Conto'}
             </div>
-            {/* Badges below name */}
-            <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
-              <span style={{
-                fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
-                padding: '2px 7px', borderRadius: 20,
-                color: cfg.color, background: cfg.bg,
-              }}>
-                {cfg.label}
-              </span>
-              {account.bankingUid && (
-                <span style={{
-                  fontSize: 10, fontWeight: 700,
-                  padding: '2px 7px', borderRadius: 20,
-                  color: '#2dd4bf', background: 'rgba(45,212,191,.12)',
-                  display: 'inline-flex', alignItems: 'center', gap: 3,
-                }}>
-                  <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#2dd4bf' }} />
-                  OB
-                </span>
-              )}
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 1 }}>
+              {account.broker && account.name !== account.broker ? account.broker : cfg.label}
             </div>
-            {/* Broker subtitle */}
-            {account.broker && account.name && account.name !== account.broker && (
-              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
-                {account.broker}
-              </div>
+          </div>
+          <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center' }}>
+            <span style={{
+              fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
+              padding: '2px 6px', borderRadius: 20,
+              color: cfg.color, background: cfg.bg,
+            }}>
+              {cfg.label}
+            </span>
+            {account.bankingUid && (
+              <span style={{
+                fontSize: 10, fontWeight: 700,
+                padding: '2px 6px', borderRadius: 20,
+                color: '#2dd4bf', background: 'rgba(45,212,191,.12)',
+                display: 'inline-flex', alignItems: 'center', gap: 3,
+              }}>
+                <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#2dd4bf', flexShrink: 0 }} />
+                OB
+              </span>
             )}
           </div>
         </div>
 
-        {/* Balance — marginTop auto aligns it consistently across cards */}
-        <div style={{ marginTop: 'auto', fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums' }}>
+        {/* Balance */}
+        <div style={{ marginTop: 16, fontSize: 26, fontWeight: 800, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums' }}>
           {fmt(account.balance)}
         </div>
 
-        {/* Portfolio recap — broker/crypto accounts with matching positions */}
+        {/* Portfolio recap — any account type with matching positions */}
         {acctPositions.length > 0 && (() => {
           const pnl    = portfolioMktValue - portfolioCost
           const pnlPct = portfolioCost > 0 ? (pnl / portfolioCost) * 100 : 0
