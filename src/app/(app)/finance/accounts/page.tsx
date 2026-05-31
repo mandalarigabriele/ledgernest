@@ -264,48 +264,50 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
       {/* Card body */}
       <div style={{ padding: '18px 18px 14px', display: 'flex', flexDirection: 'column', flex: 1 }}>
 
-        {/* Top: type badge + OB badge, right-aligned */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4, marginBottom: 12 }}>
-          <span style={{
-            fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
-            padding: '2px 8px', borderRadius: 20,
-            color: cfg.color, background: cfg.bg,
-          }}>
-            {cfg.label}
-          </span>
-          {account.bankingUid && (
+        {/* Header zone — fixed min-height so balance always starts at same Y */}
+        <div style={{ minHeight: 80 }}>
+          {/* Badges top-right */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4, marginBottom: 12 }}>
             <span style={{
-              fontSize: 10, fontWeight: 700,
+              fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
               padding: '2px 8px', borderRadius: 20,
-              color: '#2dd4bf', background: 'rgba(45,212,191,.12)',
-              display: 'inline-flex', alignItems: 'center', gap: 3,
+              color: cfg.color, background: cfg.bg,
             }}>
-              <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#2dd4bf', flexShrink: 0 }} />
-              OB
+              {cfg.label}
             </span>
-          )}
-        </div>
-
-        {/* Icon + name */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-          <div style={{
-            width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-            background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: cfg.color,
-          }}>
-            <Icon name={cfg.icon} size={16} />
-          </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {account.name || account.broker || 'Conto'}
-            </div>
-            {account.broker && account.name !== account.broker && (
-              <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{account.broker}</div>
+            {account.bankingUid && (
+              <span style={{
+                fontSize: 10, fontWeight: 700,
+                padding: '2px 8px', borderRadius: 20,
+                color: '#2dd4bf', background: 'rgba(45,212,191,.12)',
+                display: 'inline-flex', alignItems: 'center', gap: 3,
+              }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#2dd4bf', flexShrink: 0 }} />
+                OB
+              </span>
             )}
           </div>
+          {/* Icon + name */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+              background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: cfg.color,
+            }}>
+              <Icon name={cfg.icon} size={16} />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {account.name || account.broker || 'Conto'}
+              </div>
+              {account.broker && account.name !== account.broker && (
+                <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{account.broker}</div>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Balance */}
-        <div style={{ marginTop: 'auto', paddingTop: 16, fontSize: 26, fontWeight: 800, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums' }}>
+        {/* Balance — always at same Y thanks to fixed-height header zone above */}
+        <div style={{ marginTop: 14, fontSize: 26, fontWeight: 800, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums' }}>
           {fmt(account.balance)}
         </div>
 
