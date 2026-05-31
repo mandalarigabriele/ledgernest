@@ -29,6 +29,8 @@ const defaultSettings: AppSettings = {
   sidebarColor: undefined,
   selfName: '',
   ignoreTransfers: true,
+  alertEmailEnabled: true,
+  alertToastEnabled: true,
 }
 
 export const useSettingsStore = create<SettingsStore>()(

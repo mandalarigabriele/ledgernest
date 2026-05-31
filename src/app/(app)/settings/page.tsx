@@ -1414,7 +1414,31 @@ export default function ImpostazioniPage() {
           <div>
             <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 4 }}>{t('notificationsTitle')}</h2>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 28 }}>{t('notificationsSub')}</p>
-            <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>{t('notificationsComingSoon')}</div>
+
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: 4 }}>
+              {t('notifPriceAlertsSection')}
+            </div>
+
+            <SettingRow label={t('notifEmailLabel')} desc={t('notifEmailDesc')}>
+              <Toggle
+                checked={settings.alertEmailEnabled !== false}
+                onChange={(v) => updateSettings({ alertEmailEnabled: v })}
+              />
+            </SettingRow>
+            <SettingRow label={t('notifToastLabel')} desc={t('notifToastDesc')}>
+              <Toggle
+                checked={settings.alertToastEnabled !== false}
+                onChange={(v) => updateSettings({ alertToastEnabled: v })}
+              />
+            </SettingRow>
+            <SettingRow label={t('notifBellLabel')} desc={t('notifBellDesc')}>
+              <Toggle checked={true} onChange={() => {}} />
+            </SettingRow>
+
+            <div style={{ marginTop: 24, padding: '14px 16px', borderRadius: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+              <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{t('notifHowItWorksLabel')}: </span>
+              {t('notifHowItWorksDesc')}
+            </div>
           </div>
         )
 

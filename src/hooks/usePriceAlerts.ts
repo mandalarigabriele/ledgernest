@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import { usePricesStore } from '@/stores/pricesStore'
 import { useWatchlistStore } from '@/stores/watchlistStore'
 import { useToastStore } from '@/stores/toastStore'
+import { useSettingsStore } from '@/stores/settingsStore'
 
 export function usePriceAlerts() {
   const prevPrices = useRef<Record<string, number>>({})
@@ -27,30 +28,35 @@ export function usePriceAlerts() {
             : (prev === undefined || prev > alert.threshold) && curr <= alert.threshold
 
         if (triggered) {
+          const { alertEmailEnabled, alertToastEnabled } = useSettingsStore.getState().settings
           markAlertTriggered(alert.id)
-          useToastStore.getState().push({
-            ticker:    alert.ticker,
-            threshold: alert.threshold,
-            direction: alert.direction,
-            price:     curr,
-          })
+          if (alertToastEnabled !== false) {
+            useToastStore.getState().push({
+              ticker:    alert.ticker,
+              threshold: alert.threshold,
+              direction: alert.direction,
+              price:     curr,
+            })
+          }
           // mark as triggered in DB
           fetch(`/api/watchlist/alerts/${alert.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ active: false, triggeredAt: new Date().toISOString() }),
           }).catch(() => {})
-          // send email
-          fetch('/api/watchlist/alerts/notify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              ticker:    alert.ticker,
-              threshold: alert.threshold,
-              direction: alert.direction,
-              price:     curr,
-            }),
-          }).catch(() => {})
+          // send email only if enabled
+          if (alertEmailEnabled !== false) {
+            fetch('/api/watchlist/alerts/notify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                ticker:    alert.ticker,
+                threshold: alert.threshold,
+                direction: alert.direction,
+                price:     curr,
+              }),
+            }).catch(() => {})
+          }
         }
       }
 

@@ -230,6 +230,8 @@ export interface AppSettings {
   ignoreTransfers?: boolean
   pinnedBudgetMonth?: string | null
   obSyncInterval?: 3600 | 14400 | 86400 | null
+  alertEmailEnabled?: boolean
+  alertToastEnabled?: boolean
 }
 
 // ---- UI Store -----------------------------------------------
