@@ -55,7 +55,7 @@ export default function Topbar() {
     "/portfolio/dividends":    { title: tn("dividendi"),     sub: tb("subDividendi") },
     "/portfolio/commodity":    { title: tn("commodity"),     sub: tb("subCommodity") },
     "/portfolio/heatmap":      { title: tn("heatmap"),       sub: tb("subHeatmap") },
-    "/portfolio/screener":     { title: tn("screener"),      sub: tb("subWatchlist") },
+    "/portfolio/watchlist":    { title: tn("screener"),      sub: tb("subWatchlist") },
     "/finance/accounts":       { title: tn("conti"),         sub: tb("subConti") },
     "/finance/transactions":   { title: tn("movimenti"),     sub: tb("subMovimenti") },
     "/finance/budget":         { title: tn("budget"),        sub: tb("subBudget") },

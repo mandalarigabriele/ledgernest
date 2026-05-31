@@ -350,7 +350,7 @@ ledgernest/
 │   │   │   │   ├── commodity/       # Commodity positions
 │   │   │   │   ├── dividends/       # Dividend calendar
 │   │   │   │   ├── heatmap/         # Performance heatmap
-│   │   │   │   └── screener/        # Market screener
+│   │   │   │   └── watchlist/       # Watchlist & price alerts
 │   │   │   ├── finance/
 │   │   │   │   ├── accounts/        # Bank accounts, wallets & OB sync
 │   │   │   │   ├── transactions/    # All transactions

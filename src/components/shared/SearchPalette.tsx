@@ -19,7 +19,7 @@ const SECTION_META = [
   { id: 'dividendi',  icon: 'dividendi',    href: '/portfolio/dividends',    navKey: 'dividendi',  groupKey: 'portfolio' },
   { id: 'crypto',     icon: 'crypto',       href: '/portfolio/crypto',       navKey: 'crypto',     groupKey: 'portfolio' },
   { id: 'etf',        icon: 'etf',          href: '/portfolio/etf',          navKey: 'etf',        groupKey: 'portfolio' },
-  { id: 'screener',   icon: 'screener',     href: '/portfolio/screener',     navKey: 'screener',   groupKey: 'analisi'   },
+  { id: 'screener',   icon: 'screener',     href: '/portfolio/watchlist',    navKey: 'screener',   groupKey: 'analisi'   },
   { id: 'heatmap',    icon: 'heatmap',      href: '/portfolio/heatmap',      navKey: 'heatmap',    groupKey: 'analisi'   },
   { id: 'conti',      icon: 'conti',        href: '/finance/accounts',       navKey: 'conti',      groupKey: 'finanze'   },
   { id: 'movimenti',  icon: 'movimenti',    href: '/finance/transactions',   navKey: 'movimenti',  groupKey: 'finanze'   },

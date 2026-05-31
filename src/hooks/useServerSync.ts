@@ -7,6 +7,7 @@ import { useSettingsStore } from '@/stores/settingsStore'
 import { usePricesStore } from '@/stores/pricesStore'
 import { usePortfolioSnapshotStore } from '@/stores/portfolioSnapshotStore'
 import { useWatchlistStore } from '@/stores/watchlistStore'
+import { useNotificationsStore } from '@/stores/notificationsStore'
 
 type FinanceData = Parameters<ReturnType<typeof useFinanceStore.getState>['hydrate']>[0]
 type PortfolioData = Parameters<ReturnType<typeof usePortfolioStore.getState>['hydrate']>[0]
@@ -30,6 +31,7 @@ export function useServerSync() {
     useSettingsStore.persist.rehydrate()
     usePricesStore.persist.rehydrate()
     usePortfolioSnapshotStore.persist.rehydrate()
+    useNotificationsStore.persist.rehydrate()
 
     async function load() {
       try {

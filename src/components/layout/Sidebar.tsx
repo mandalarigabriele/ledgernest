@@ -25,7 +25,7 @@ const portfolioItems: NavItem[] = [
 ]
 
 const analisiItems: NavItem[] = [
-  { href: '/portfolio/screener',     icon: 'screener',   labelKey: 'screener' },
+  { href: '/portfolio/watchlist',     icon: 'screener',   labelKey: 'screener' },
   { href: '/portfolio/heatmap',      icon: 'heatmap',    labelKey: 'heatmap' },
 ]
 

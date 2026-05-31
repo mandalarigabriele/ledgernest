@@ -14,6 +14,6 @@ export const useNotificationsStore = create<NotificationsStore>()(
       dismiss:    (id)  => set((s) => ({ dismissedIds: [...s.dismissedIds, id] })),
       dismissAll: (ids) => set((s) => ({ dismissedIds: Array.from(new Set([...s.dismissedIds, ...ids])) })),
     }),
-    { name: 'ledgernest-notifications' }
+    { name: 'ledgernest-notifications', skipHydration: true }
   )
 )

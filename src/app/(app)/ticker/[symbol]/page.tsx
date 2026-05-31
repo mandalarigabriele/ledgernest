@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import TradingViewWidget from '@/components/charts/TradingViewWidget'
 import { useWatchlistStore } from '@/stores/watchlistStore'
-import { AddItemModal } from '@/app/(app)/portfolio/screener/page'
+import { AddItemModal } from '@/app/(app)/portfolio/watchlist/page'
 
 interface Props {
   params: { symbol: string }
