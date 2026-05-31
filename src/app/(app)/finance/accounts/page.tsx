@@ -176,7 +176,31 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
   const t = useTranslations('conti')
   const { fmt } = useFormatters()
   const { transactions, updateAccount, addTransaction, updateTransaction } = useFinanceStore()
+  const { positions } = usePortfolioStore()
+  const { quotes } = usePricesStore()
+  const showPrePost = useSettingsStore((s) => s.settings.showPrePostMarket)
   const txCount = transactions.filter((tx) => tx.accountId === account.id).length
+
+  // Portfolio recap — match positions to this account via broker string
+  const acctPositions = useMemo(() => {
+    if (account.type !== 'broker' && account.type !== 'crypto') return []
+    const name   = account.name.toLowerCase()
+    const broker = (account.broker ?? '').toLowerCase()
+    return positions.filter((p) => {
+      const b = p.broker.toLowerCase()
+      return broker === b || name === b
+        || (broker && (broker.includes(b) || b.includes(broker)))
+        || name.includes(b) || b.includes(name)
+    })
+  }, [positions, account])
+
+  const portfolioMktValue = useMemo(() =>
+    acctPositions.reduce((sum, p) => sum + effectivePriceEur(quotes[p.ticker], p.avgPrice, showPrePost) * p.quantity, 0),
+    [acctPositions, quotes, showPrePost])
+
+  const portfolioCost = useMemo(() =>
+    acctPositions.reduce((sum, p) => sum + p.avgPrice * p.quantity, 0),
+    [acctPositions])
   const [syncing, setSyncing]         = useState(false)
   const [syncMsg, setSyncMsg]         = useState<{ text: string; ok: boolean } | null>(null)
   const [rateLimited, setRateLimited] = useState(false)
@@ -237,9 +261,9 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
   const pct = totalAssets > 0 ? (account.balance / totalAssets) * 100 : 0
 
   return (
-    <div className="ledgernest-card" style={{ display: 'flex', flexDirection: 'column', gap: 0, padding: 0, overflow: 'hidden', minWidth: 0 }}>
+    <div className="ledgernest-card" style={{ display: 'flex', flexDirection: 'column', gap: 0, padding: 0, overflow: 'hidden', minWidth: 0, height: '100%' }}>
       {/* Card body */}
-      <div style={{ padding: '18px 20px 14px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ padding: '18px 20px 14px', display: 'flex', flexDirection: 'column', gap: 14, flex: 1 }}>
         {/* Header: single line — icon + name + type badge + OB badge */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
           <div style={{
@@ -250,7 +274,7 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
           </div>
 
           <div style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
-            {account.name}
+            {account.name || account.broker || 'Conto'}
           </div>
 
           {/* Type badge */}
@@ -288,6 +312,48 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
           {fmt(account.balance)}
         </div>
 
+        {/* Portfolio recap — broker/crypto accounts with matching positions */}
+        {acctPositions.length > 0 && (() => {
+          const pnl    = portfolioMktValue - portfolioCost
+          const pnlPct = portfolioCost > 0 ? (pnl / portfolioCost) * 100 : 0
+          const isPos  = pnl >= 0
+          return (
+            <div style={{
+              display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+              gap: 8, padding: '10px 12px', borderRadius: 10,
+              background: 'var(--bg-elevated)',
+            }}>
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.04em', marginBottom: 2 }}>
+                  MERCATO
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                  {fmt(portfolioMktValue)}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.04em', marginBottom: 2 }}>
+                  INVESTITO
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                  {fmt(portfolioCost)}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.04em', marginBottom: 2 }}>
+                  P&amp;L
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isPos ? '#2dd4bf' : '#f85149' }}>
+                  {isPos ? '+' : ''}{fmt(pnl)}
+                  <span style={{ fontSize: 10, fontWeight: 600, marginLeft: 3 }}>
+                    ({isPos ? '+' : ''}{pnlPct.toFixed(1)}%)
+                  </span>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
+
         {/* Progress bar */}
         {totalAssets > 0 && (
           <div>
@@ -301,98 +367,96 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
         )}
       </div>
 
-      {/* Actions */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: '1fr 1fr',
-        borderTop: '1px solid var(--border-subtle)', padding: '10px 14px', gap: '8px',
-      }}>
-        <button
-          className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm"
-          style={{ justifyContent: 'center', fontSize: '12px', gap: '5px' }}
-          onClick={onEdit}
-        >
-          <Icon name="edit" size={13} />
-          {t('cardEdit')}
-        </button>
-        <button
-          className="ledgernest-btn ledgernest-btn-sm"
-          style={{ justifyContent: 'center', fontSize: '12px', gap: '5px', color: 'var(--danger)', background: 'color-mix(in oklch, var(--danger) 10%, transparent)', border: 'none' }}
-          onClick={onDelete}
-        >
-          <Icon name="trash" size={13} />
-          {t('cardDelete')}
-        </button>
-        {account.bankingUid && (
-          <>
-            {/* Sync button + mode dropdown */}
-            <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 4, opacity: rateLimited ? 0.5 : 1 }}>
-              <button
-                className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm"
-                style={{ flex: 1, justifyContent: 'center', fontSize: '12px', gap: '5px' }}
-                onClick={() => handleObSync('delta')}
-                disabled={syncing || rateLimited}
-                title={rateLimited ? 'Limite giornaliero raggiunto — riprova domani' : 'Importa solo movimenti nuovi'}
-              >
-                <Icon name="refresh" size={12} />
-                {syncing ? 'Sincronizzando…' : rateLimited ? 'Limite raggiunto' : 'Sincronizza'}
-              </button>
-              <div style={{ position: 'relative' }}>
+      {/* Actions — single row */}
+      <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm"
+            style={{ flex: 1, justifyContent: 'center', fontSize: '12px', gap: '5px' }}
+            onClick={onEdit}
+          >
+            <Icon name="edit" size={13} />
+            {t('cardEdit')}
+          </button>
+          <button
+            className="ledgernest-btn ledgernest-btn-sm"
+            style={{ flex: 1, justifyContent: 'center', fontSize: '12px', gap: '5px', color: 'var(--danger)', background: 'color-mix(in oklch, var(--danger) 10%, transparent)', border: 'none' }}
+            onClick={onDelete}
+          >
+            <Icon name="trash" size={13} />
+            {t('cardDelete')}
+          </button>
+          {account.bankingUid && (
+            <div style={{ position: 'relative', flex: 1, opacity: rateLimited ? 0.5 : 1 }}>
+              {/* Split button: Sync | ▾ in one unified control */}
+              <div style={{
+                display: 'flex', border: '1px solid var(--border-subtle)', borderRadius: 9, overflow: 'hidden',
+              }}>
                 <button
                   className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm"
-                  style={{ padding: '0 8px', fontSize: 12 }}
+                  style={{ flex: 1, justifyContent: 'center', fontSize: '12px', gap: '5px', border: 'none', borderRadius: 0 }}
+                  onClick={() => handleObSync('delta')}
+                  disabled={syncing || rateLimited}
+                  title={rateLimited ? 'Limite giornaliero raggiunto — riprova domani' : 'Importa solo movimenti nuovi'}
+                >
+                  <Icon name="refresh" size={12} />
+                  {syncing ? '…' : rateLimited ? 'Limite' : 'Sync'}
+                </button>
+                <div style={{ width: 1, background: 'var(--border-subtle)', flexShrink: 0 }} />
+                <button
+                  className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm"
+                  style={{ padding: '0 10px', fontSize: 11, border: 'none', borderRadius: 0 }}
                   onClick={() => setSyncMenuOpen((v) => !v)}
                   disabled={syncing || rateLimited}
                   title="Opzioni sync"
                 >▾</button>
-                {syncMenuOpen && (
-                  <div
-                    style={{
-                      position: 'absolute', bottom: '100%', right: 0, marginBottom: 4,
-                      background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
-                      borderRadius: 10, padding: '4px', display: 'flex', flexDirection: 'column',
-                      gap: 2, zIndex: 50, minWidth: 190, boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-                    }}
-                  >
-                    {([
-                      { mode: 'delta' as const,      label: 'Delta',      desc: 'Solo nuovi, rispetta eliminati' },
-                      { mode: 'force' as const,       label: 'Force',      desc: 'Riallinea tutto, salta eliminati' },
-                      { mode: 'hard-reset' as const,  label: 'Hard reset', desc: 'Reimporta tutto inclusi eliminati' },
-                    ] as const).map(({ mode, label, desc }) => (
-                      <button
-                        key={mode}
-                        className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm"
-                        style={{ justifyContent: 'flex-start', flexDirection: 'column', alignItems: 'flex-start', padding: '6px 10px', gap: 1 }}
-                        onClick={() => handleObSync(mode)}
-                      >
-                        <span style={{ fontWeight: 600, fontSize: 12 }}>{label}</span>
-                        <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 400 }}>{desc}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
+              {syncMenuOpen && (
+                <div style={{
+                  position: 'absolute', bottom: '100%', right: 0, marginBottom: 4,
+                  background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+                  borderRadius: 10, padding: '4px', display: 'flex', flexDirection: 'column',
+                  gap: 2, zIndex: 50, minWidth: 190, boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                }}>
+                  {([
+                    { mode: 'delta' as const,     label: 'Delta',      desc: 'Solo nuovi, rispetta eliminati' },
+                    { mode: 'force' as const,      label: 'Force',      desc: 'Riallinea tutto, salta eliminati' },
+                    { mode: 'hard-reset' as const, label: 'Hard reset', desc: 'Reimporta tutto inclusi eliminati' },
+                  ] as const).map(({ mode, label, desc }) => (
+                    <button
+                      key={mode}
+                      className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm"
+                      style={{ justifyContent: 'flex-start', flexDirection: 'column', alignItems: 'flex-start', padding: '6px 10px', gap: 1 }}
+                      onClick={() => handleObSync(mode)}
+                    >
+                      <span style={{ fontWeight: 600, fontSize: 12 }}>{label}</span>
+                      <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 400 }}>{desc}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            {syncMsg && (
-              <div style={{
-                gridColumn: '1 / -1', fontSize: 11, textAlign: 'center', padding: '4px 8px',
-                borderRadius: 6, fontWeight: 500,
-                color: syncMsg.ok ? '#2dd4bf' : 'var(--danger)',
-                background: syncMsg.ok ? 'rgba(45,212,191,.1)' : 'color-mix(in oklch, var(--danger) 12%, transparent)',
-              }}>
-                {syncMsg.text}
-              </div>
-            )}
-          </>
-        )}
-        {txCount > 0 && (
-          <button
-            className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm"
-            style={{ justifyContent: 'center', fontSize: '12px', gap: '5px', gridColumn: '1 / -1', color: 'var(--text-secondary)' }}
-            onClick={onClearTx}
-          >
-            <Icon name="trash" size={12} />
-            Svuota movimenti ({txCount})
-          </button>
+          )}
+          {!account.bankingUid && txCount > 0 && (
+            <button
+              className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm"
+              style={{ flex: 1, justifyContent: 'center', fontSize: '12px', gap: '5px', color: 'var(--text-secondary)' }}
+              onClick={onClearTx}
+            >
+              <Icon name="trash" size={12} />
+              Svuota ({txCount})
+            </button>
+          )}
+        </div>
+        {syncMsg && (
+          <div style={{
+            fontSize: 11, textAlign: 'center', padding: '3px 8px',
+            borderRadius: 6, fontWeight: 500,
+            color: syncMsg.ok ? '#2dd4bf' : 'var(--danger)',
+            background: syncMsg.ok ? 'rgba(45,212,191,.1)' : 'color-mix(in oklch, var(--danger) 12%, transparent)',
+          }}>
+            {syncMsg.text}
+          </div>
         )}
       </div>
     </div>
@@ -557,17 +621,6 @@ export default function ContiPage() {
 
   const filtered = filter === 'all' ? accounts : accounts.filter((a) => a.type === filter)
 
-  const grouped = useMemo(() => {
-    const map: Record<string, Account[]> = {}
-    for (const a of filtered) {
-      const g = TYPE_CONFIG[a.type].group
-      if (!map[g]) map[g] = []
-      map[g].push(a)
-    }
-    return map
-  }, [filtered]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const groupOrder = [t('typeBankGroup'), t('typeBrokerGroup'), t('typeCryptoGroup'), t('typeOtherGroup')]
   const deletingAccount = accounts.find((a) => a.id === deletingAccountId)
   const clearingAccount = accounts.find((a) => a.id === clearingAccountId)
 
@@ -589,6 +642,11 @@ export default function ContiPage() {
             )}
             <span style={{ color: 'var(--text-secondary)' }}>{accounts.length} {t('kpiAccounts')}</span>
           </div>
+          {portfolioValue > 0 && (
+            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: 2 }}>
+              di cui {fmt(portfolioValue)} investimenti
+            </div>
+          )}
         </div>
 
         {/* Liquidità */}
@@ -732,35 +790,19 @@ export default function ContiPage() {
           </div>
         </div>
       ) : (
-        groupOrder.map((group) => {
-          const items = grouped[group]
-          if (!items || items.length === 0) return null
-          const groupTotal = items.reduce((s, a) => s + a.balance, 0)
-          return (
-            <div key={group}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text-secondary)' }}>
-                  {group}
-                </div>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                  {items.length} {items.length === 1 ? t('groupItem') : t('groupItems')} · {fmt(groupTotal)}
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '12px' }}>
-                {items.map((a) => (
-                  <AccountCard
-                    key={a.id}
-                    account={a}
-                    totalAssets={totalAssets}
-                    onEdit={() => setEditingAccount(a)}
-                    onDelete={() => setDeletingAccountId(a.id)}
-                    onClearTx={() => setClearingAccountId(a.id)}
-                  />
-                ))}
-              </div>
+        <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: 4, alignItems: 'stretch' }}>
+          {filtered.map((a) => (
+            <div key={a.id} style={{ flex: '0 0 300px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+              <AccountCard
+                account={a}
+                totalAssets={totalAssets}
+                onEdit={() => setEditingAccount(a)}
+                onDelete={() => setDeletingAccountId(a.id)}
+                onClearTx={() => setClearingAccountId(a.id)}
+              />
             </div>
-          )
-        })
+          ))}
+        </div>
       )}
 
       {editingAccount && (
