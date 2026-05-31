@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { Resend } from 'resend'
-
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(req: NextRequest) {
+  if (!process.env.RESEND_API_KEY) {
+    return NextResponse.json({ ok: true, skipped: 'no RESEND_API_KEY' })
+  }
+
   const session = await getServerSession()
   const to      = session?.user?.email
   if (!to) return NextResponse.json({ error: 'not authenticated' }, { status: 401 })
@@ -15,6 +16,9 @@ export async function POST(req: NextRequest) {
 
   const arrow = direction === 'above' ? '↑' : '↓'
   const label = direction === 'above' ? 'superato' : 'sceso sotto'
+
+  const { Resend } = await import('resend')
+  const resend = new Resend(process.env.RESEND_API_KEY)
 
   try {
     await resend.emails.send({
