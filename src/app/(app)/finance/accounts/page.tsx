@@ -263,52 +263,52 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
   return (
     <div className="ledgernest-card" style={{ display: 'flex', flexDirection: 'column', gap: 0, padding: 0, overflow: 'hidden', minWidth: 0, height: '100%' }}>
       {/* Card body */}
-      <div style={{ padding: '18px 20px 14px', display: 'flex', flexDirection: 'column', gap: 14, flex: 1 }}>
-        {/* Header: single line — icon + name + type badge + OB badge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+      <div style={{ padding: '18px 20px 14px', display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
+        {/* Header: icon left, name + badges stacked right */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, minWidth: 0 }}>
           <div style={{
             width: 36, height: 36, borderRadius: 10, flexShrink: 0,
             background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: cfg.color,
           }}>
             <Icon name={cfg.icon} size={17} />
           </div>
-
-          <div style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
-            {account.name || account.broker || 'Conto'}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Name — full width, wraps if needed */}
+            <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.3, wordBreak: 'break-word' }}>
+              {account.name || account.broker || 'Conto'}
+            </div>
+            {/* Badges below name */}
+            <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
+              <span style={{
+                fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
+                padding: '2px 7px', borderRadius: 20,
+                color: cfg.color, background: cfg.bg,
+              }}>
+                {cfg.label}
+              </span>
+              {account.bankingUid && (
+                <span style={{
+                  fontSize: 10, fontWeight: 700,
+                  padding: '2px 7px', borderRadius: 20,
+                  color: '#2dd4bf', background: 'rgba(45,212,191,.12)',
+                  display: 'inline-flex', alignItems: 'center', gap: 3,
+                }}>
+                  <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#2dd4bf' }} />
+                  OB
+                </span>
+              )}
+            </div>
+            {/* Broker subtitle */}
+            {account.broker && account.name && account.name !== account.broker && (
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
+                {account.broker}
+              </div>
+            )}
           </div>
-
-          {/* Type badge */}
-          <span style={{
-            flexShrink: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
-            padding: '2px 7px', borderRadius: 20,
-            color: cfg.color, background: cfg.bg,
-          }}>
-            {cfg.label}
-          </span>
-
-          {/* OB badge */}
-          {account.bankingUid && (
-            <span style={{
-              flexShrink: 0, fontSize: 10, fontWeight: 700,
-              padding: '2px 7px', borderRadius: 20,
-              color: '#2dd4bf', background: 'rgba(45,212,191,.12)',
-              display: 'inline-flex', alignItems: 'center', gap: 3,
-            }}>
-              <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#2dd4bf' }} />
-              OB
-            </span>
-          )}
         </div>
 
-        {/* Broker subtitle — only if set */}
-        {account.broker && (
-          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: -8 }}>
-            {account.broker}
-          </div>
-        )}
-
-        {/* Balance */}
-        <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums' }}>
+        {/* Balance — marginTop auto aligns it consistently across cards */}
+        <div style={{ marginTop: 'auto', fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums' }}>
           {fmt(account.balance)}
         </div>
 
@@ -440,11 +440,11 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
           {!account.bankingUid && txCount > 0 && (
             <button
               className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm"
-              style={{ flex: 1, justifyContent: 'center', fontSize: '12px', gap: '5px', color: 'var(--text-secondary)' }}
+              style={{ padding: '0 10px', color: 'var(--text-tertiary)' }}
               onClick={onClearTx}
+              title={`Svuota movimenti (${txCount})`}
             >
-              <Icon name="trash" size={12} />
-              Svuota ({txCount})
+              <Icon name="trash" size={13} />
             </button>
           )}
         </div>
