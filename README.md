@@ -4,7 +4,7 @@
 
 **Personal finance dashboard — portfolio, budget, net worth and cashflow in one place.**
 
-![Version](https://img.shields.io/badge/version-0.3.18-blue)
+![Version](https://img.shields.io/badge/version-0.4.0-blue)
 ![Next.js](https://img.shields.io/badge/Next.js-14-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.5-blue)
 ![License](https://img.shields.io/badge/license-private-lightgrey)
@@ -29,8 +29,8 @@
 - Automatic EUR/USD exchange-rate correction on average cost basis
 
 ### 🏦 Finances
-- **Accounts** — bank accounts, brokers, crypto wallets with aggregated balance
-- **Transactions** — merchant logo, categories, CSV import
+- **Accounts** — bank accounts, brokers, crypto wallets with aggregated balance; Open Banking (PSD2) connection via Enable Banking
+- **Transactions** — merchant logo, categories, CSV import, automatic import from connected bank accounts
 - **Budget** — monthly planning by group/category, planned vs actual, 50/30/20 targets, per-category notes, pinnable default month, dynamic date range (first data month → +11 months)
 - **Recurring** — recurring income and expenses with annual projection
 - **Goals** — savings targets with progress tracking
@@ -42,7 +42,7 @@
 - **Profile** — language (EN/IT), currency display, account holder name for transfer detection
 - **Categories** — full category/subcategory manager with emoji, colour and group assignment
 - **Merchants** — logo management, name normalisation, merchant merge/alias rules
-- **Markets** — price refresh interval (UI), snapshot interval (server cron), pre/post market prices, portfolio visibility
+- **Markets** — price refresh interval (UI), snapshot interval (server cron), Open Banking auto-sync interval (1h / 4h / daily), pre/post market prices, portfolio visibility
 - **Data** — CSV import, portfolio reset, snapshot reset, full data reset
 
 ### 🌐 Internationalisation
@@ -71,6 +71,7 @@
 | State | Zustand (client-side, persistent) |
 | i18n | next-intl (EN / IT) |
 | Prices | Yahoo Finance (`yahoo-finance2`), CoinGecko |
+| Open Banking | Enable Banking API (PSD2, JWT RS256/ES256) |
 | UI | Custom CSS (no Tailwind), native SVG charts |
 
 ---
@@ -104,13 +105,16 @@ Open [http://localhost:3000](http://localhost:3000).
 
 Copy `.env.example` → `.env.local` and fill in:
 
-| Variable | Description |
-|---|---|
-| `NEXTAUTH_URL` | Public URL of the app (e.g. `http://localhost:3000`) |
-| `NEXTAUTH_SECRET` | Random string — generate with `openssl rand -base64 32` |
-| `GOOGLE_CLIENT_ID` | Client ID from Google Cloud Console |
-| `GOOGLE_CLIENT_SECRET` | Client Secret from Google Cloud Console |
-| `ALLOWED_EMAILS` | Comma-separated list of authorised email addresses |
+| Variable | Required | Description |
+|---|---|---|
+| `NEXTAUTH_URL` | ✅ | Public URL of the app (e.g. `http://localhost:3000`) |
+| `NEXTAUTH_SECRET` | ✅ | Random string — generate with `openssl rand -base64 32` |
+| `GOOGLE_CLIENT_ID` | ✅ | Client ID from Google Cloud Console |
+| `GOOGLE_CLIENT_SECRET` | ✅ | Client Secret from Google Cloud Console |
+| `ALLOWED_EMAILS` | ✅ | Comma-separated list of authorised email addresses |
+| `CRON_SECRET` | ✅ | Secret for protecting `POST /api/cron/snapshot` — generate with `openssl rand -base64 32` |
+| `ENABLEBANKING_APP_ID` | ➖ | Enable Banking application ID (Open Banking only) |
+| `ENABLEBANKING_PRIVATE_KEY` | ➖ | RSA/EC private key in PEM format for Enable Banking JWT signing |
 
 ### Configuring Google OAuth
 
@@ -119,6 +123,89 @@ Copy `.env.example` → `.env.local` and fill in:
 3. Type: **Web application**
 4. Authorized redirect URIs: `http://YOUR-HOST:3000/api/auth/callback/google`
 5. Copy Client ID and Client Secret into `.env.local`
+
+---
+
+## 🏦 Open Banking (PSD2)
+
+LedgerNest integrates with [Enable Banking](https://enablebanking.com) to connect bank accounts and automatically import transactions via PSD2. The integration is **optional** — the app works fully without it.
+
+### Supported banks
+
+Any bank available in the Enable Banking catalogue. Italian accounts confirmed working:
+
+| Bank | Country |
+|---|---|
+| Credit Agricole Cariparma | IT |
+| UniCredit | IT |
+| Banca Mediolanum | IT |
+| Banco BPM | IT |
+| Banca Nazionale del Lavoro | IT |
+| BPER Banca | IT |
+| N26 | IT |
+| Revolut | IT |
+
+To see the full list for your country, call `GET /api/banking/aspsps?country=IT` (or `FR`, `DE`, etc.) while logged in.
+
+### Setup
+
+#### 1. Create an Enable Banking application
+
+1. Register at [enablebanking.com](https://enablebanking.com) and create a **production** application
+2. Fill in:
+   - **Application name:** LedgerNest
+   - **Allowed redirect URLs:** `https://YOUR-DOMAIN/api/banking/callback`
+   - **Privacy URL:** `https://YOUR-DOMAIN/privacy`
+   - **Terms URL:** `https://YOUR-DOMAIN/terms`
+   - **Email for data protection:** your email
+3. Download the generated **RSA private key** (`.pem` file)
+
+#### 2. Add credentials to `.env.local`
+
+```bash
+ENABLEBANKING_APP_ID=your-application-id
+
+# Paste the full PEM content — multi-line is supported inside double quotes
+ENABLEBANKING_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----
+MIIEvQ...
+-----END PRIVATE KEY-----"
+```
+
+> **HTTPS required** for production. For local development use [ngrok](https://ngrok.com):
+> ```bash
+> winget install ngrok.ngrok     # Windows
+> ngrok config add-authtoken YOUR_TOKEN
+> ngrok http 3000
+> ```
+> Then set `NEXTAUTH_URL=https://YOUR-NGROK-URL` and add the ngrok callback URL to Enable Banking and Google OAuth.
+
+#### 3. Connect a bank account
+
+1. Go to **Finance → Accounts**
+2. Click **+ Conto** → select **Banca** → switch to the **Open Banking** tab
+3. Pick your bank and click **Connetti**
+4. Authenticate on your bank's website and grant read-only access
+5. On return, LedgerNest auto-creates and links the account
+
+#### 4. Sync transactions
+
+- Click **Sync Open Banking** on the account card to import transactions on demand
+- Or set an automatic interval in **Settings → Markets → Sync Open Banking** (1h / 4h / daily)
+
+> **Note:** The first sync imports up to 90 days of history. Subsequent syncs only fetch new transactions (deduplication by transaction ID).
+
+### Architecture
+
+| Component | Purpose |
+|---|---|
+| `POST /api/banking/connect` | Creates an Enable Banking auth session and returns the bank redirect URL |
+| `GET /api/banking/callback` | Receives the OAuth callback, exchanges the code for a session, imports accounts |
+| `GET/POST/PATCH /api/banking/accounts` | Lists connected accounts, refreshes balances, updates local ↔ EB links |
+| `POST /api/banking/sync` | Fetches new transactions, cleans descriptions using CSV import rules, stores in finance store |
+| `GET /api/banking/aspsps` | Proxies the Enable Banking ASPSP catalogue (bank list) |
+| `EnableBankingPanel` | Invisible background component: auto-imports accounts on return from auth, drives auto-sync interval |
+
+JWT authentication uses RS256 (RSA) or ES256 (EC) depending on the key type, detected automatically at runtime.
 
 ---
 
@@ -207,7 +294,7 @@ ledgernest/
 │   │   │   │   ├── heatmap/         # Performance heatmap
 │   │   │   │   └── screener/        # Market screener
 │   │   │   ├── finance/
-│   │   │   │   ├── accounts/        # Bank accounts & wallets
+│   │   │   │   ├── accounts/        # Bank accounts, wallets & OB sync
 │   │   │   │   ├── transactions/    # All transactions
 │   │   │   │   ├── budget/          # Monthly budget
 │   │   │   │   ├── recurring/       # Recurring income/expenses
@@ -215,15 +302,43 @@ ledgernest/
 │   │   │   │   ├── net-worth/       # Net worth history
 │   │   │   │   └── report/          # Expense reports
 │   │   │   └── settings/            # App settings
-│   │   ├── api/                     # API routes (prices, sync, auth)
+│   │   ├── api/
+│   │   │   ├── auth/                # NextAuth Google OAuth
+│   │   │   ├── banking/             # Open Banking (PSD2) via Enable Banking
+│   │   │   │   ├── connect/         # POST — create auth session → redirect URL
+│   │   │   │   ├── callback/        # GET  — OAuth return, import accounts
+│   │   │   │   ├── accounts/        # GET/POST/PATCH — list, refresh, link accounts
+│   │   │   │   ├── sync/            # POST — import new transactions
+│   │   │   │   └── aspsps/          # GET  — available banks catalogue
+│   │   │   ├── cron/snapshot/       # POST — scheduled portfolio snapshot (CRON_SECRET)
+│   │   │   ├── data/export/         # GET  — full data export
+│   │   │   ├── dividends/           # Dividend data
+│   │   │   ├── portfolio-chart/     # Portfolio performance data
+│   │   │   ├── portfolio/heatmap/   # Heatmap data
+│   │   │   ├── prices/              # Live stock/crypto quotes + history
+│   │   │   ├── snapshots/           # Portfolio & net worth snapshots
+│   │   │   ├── sparklines/          # 7-day sparklines
+│   │   │   ├── sync/                # Server-side Zustand state sync
+│   │   │   ├── ticker-info/         # Ticker metadata
+│   │   │   └── ticker-search/       # Ticker search
+│   │   ├── privacy/                 # Privacy policy page (public)
+│   │   ├── terms/                   # Terms of use page (public)
+│   │   ├── login/                   # Login page
 │   │   └── globals.css              # Global styles
 │   ├── components/
-│   │   ├── charts/                  # LineChart, Donut, Sparkline, …
+│   │   ├── charts/                  # LineChart, Donut, Sparkline, Heatmap, …
 │   │   ├── layout/                  # Sidebar, Topbar, BottomNav
-│   │   └── shared/                  # Modals, Icon, SearchPalette, EmojiPicker, Wizard
+│   │   └── shared/
+│   │       ├── modals/              # AccountModal (+ Open Banking tab), BuyModal, …
+│   │       ├── EnableBankingPanel   # Background: auto-import on OB callback, auto-sync
+│   │       ├── CSVImportWizard      # CSV import flow
+│   │       ├── OnboardingWizard     # First-run setup (includes OB connect option)
+│   │       ├── EmojiPicker, CategoryPicker, SearchPalette, Icon, …
 │   ├── hooks/
 │   │   ├── useFormatters.ts         # Currency-aware number formatters
-│   │   └── usePortfolioChart.ts     # Portfolio chart data with live now-point
+│   │   ├── usePortfolioChart.ts     # Portfolio chart data with live now-point
+│   │   ├── usePortfolioSnapshot.ts  # Snapshot polling & persistence
+│   │   └── useServerSync.ts         # Server-side state sync hook
 │   ├── i18n/
 │   │   ├── locales/
 │   │   │   ├── en.json              # English strings
@@ -232,9 +347,12 @@ ledgernest/
 │   ├── stores/                      # Zustand stores (finance, portfolio, ui, prices, settings)
 │   ├── lib/
 │   │   ├── db/                      # SQLite schema + migrations
-│   │   ├── services/                # Yahoo Finance, CoinGecko
-│   │   └── utils/                   # Formatters, CSV import, price helpers
-│   └── types/                       # TypeScript types
+│   │   ├── services/
+│   │   │   ├── yahooFinance.ts      # Yahoo Finance quotes & history
+│   │   │   ├── coinGecko.ts         # CoinGecko crypto prices
+│   │   │   └── enableBanking.ts     # Enable Banking API client (JWT signing, PSD2 calls)
+│   │   └── utils/                   # Formatters, CSV import (+ merchant cleaning rules), price helpers
+│   └── types/                       # TypeScript types (Account, Transaction, AppSettings, …)
 ├── .env.example                     # Environment variable template
 └── README.md
 ```
@@ -252,6 +370,19 @@ Useful commands:
 npm run db:migrate   # create/update schema
 npm run db:reset     # ⚠️ FULL RESET (deletes all data)
 ```
+
+### Tables
+
+| Table | Purpose |
+|---|---|
+| `portfolio_snapshots` | Daily portfolio value history |
+| `networth_snapshots` | Daily net worth history |
+| `price_cache` | Live price cache with TTL |
+| `currency_cache` | EUR/USD exchange rate cache |
+| `user_data` | Server-side Zustand state mirror (key/value per user) |
+| `banking_sessions` | Enable Banking OAuth sessions (pending → active) |
+| `banking_accounts` | Bank accounts fetched from Enable Banking, linked to local accounts |
+| `banking_transactions` | Deduplication ledger for imported OB transactions |
 
 ---
 

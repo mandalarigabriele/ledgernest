@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { useFinanceStore } from '@/stores/financeStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
@@ -10,6 +10,7 @@ import { useUIStore } from '@/stores/uiStore'
 import { useFormatters } from '@/hooks/useFormatters'
 import { effectivePriceEur } from '@/lib/utils/price'
 import Icon from '@/components/shared/Icon'
+import EnableBankingPanel from '@/components/shared/EnableBankingPanel'  // invisible auto-import handler
 import type { Account } from '@/types'
 
 const inputStyle: React.CSSProperties = {
@@ -156,9 +157,52 @@ function EditAccountModal({ account, onClose }: { account: Account; onClose: () 
   )
 }
 
-function AccountCard({ account, onEdit, onDelete }: { account: Account; onEdit: () => void; onDelete: () => void }) {
+function AccountCard({ account, onEdit, onDelete, onClearTx }: { account: Account; onEdit: () => void; onDelete: () => void; onClearTx: () => void }) {
   const t = useTranslations('conti')
   const { fmt } = useFormatters()
+  const { transactions, updateAccount, addTransaction } = useFinanceStore()
+  const txCount = transactions.filter((tx) => tx.accountId === account.id).length
+  const [syncing, setSyncing]     = useState(false)
+  const [syncMsg, setSyncMsg]     = useState<{ text: string; ok: boolean } | null>(null)
+  const [rateLimited, setRateLimited] = useState(false)
+
+  const handleObSync = useCallback(async () => {
+    if (!account.bankingUid) return
+    setSyncing(true)
+    setSyncMsg(null)
+    const force = txCount === 0
+    try {
+      await fetch('/api/banking/accounts', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: account.bankingUid, financeAccountId: account.id }),
+      })
+      const res  = await fetch('/api/banking/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountUid: account.bankingUid, force }),
+      })
+      const data = await res.json() as { newBalance?: number; newTransactions?: Array<Record<string, unknown>>; imported?: number; total?: number; error?: string }
+      if (!res.ok) {
+        if (res.status === 429) setRateLimited(true)
+        setSyncMsg({ text: data.error ?? `Errore ${res.status}`, ok: false })
+        return
+      }
+      setRateLimited(false)
+      if (data.newBalance != null) updateAccount(account.id, { balance: data.newBalance })
+      for (const tx of data.newTransactions ?? []) {
+        const { eb_id: _, ...txData } = tx as { eb_id: string } & Parameters<typeof addTransaction>[0]
+        addTransaction({ ...txData, note: undefined })
+      }
+      const imp = data.imported ?? 0
+      setSyncMsg({ text: imp > 0 ? `+${imp} movimenti importati` : 'Nessun nuovo movimento', ok: true })
+    } catch (e) {
+      setSyncMsg({ text: e instanceof Error ? e.message : 'Errore di rete', ok: false })
+    } finally {
+      setSyncing(false)
+      setTimeout(() => setSyncMsg(null), 5000)
+    }
+  }, [account.bankingUid, account.id, txCount, updateAccount, addTransaction])
   const TYPE_CONFIG: Record<Account['type'], {
     label: string; icon: string; color: string; bg: string
   }> = {
@@ -217,6 +261,40 @@ function AccountCard({ account, onEdit, onDelete }: { account: Account; onEdit: 
           <Icon name="trash" size={13} />
           {t('cardDelete')}
         </button>
+        {account.bankingUid && (
+          <>
+            <button
+              className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm"
+              style={{ justifyContent: 'center', fontSize: '12px', gap: '5px', gridColumn: '1 / -1', opacity: rateLimited ? 0.5 : 1 }}
+              onClick={handleObSync}
+              disabled={syncing || rateLimited}
+              title={rateLimited ? 'Limite giornaliero raggiunto — riprova domani' : undefined}
+            >
+              <Icon name="refresh" size={12} />
+              {syncing ? 'Sincronizzando…' : rateLimited ? 'Limite giornaliero raggiunto' : 'Sync Open Banking'}
+            </button>
+            {syncMsg && (
+              <div style={{
+                gridColumn: '1 / -1', fontSize: 11, textAlign: 'center', padding: '4px 8px',
+                borderRadius: 6, fontWeight: 500,
+                color: syncMsg.ok ? '#2dd4bf' : 'var(--danger)',
+                background: syncMsg.ok ? 'rgba(45,212,191,.1)' : 'color-mix(in oklch, var(--danger) 12%, transparent)',
+              }}>
+                {syncMsg.text}
+              </div>
+            )}
+          </>
+        )}
+        {txCount > 0 && (
+          <button
+            className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm"
+            style={{ justifyContent: 'center', fontSize: '12px', gap: '5px', gridColumn: '1 / -1', color: 'var(--text-secondary)' }}
+            onClick={onClearTx}
+          >
+            <Icon name="trash" size={12} />
+            Svuota movimenti ({txCount})
+          </button>
+        )}
       </div>
     </div>
   )
@@ -268,7 +346,7 @@ function PatrimonioChart({ totalAssets }: { totalAssets: number }) {
 export default function ContiPage() {
   const t = useTranslations('conti')
   const { fmt } = useFormatters()
-  const { accounts, deleteAccount } = useFinanceStore()
+  const { accounts, deleteAccount, clearAccountTransactions } = useFinanceStore()
   const { positions } = usePortfolioStore()
   const { quotes, eurUsd } = usePricesStore()
   const showPrePostMarket = useSettingsStore((s) => s.settings.showPrePostMarket)
@@ -281,6 +359,7 @@ export default function ContiPage() {
   const [filter, setFilter] = useState<'all' | Account['type']>('all')
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
   const [deletingAccountId, setDeletingAccountId] = useState<string | null>(null)
+  const [clearingAccountId, setClearingAccountId] = useState<string | null>(null)
 
   const TYPE_CONFIG: Record<Account['type'], {
     label: string; group: string; icon: string; color: string; bg: string
@@ -322,6 +401,7 @@ export default function ContiPage() {
 
   const groupOrder = [t('typeBankGroup'), t('typeBrokerGroup'), t('typeCryptoGroup'), t('typeOtherGroup')]
   const deletingAccount = accounts.find((a) => a.id === deletingAccountId)
+  const clearingAccount = accounts.find((a) => a.id === clearingAccountId)
 
   return (
     <div className="ledgernest-gap-5">
@@ -370,11 +450,16 @@ export default function ContiPage() {
         <PatrimonioChart totalAssets={totalAssets} />
       </div>
 
+      {/* invisible — handles banking_ok auto-import and sync state */}
+      <EnableBankingPanel />
+
       {/* Header + filters */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <div style={{ fontWeight: 700, fontSize: '17px' }}>{t('sectionTitle', { n: accounts.length })}</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>{t('sectionManual')}</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+            {accounts.some((a) => a.bankingUid) ? 'Manuali e Open Banking' : t('sectionManual')}
+          </div>
         </div>
         <div className="ledgernest-conti-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{ display: 'flex', gap: '2px', background: 'var(--bg-elevated)', borderRadius: '10px', padding: '3px' }}>
@@ -442,6 +527,7 @@ export default function ContiPage() {
                     account={a}
                     onEdit={() => setEditingAccount(a)}
                     onDelete={() => setDeletingAccountId(a.id)}
+                    onClearTx={() => setClearingAccountId(a.id)}
                   />
                 ))}
               </div>
@@ -461,6 +547,16 @@ export default function ContiPage() {
           deleteLabel={t('delete')}
           onConfirm={() => { deleteAccount(deletingAccountId); setDeletingAccountId(null) }}
           onCancel={() => setDeletingAccountId(null)}
+        />
+      )}
+      {clearingAccountId && clearingAccount && (
+        <DeleteConfirmModal
+          title="Svuota movimenti"
+          message={`Eliminare tutti i movimenti di "${clearingAccount.name}"? Il conto rimane, solo i movimenti verranno cancellati.`}
+          cancelLabel={t('cancel')}
+          deleteLabel="Svuota"
+          onConfirm={() => { clearAccountTransactions(clearingAccountId); setClearingAccountId(null) }}
+          onCancel={() => setClearingAccountId(null)}
         />
       )}
     </div>

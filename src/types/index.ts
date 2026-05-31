@@ -18,6 +18,7 @@ export interface Account {
   broker?: string
   iban?: string
   note?: string
+  bankingUid?: string
   createdAt: string
   updatedAt: string
 }
@@ -225,6 +226,7 @@ export interface AppSettings {
   selfName?: string
   ignoreTransfers?: boolean
   pinnedBudgetMonth?: string | null
+  obSyncInterval?: 3600 | 14400 | 86400 | null
 }
 
 // ---- UI Store -----------------------------------------------

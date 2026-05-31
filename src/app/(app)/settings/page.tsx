@@ -1127,6 +1127,22 @@ export default function ImpostazioniPage() {
                 >ℹ</span>
               </div>
             </SettingRow>
+            <SettingRow label="Sync Open Banking" desc="Sincronizza automaticamente i conti collegati via Open Banking">
+              <select
+                className="ledgernest-input ledgernest-select"
+                value={settings.obSyncInterval ?? 0}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value)
+                  updateSettings({ obSyncInterval: v === 0 ? null : v as 3600 | 14400 | 86400 })
+                }}
+                style={{ width: 150 }}
+              >
+                <option value={0}>Disabilitato</option>
+                <option value={3600}>Ogni ora</option>
+                <option value={14400}>Ogni 4 ore</option>
+                <option value={86400}>Ogni giorno</option>
+              </select>
+            </SettingRow>
             <SettingRow label={t('showPrePostMarket')} desc={t('showPrePostDesc')}>
               <Toggle checked={settings.showPrePostMarket} onChange={(v) => updateSettings({ showPrePostMarket: v })} />
             </SettingRow>

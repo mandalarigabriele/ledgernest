@@ -250,7 +250,7 @@ function toTitleCase(s: string): string {
   return s.toLowerCase().replace(/(^|[\s\-''(])(\S)/g, (_, sep, c) => sep + c.toUpperCase())
 }
 
-function cleanMerchant(raw: string): string | undefined {
+export function cleanMerchant(raw: string): string | undefined {
   if (!raw.trim()) return undefined
   let s = raw.trim()
 

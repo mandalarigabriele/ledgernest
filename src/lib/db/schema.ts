@@ -11,8 +11,21 @@ export function getDb(): Database.Database {
     db.pragma('journal_mode = WAL')
     db.pragma('foreign_keys = ON')
     initSchema(db)
+    migrateSchema(db)
   }
   return db
+}
+
+function migrateSchema(db: Database.Database) {
+  // Add columns introduced after initial schema deploy — safe to run repeatedly
+  const addIfMissing = (table: string, column: string, def: string) => {
+    const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]
+    if (!cols.some((c) => c.name === column)) {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`)
+    }
+  }
+  addIfMissing('banking_sessions', 'oauth_state', 'TEXT')
+  addIfMissing('banking_sessions', 'eb_session_id', 'TEXT')
 }
 
 function initSchema(db: Database.Database) {
@@ -61,6 +74,50 @@ function initSchema(db: Database.Database) {
       data TEXT NOT NULL,
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       PRIMARY KEY (user_email, key)
+    );
+
+    CREATE TABLE IF NOT EXISTS banking_sessions (
+      id TEXT PRIMARY KEY,
+      user_email TEXT NOT NULL,
+      bank_name TEXT NOT NULL,
+      country TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      oauth_state TEXT,
+      eb_session_id TEXT,
+      valid_until TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS banking_accounts (
+      uid TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      user_email TEXT NOT NULL,
+      finance_account_id TEXT,
+      iban TEXT,
+      name TEXT,
+      product TEXT,
+      currency TEXT NOT NULL DEFAULT 'EUR',
+      balance REAL,
+      last_synced_at TEXT,
+      FOREIGN KEY (session_id) REFERENCES banking_sessions(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS banking_transactions (
+      id TEXT PRIMARY KEY,
+      account_uid TEXT NOT NULL,
+      user_email TEXT NOT NULL,
+      finance_transaction_id TEXT,
+      booking_date TEXT,
+      amount REAL NOT NULL,
+      currency TEXT NOT NULL DEFAULT 'EUR',
+      description TEXT,
+      creditor_name TEXT,
+      debtor_name TEXT,
+      status TEXT NOT NULL DEFAULT 'booked',
+      raw TEXT,
+      imported_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (account_uid) REFERENCES banking_accounts(uid) ON DELETE CASCADE
     );
   `)
 }

@@ -201,6 +201,15 @@ function StepCurrency({ current, onSelect, onBack, onNext }: {
   )
 }
 
+const OB_BANKS = [
+  { name: 'Credit Agricole Cariparma', country: 'IT', emoji: '🌾' },
+  { name: 'UniCredit',                 country: 'IT', emoji: '🔴' },
+  { name: 'Banca Mediolanum',          country: 'IT', emoji: '🔵' },
+  { name: 'Banco BPM',                 country: 'IT', emoji: '🏦' },
+  { name: 'N26',                       country: 'IT', emoji: '⬛' },
+  { name: 'Revolut',                   country: 'IT', emoji: '🌐' },
+]
+
 // ── Step 4: Primo conto ───────────────────────────────────────
 
 function StepAccount({ onBack, onFinish }: {
@@ -208,10 +217,14 @@ function StepAccount({ onBack, onFinish }: {
   onFinish: (acct: Omit<Account, 'id' | 'createdAt' | 'updatedAt'>) => void
 }) {
   const [type,        setType]        = useState<Account['type']>('bank')
+  const [mode,        setMode]        = useState<'manual' | 'ob'>('manual')
   const [name,        setName]        = useState('')
   const [institution, setInstitution] = useState('')
   const [balance,     setBalance]     = useState('')
   const [currency,    setCurrency]    = useState<'EUR' | 'USD'>('EUR')
+  const [obBank,      setObBank]      = useState(OB_BANKS[0])
+  const [connecting,  setConnecting]  = useState(false)
+  const [obError,     setObError]     = useState<string | null>(null)
 
   const selected = ACCOUNT_TYPES.find((t) => t.value === type)!
   const canSubmit = name.trim() && balance !== ''
@@ -228,23 +241,41 @@ function StepAccount({ onBack, onFinish }: {
     })
   }
 
+  async function handleOBConnect() {
+    setConnecting(true)
+    setObError(null)
+    try {
+      const res = await fetch('/api/banking/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bankName: obBank.name, country: obBank.country }),
+      })
+      const data = await res.json() as { url?: string; error?: string }
+      if (data.url) window.location.href = data.url
+      else { setObError(data.error ?? 'Errore'); setConnecting(false) }
+    } catch {
+      setObError('Errore di rete')
+      setConnecting(false)
+    }
+  }
+
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
         <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 8, letterSpacing: '-0.4px' }}>
-          Crea il tuo primo conto
+          Aggiungi il tuo primo conto
         </div>
         <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-          Aggiungi un conto bancario, un broker o un wallet per iniziare a tracciare il tuo patrimonio.
+          Collega un conto bancario, un broker o un wallet per iniziare a tracciare il tuo patrimonio.
         </div>
       </div>
 
       {/* Type */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
         {ACCOUNT_TYPES.map((t) => (
           <button
             key={t.value}
-            onClick={() => setType(t.value)}
+            onClick={() => { setType(t.value); if (t.value !== 'bank') setMode('manual') }}
             style={{
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '10px 12px', borderRadius: 12,
@@ -262,69 +293,115 @@ function StepAccount({ onBack, onFinish }: {
         ))}
       </div>
 
-      {/* Nome */}
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>
-          Nome <span style={{ color: 'var(--danger)' }}>*</span>
-        </label>
-        <input
-          className="ledgernest-input"
-          placeholder={type === 'bank' ? 'Conto corrente N26' : type === 'broker' ? 'IBKR · Broker' : type === 'crypto' ? 'Wallet · Ledger' : 'Nome conto'}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          autoFocus
-          style={{ height: 42, width: '100%', boxSizing: 'border-box' }}
-        />
-      </div>
-
-      {/* Istituzione */}
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>
-          {type === 'bank' ? 'Banca' : type === 'broker' ? 'Broker' : type === 'crypto' ? 'Exchange / Wallet' : 'Istituzione'}{' '}
-          <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(opzionale)</span>
-        </label>
-        <input
-          className="ledgernest-input"
-          placeholder={type === 'bank' ? 'N26, Fineco, Intesa…' : type === 'broker' ? 'IBKR, Degiro…' : type === 'crypto' ? 'Coinbase, Ledger…' : ''}
-          value={institution}
-          onChange={(e) => setInstitution(e.target.value)}
-          style={{ height: 42, width: '100%', boxSizing: 'border-box' }}
-        />
-      </div>
-
-      {/* Saldo + Valuta */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, marginBottom: 28 }}>
-        <div>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>
-            Saldo attuale <span style={{ color: 'var(--danger)' }}>*</span>
-          </label>
-          <input
-            className="ledgernest-input ledgernest-mono"
-            type="number" step="0.01" placeholder="0,00"
-            value={balance}
-            onChange={(e) => setBalance(e.target.value)}
-            style={{ height: 42, width: '100%', boxSizing: 'border-box', fontSize: 15 }}
-          />
+      {/* Mode switcher — bank only */}
+      {type === 'bank' && (
+        <div style={{ display: 'flex', gap: 2, background: 'var(--bg-elevated)', borderRadius: 10, padding: 3, marginBottom: 16 }}>
+          {(['manual', 'ob'] as const).map((m) => (
+            <button key={m} onClick={() => setMode(m)} style={{
+              flex: 1, padding: '7px 0', borderRadius: 7, fontSize: 12, fontWeight: 600,
+              border: 'none', cursor: 'pointer', transition: 'all .15s',
+              background: mode === m ? 'var(--bg-surface)' : 'transparent',
+              color: mode === m ? 'var(--text-primary)' : 'var(--text-secondary)',
+              boxShadow: mode === m ? '0 1px 4px rgba(0,0,0,.2)' : 'none',
+            }}>
+              {m === 'manual' ? '✏️ Manuale' : '🏦 Open Banking'}
+            </button>
+          ))}
         </div>
-        <div>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>Valuta</label>
-          <select
-            className="ledgernest-input"
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value as 'EUR' | 'USD')}
-            style={{ height: 42, minWidth: 90 }}
-          >
-            <option value="EUR">€ EUR</option>
-            <option value="USD">$ USD</option>
-          </select>
+      )}
+
+      {/* Open Banking */}
+      {type === 'bank' && mode === 'ob' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 28 }}>
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            Verrai reindirizzato alla pagina della tua banca per autorizzare l&apos;accesso in sola lettura. Al ritorno il conto verrà creato automaticamente.
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {OB_BANKS.map((b) => {
+              const active = b.name === obBank.name && b.country === obBank.country
+              return (
+                <button key={b.name} onClick={() => setObBank(b)} style={{
+                  padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 500,
+                  border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border-subtle)'}`,
+                  background: active ? 'color-mix(in oklch, var(--accent) 15%, transparent)' : 'transparent',
+                  color: active ? 'var(--accent)' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                }}>
+                  {b.emoji} {b.name}
+                </button>
+              )
+            })}
+          </div>
+          {obError && (
+            <div style={{ fontSize: 12, color: 'var(--danger)' }}>{obError}</div>
+          )}
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Nome */}
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>
+              Nome <span style={{ color: 'var(--danger)' }}>*</span>
+            </label>
+            <input
+              className="ledgernest-input"
+              placeholder={type === 'bank' ? 'Conto corrente N26' : type === 'broker' ? 'IBKR · Broker' : type === 'crypto' ? 'Wallet · Ledger' : 'Nome conto'}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+              style={{ height: 42, width: '100%', boxSizing: 'border-box' }}
+            />
+          </div>
+
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>
+              {type === 'bank' ? 'Banca' : type === 'broker' ? 'Broker' : type === 'crypto' ? 'Exchange / Wallet' : 'Istituzione'}{' '}
+              <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(opzionale)</span>
+            </label>
+            <input
+              className="ledgernest-input"
+              placeholder={type === 'bank' ? 'N26, Fineco, Intesa…' : type === 'broker' ? 'IBKR, Degiro…' : type === 'crypto' ? 'Coinbase, Ledger…' : ''}
+              value={institution}
+              onChange={(e) => setInstitution(e.target.value)}
+              style={{ height: 42, width: '100%', boxSizing: 'border-box' }}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, marginBottom: 28 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>
+                Saldo attuale <span style={{ color: 'var(--danger)' }}>*</span>
+              </label>
+              <input
+                className="ledgernest-input ledgernest-mono"
+                type="number" step="0.01" placeholder="0,00"
+                value={balance}
+                onChange={(e) => setBalance(e.target.value)}
+                style={{ height: 42, width: '100%', boxSizing: 'border-box', fontSize: 15 }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>Valuta</label>
+              <select className="ledgernest-input" value={currency} onChange={(e) => setCurrency(e.target.value as 'EUR' | 'USD')} style={{ height: 42, minWidth: 90 }}>
+                <option value="EUR">€ EUR</option>
+                <option value="USD">$ USD</option>
+              </select>
+            </div>
+          </div>
+        </>
+      )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <NavBtn onClick={onBack}>← Indietro</NavBtn>
-        <NavBtn primary disabled={!canSubmit} onClick={submit}>
-          Inizia ✓
-        </NavBtn>
+        {type === 'bank' && mode === 'ob' ? (
+          <NavBtn primary disabled={connecting} onClick={handleOBConnect}>
+            {connecting ? 'Reindirizzamento…' : `Connetti ${obBank.name} →`}
+          </NavBtn>
+        ) : (
+          <NavBtn primary disabled={!canSubmit} onClick={submit}>
+            Inizia ✓
+          </NavBtn>
+        )}
       </div>
     </div>
   )

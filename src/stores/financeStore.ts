@@ -34,6 +34,7 @@ interface FinanceStore {
   addAccount: (acct: Omit<Account, 'id' | 'createdAt' | 'updatedAt'>) => void
   updateAccount: (id: string, patch: Partial<Account>) => void
   deleteAccount: (id: string) => void
+  clearAccountTransactions: (id: string) => void
 
   // Transactions
   addTransaction: (tx: Omit<Transaction, 'id' | 'createdAt'>) => void
@@ -209,7 +210,13 @@ export const useFinanceStore = create<FinanceStore>()(
           ),
         }))
       },
-      deleteAccount: (id) => set((s) => ({ accounts: s.accounts.filter((a) => a.id !== id) })),
+      deleteAccount: (id) => set((s) => ({
+        accounts: s.accounts.filter((a) => a.id !== id),
+        transactions: s.transactions.filter((t) => t.accountId !== id),
+      })),
+      clearAccountTransactions: (id) => set((s) => ({
+        transactions: s.transactions.filter((t) => t.accountId !== id),
+      })),
 
       addTransaction: (tx) => {
         const now = new Date().toISOString()
