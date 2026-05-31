@@ -10,21 +10,29 @@ import type { Quote } from '@/types'
 const STALE_MS = 90_000 // skip fetch if data is < 90 s old
 
 export function usePrices() {
-  const { positions }           = usePortfolioStore()
+  const { positions }             = usePortfolioStore()
   const { items: watchlistItems } = useWatchlistStore()
-  const { setQuotes, setLoading, setError, lastUpdated } = usePricesStore()
+  const { setQuotes, setLoading, setError } = usePricesStore()
   const { settings } = useSettingsStore()
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  // Use refs for values needed inside the callback but that should not
+  // cause the callback to be recreated (avoids interval churn).
+  const positionsRef      = useRef(positions)
+  const watchlistRef      = useRef(watchlistItems)
+  positionsRef.current    = positions
+  watchlistRef.current    = watchlistItems
+
   const fetchPrices = useCallback(async (force = false) => {
     const tickers = Array.from(new Set([
-      ...positions.map((p) => p.ticker),
-      ...watchlistItems.map((w) => w.ticker),
+      ...positionsRef.current.map((p) => p.ticker),
+      ...watchlistRef.current.map((w) => w.ticker),
     ]))
     if (tickers.length === 0) return
 
-    // force if any ticker has no quote yet (e.g. newly added watchlist item)
-    const { quotes } = usePricesStore.getState()
+    // Read volatile state directly from the store — avoids making the
+    // callback depend on lastUpdated/quotes (which change after every fetch).
+    const { quotes, lastUpdated } = usePricesStore.getState()
     const hasNewTickers = tickers.some((t) => !quotes[t])
     if (!hasNewTickers && !force && lastUpdated && Date.now() - lastUpdated < STALE_MS) return
 
@@ -37,7 +45,7 @@ export function usePrices() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
     }
-  }, [positions, watchlistItems, lastUpdated, setQuotes, setLoading, setError])
+  }, [setQuotes, setLoading, setError]) // stable deps only — no positions/watchlist/lastUpdated
 
   useEffect(() => {
     fetchPrices()
