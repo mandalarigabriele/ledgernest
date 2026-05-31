@@ -262,98 +262,71 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
   return (
     <div className="ledgernest-card" style={{ display: 'flex', flexDirection: 'column', gap: 0, padding: 0, overflow: 'hidden', minWidth: 0, height: '100%' }}>
       {/* Card body */}
-      <div style={{ padding: '16px 18px 12px', display: 'flex', flexDirection: 'column', gap: 0, flex: 1 }}>
-        {/* Header row: icon + name + OB dot */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+      <div style={{ padding: '18px 18px 14px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+
+        {/* Top: type badge + OB badge, right-aligned */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4, marginBottom: 12 }}>
+          <span style={{
+            fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
+            padding: '2px 8px', borderRadius: 20,
+            color: cfg.color, background: cfg.bg,
+          }}>
+            {cfg.label}
+          </span>
+          {account.bankingUid && (
+            <span style={{
+              fontSize: 10, fontWeight: 700,
+              padding: '2px 8px', borderRadius: 20,
+              color: '#2dd4bf', background: 'rgba(45,212,191,.12)',
+              display: 'inline-flex', alignItems: 'center', gap: 3,
+            }}>
+              <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#2dd4bf', flexShrink: 0 }} />
+              OB
+            </span>
+          )}
+        </div>
+
+        {/* Icon + name */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
           <div style={{
-            width: 32, height: 32, borderRadius: 9, flexShrink: 0,
+            width: 34, height: 34, borderRadius: 10, flexShrink: 0,
             background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: cfg.color,
           }}>
-            <Icon name={cfg.icon} size={15} />
+            <Icon name={cfg.icon} size={16} />
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{
-              fontWeight: 600, fontSize: 13,
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {account.name || account.broker || 'Conto'}
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 1 }}>
-              {account.broker && account.name !== account.broker ? account.broker : cfg.label}
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center' }}>
-            <span style={{
-              fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
-              padding: '2px 6px', borderRadius: 20,
-              color: cfg.color, background: cfg.bg,
-            }}>
-              {cfg.label}
-            </span>
-            {account.bankingUid && (
-              <span style={{
-                fontSize: 10, fontWeight: 700,
-                padding: '2px 6px', borderRadius: 20,
-                color: '#2dd4bf', background: 'rgba(45,212,191,.12)',
-                display: 'inline-flex', alignItems: 'center', gap: 3,
-              }}>
-                <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#2dd4bf', flexShrink: 0 }} />
-                OB
-              </span>
+            {account.broker && account.name !== account.broker && (
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{account.broker}</div>
             )}
           </div>
         </div>
 
         {/* Balance */}
-        <div style={{ marginTop: 16, fontSize: 26, fontWeight: 800, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums' }}>
+        <div style={{ marginTop: 'auto', paddingTop: 16, fontSize: 26, fontWeight: 800, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums' }}>
           {fmt(account.balance)}
         </div>
 
-        {/* Portfolio recap — any account type with matching positions */}
+        {/* Portfolio P&L — single line, subtle */}
         {acctPositions.length > 0 && (() => {
           const pnl    = portfolioMktValue - portfolioCost
           const pnlPct = portfolioCost > 0 ? (pnl / portfolioCost) * 100 : 0
           const isPos  = pnl >= 0
           return (
-            <div style={{
-              display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
-              gap: 8, padding: '10px 12px', borderRadius: 10,
-              background: 'var(--bg-elevated)',
-            }}>
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.04em', marginBottom: 2 }}>
-                  MERCATO
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-                  {fmt(portfolioMktValue)}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.04em', marginBottom: 2 }}>
-                  INVESTITO
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-                  {fmt(portfolioCost)}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.04em', marginBottom: 2 }}>
-                  P&amp;L
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isPos ? '#2dd4bf' : '#f85149' }}>
-                  {isPos ? '+' : ''}{fmt(pnl)}
-                  <span style={{ fontSize: 10, fontWeight: 600, marginLeft: 3 }}>
-                    ({isPos ? '+' : ''}{pnlPct.toFixed(1)}%)
-                  </span>
-                </div>
-              </div>
+            <div style={{ fontSize: 12, marginTop: 2, color: isPos ? '#2dd4bf' : '#f85149', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+              {isPos ? '+' : ''}{fmt(pnl)} ({isPos ? '+' : ''}{pnlPct.toFixed(1)}%)
+              <span style={{ color: 'var(--text-tertiary)', fontWeight: 400, marginLeft: 6 }}>
+                su {fmt(portfolioCost)} investiti
+              </span>
             </div>
           )
         })()}
 
         {/* Progress bar */}
         {totalAssets > 0 && (
-          <div>
+          <div style={{ marginTop: 12 }}>
             <div style={{ height: 3, borderRadius: 2, background: 'var(--bg-elevated)', overflow: 'hidden' }}>
               <div style={{ height: '100%', borderRadius: 2, background: cfg.color, width: `${Math.min(100, pct)}%`, transition: 'width .3s' }} />
             </div>
