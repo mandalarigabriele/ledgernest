@@ -74,6 +74,8 @@ export default function EnableBankingPanel() {
       const session  = (data.sessions ?? []).find((s) => s.status === 'active')
 
       let created = 0
+      const toSync: EBAccount[] = []
+
       for (const acct of unlinked) {
         const name = acct.name ?? acct.iban ?? session?.bank_name ?? 'Conto'
 
@@ -88,6 +90,7 @@ export default function EnableBankingPanel() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ uid: acct.uid, financeAccountId: existing.id }),
           })
+          toSync.push({ ...acct, finance_account_id: existing.id })
           continue
         }
 
@@ -110,13 +113,19 @@ export default function EnableBankingPanel() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ uid: acct.uid, financeAccountId: newAcct.id }),
         })
+        toSync.push({ ...acct, finance_account_id: newAcct.id })
         created++
       }
 
       showFlash(created > 0
-        ? `${created} conto${created > 1 ? 'i' : ''} importato${created > 1 ? 'i' : ''} via Open Banking`
-        : 'Connessione Open Banking attiva')
+        ? `${created} conto${created > 1 ? 'i' : ''} importato${created > 1 ? 'i' : ''} via Open Banking — sincronizzazione in corso…`
+        : 'Connessione Open Banking attiva — sincronizzazione in corso…')
       await loadData()
+
+      // Auto-sync all newly linked accounts
+      for (const acct of toSync) {
+        await handleSync(acct, 'delta')
+      }
     })
   }, [loadData, addAccount])
 
