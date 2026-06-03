@@ -100,6 +100,20 @@ export interface Liability {
   monthlyPayment: number
   interestRate: number
   endYear: number
+  originalAmount?: number  // initial debt — used for repayment progress bar
+  startYear?: number       // year the liability started
+  createdAt: string
+}
+
+export interface Property {
+  id: string
+  name: string
+  propertyType: string   // e.g. "Trilocale", "Bilocale", "Pertinenza"
+  city: string
+  country: string        // ISO code e.g. "IT"
+  yearAcquired: number
+  currentValue: number
+  linkedLiabilityId?: string  // mortgage linked to this property
   createdAt: string
 }
 

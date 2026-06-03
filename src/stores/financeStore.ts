@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Account, Transaction, BudgetCategory, BudgetGroup, RecurringItem, Goal, Liability, NetWorthSnapshot } from '@/types'
+import type { Account, Transaction, BudgetCategory, BudgetGroup, RecurringItem, Goal, Liability, Property, NetWorthSnapshot } from '@/types'
 import { nanoid } from './utils'
 
 interface BudgetMonthPlan {
@@ -73,6 +73,12 @@ interface FinanceStore {
   addLiability: (l: Omit<Liability, 'id' | 'createdAt'>) => void
   updateLiability: (id: string, patch: Partial<Liability>) => void
   deleteLiability: (id: string) => void
+
+  // Properties (real estate)
+  properties: Property[]
+  addProperty: (p: Omit<Property, 'id' | 'createdAt'>) => void
+  updateProperty: (id: string, patch: Partial<Property>) => void
+  deleteProperty: (id: string) => void
 
   // Net worth history
   takeNetWorthSnapshot: (portfolioValue: number) => void
@@ -188,6 +194,7 @@ const initialFinanceState = {
   goals: [] as Goal[],
   featuredGoalId: null as string | null,
   liabilities: [] as Liability[],
+  properties: [] as Property[],
   netWorthSnapshots: [] as NetWorthSnapshot[],
   budgetPlans: {} as Record<string, BudgetMonthPlan>,
   merchantAliases: {} as Record<string, string>,
@@ -394,6 +401,15 @@ export const useFinanceStore = create<FinanceStore>()(
         set((s) => ({ liabilities: s.liabilities.map((l) => (l.id === id ? { ...l, ...patch } : l)) }))
       },
       deleteLiability: (id) => set((s) => ({ liabilities: s.liabilities.filter((l) => l.id !== id) })),
+
+      addProperty: (p) => {
+        const now = new Date().toISOString()
+        set((s) => ({ properties: [...s.properties, { ...p, id: nanoid(), createdAt: now }] }))
+      },
+      updateProperty: (id, patch) => {
+        set((s) => ({ properties: s.properties.map((p) => (p.id === id ? { ...p, ...patch } : p)) }))
+      },
+      deleteProperty: (id) => set((s) => ({ properties: s.properties.filter((p) => p.id !== id) })),
 
       takeNetWorthSnapshot: (portfolioValue) => {
         const { accounts, liabilities } = get()
