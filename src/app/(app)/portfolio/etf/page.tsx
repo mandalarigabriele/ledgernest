@@ -408,7 +408,6 @@ const [filter, setFilter] = useState('Tutti' as EtfFilter)
 
       {/* Daily change footer */}
       <div style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-tertiary)', fontSize: 11 }}>
-        <span style={{ opacity: 0.5 }}>●</span>
         {tl('footerDayChange')}{' '}
         <span style={{ fontWeight: 600, color: totalDayChg >= 0 ? 'var(--success)' : 'var(--danger)' }}>
           {totalDayChg >= 0 ? '+' : ''}{fmt(totalDayChg)}

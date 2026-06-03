@@ -171,7 +171,7 @@ export default function EditPositionModal() {
               {accounts.length > 0 ? (
                 <select
                   className="ledgernest-input"
-                  value={broker}
+                  value={accounts.find((a) => a.name === broker || a.broker === broker)?.name ?? broker}
                   onChange={(e) => setBroker(e.target.value)}
                   style={{ height: 44, fontSize: 14 }}
                 >
@@ -179,7 +179,7 @@ export default function EditPositionModal() {
                   {accounts.map((a) => (
                     <option key={a.id} value={a.name}>{a.name}</option>
                   ))}
-                  {broker && !accounts.some((a) => a.name === broker) && (
+                  {broker && !accounts.some((a) => a.name === broker || a.broker === broker) && (
                     <option value={broker}>{broker}</option>
                   )}
                 </select>

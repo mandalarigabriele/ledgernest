@@ -536,7 +536,8 @@ export default function BudgetPage() {
   const isCurrentMonth = month === currentMonthKey
   const daysInMonth = new Date(parseInt(month.slice(0, 4)), parseInt(month.slice(5, 7)), 0).getDate()
   const dayOfMonth  = isCurrentMonth ? now.getDate() : daysInMonth
-  const projection  = isCurrentMonth && dayOfMonth > 0 ? Math.round(totalSpent / dayOfMonth * daysInMonth) : totalSpent
+  // Show projection only after ≥7 days — early-month data is too noisy (big one-off expenses skew it)
+  const projection  = isCurrentMonth && dayOfMonth >= 7 ? Math.round(totalSpent / dayOfMonth * daysInMonth) : null
   const vsLastMonth = prevMonthSpent > 0 ? ((totalSpent - prevMonthSpent) / prevMonthSpent) * 100 : null
   const overrunCats = leafExpenseCats.filter((c) => { const b = getCatBudget(c.id); const s = spentByCategory[c.id] ?? 0; return b > 0 && s > b })
   const allocPct    = income > 0 ? Math.round(((totalBudget + totalGoalContrib) / income) * 100) : 0
@@ -646,12 +647,17 @@ export default function BudgetPage() {
                   </span>
                 </div>
               )}
-              {isCurrentMonth && projection > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, background: projection > totalBudget ? 'color-mix(in oklch, var(--danger) 10%, transparent)' : 'color-mix(in oklch, var(--success) 10%, transparent)', border: `1px solid ${projection > totalBudget ? 'color-mix(in oklch, var(--danger) 25%, transparent)' : 'color-mix(in oklch, var(--success) 25%, transparent)'}` }}>
-                  <span style={{ fontSize: 13, color: projection > totalBudget ? 'var(--danger)' : 'var(--success)' }}>↗</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: projection > totalBudget ? 'var(--danger)' : 'var(--success)', fontVariantNumeric: 'tabular-nums' }}>
-                    {tl('projectionLabel', { amt: fmt(projection) })}
-                  </span>
+              {projection !== null && projection > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, background: projection > totalBudget ? 'color-mix(in oklch, var(--danger) 10%, transparent)' : 'color-mix(in oklch, var(--success) 10%, transparent)', border: `1px solid ${projection > totalBudget ? 'color-mix(in oklch, var(--danger) 25%, transparent)' : 'color-mix(in oklch, var(--success) 25%, transparent)'}` }}>
+                    <span style={{ fontSize: 13, color: projection > totalBudget ? 'var(--danger)' : 'var(--success)' }}>↗</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: projection > totalBudget ? 'var(--danger)' : 'var(--success)', fontVariantNumeric: 'tabular-nums' }}>
+                      {tl('projectionLabel', { amt: fmt(projection) })}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--text-tertiary)', paddingLeft: 4 }}>
+                    Estrapolazione lineare della spesa giornaliera · le spese una-tantum possono alterare la stima
+                  </div>
                 </div>
               )}
               {overrunCats.slice(0, 2).map((c) => (

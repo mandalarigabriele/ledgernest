@@ -64,8 +64,9 @@ function EditAccountModal({ account, onClose }: { account: Account; onClose: () 
 
   function handleSave() {
     if (!name.trim()) return
+    const newName = name.trim()
     updateAccount(account.id, {
-      name: name.trim(),
+      name: newName,
       type,
       // OB accounts: balance is read-only, managed by banking API
       ...(account.bankingUid ? {} : { balance: parseFloat(balance) || 0 }),
@@ -74,6 +75,14 @@ function EditAccountModal({ account, onClose }: { account: Account; onClose: () 
       iban: iban.trim() || undefined,
       note: note.trim() || undefined,
     })
+    // Keep portfolio positions in sync: if the account name changed, update positions
+    // that stored the old name as their broker string
+    if (newName !== account.name) {
+      const { positions, updatePosition } = usePortfolioStore.getState()
+      positions
+        .filter((p) => p.broker === account.name)
+        .forEach((p) => updatePosition(p.id, { broker: newName }))
+    }
     onClose()
   }
 
