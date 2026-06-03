@@ -181,17 +181,20 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
   const showPrePost = useSettingsStore((s) => s.settings.showPrePostMarket)
   const txCount = transactions.filter((tx) => tx.accountId === account.id).length
 
-  // Portfolio recap — match positions to this account via broker string
+  // Portfolio recap — match positions to this account via broker string.
+  // OB-synced accounts are always bank accounts: never show portfolio on them.
   const acctPositions = useMemo(() => {
+    if (account.bankingUid) return []
     const name   = account.name.toLowerCase()
     const broker = (account.broker ?? '').toLowerCase()
-    return positions.filter((p) => {
-      const b = p.broker.toLowerCase()
-      if (!b) return false
-      return broker === b || name === b
-        || (broker && (broker.includes(b) || b.includes(broker)))
-        || name.includes(b) || b.includes(name)
-    })
+    const matches = (b: string) =>
+      broker === b || name === b
+      || (broker && (broker.includes(b) || b.includes(broker)))
+      || name.includes(b) || b.includes(name)
+    const named = positions.filter((p) => { const b = p.broker.toLowerCase(); return b && matches(b) })
+    if (named.length === 0) return []
+    // Include orphan positions (empty broker) under this account since it already owns some positions
+    return positions.filter((p) => !p.broker || matches(p.broker.toLowerCase()))
   }, [positions, account])
 
   const portfolioMktValue = useMemo(() =>
