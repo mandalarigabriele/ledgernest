@@ -38,7 +38,7 @@ const FORMAT_LABEL: Record<DetectedFormat, string> = {
 interface TickerResult { ticker: string; name: string; exchange?: string; quoteType?: string }
 
 function TickerSearchInput({
-  value, onChange, onValidated, isConfirmed: isConfirmedProp, assetType, required,
+  value, onChange, onValidated, isConfirmed: isConfirmedProp, assetType, required, extraCandidates,
 }: {
   value: string
   onChange: (ticker: string, result?: TickerResult) => void
@@ -46,6 +46,7 @@ function TickerSearchInput({
   isConfirmed?: boolean
   assetType: string
   required?: boolean
+  extraCandidates?: string[]
 }) {
   const [query, setQuery]         = useState(value)
   const [results, setResults]     = useState<TickerResult[]>([])
@@ -58,25 +59,43 @@ function TickerSearchInput({
   const debounce  = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inputRef  = useRef<HTMLInputElement>(null)
 
-  // Validate pre-filled ticker on mount
+  // Validate pre-filled ticker on mount; if it fails, try extraCandidates in order
   useEffect(() => {
     if (!value.trim()) return
     setLoading(true)
     const type = assetType === 'crypto' ? 'crypto' : 'stock'
-    fetch(`/api/ticker-search?q=${encodeURIComponent(value)}&type=${type}`)
-      .then((r) => r.json())
-      .then((data: TickerResult[]) => {
-        setLoading(false)
-        const v = value.trim().toUpperCase()
-        // For crypto, CoinGecko returns "BTC-USD" so also match without the "-USD" suffix
-        const exact = data.find((r: TickerResult) =>
-          r.ticker.toUpperCase() === v ||
-          r.ticker.replace(/-USD$/i, '').toUpperCase() === v
-        )
-        if (exact) { setConfirmed(true); onValidated?.(true) }
-        else        { setNotFound(true);  onValidated?.(false) }
-      })
-      .catch(() => { setLoading(false); onValidated?.(false) })
+
+    const tryValidate = (ticker: string): Promise<TickerResult | null> =>
+      fetch(`/api/ticker-search?q=${encodeURIComponent(ticker)}&type=${type}`)
+        .then((r) => r.json())
+        .then((data: TickerResult[]) => {
+          const v = ticker.trim().toUpperCase()
+          return data.find((r: TickerResult) =>
+            r.ticker.toUpperCase() === v ||
+            r.ticker.replace(/-USD$/i, '').toUpperCase() === v
+          ) ?? null
+        })
+        .catch(() => null)
+
+    const candidates = [value, ...(extraCandidates ?? [])]
+    ;(async () => {
+      for (const candidate of candidates) {
+        const exact = await tryValidate(candidate)
+        if (exact) {
+          setLoading(false)
+          if (candidate !== value) {
+            setQuery(candidate)
+            onChange(candidate, exact)
+          }
+          setConfirmed(true)
+          onValidated?.(true)
+          return
+        }
+      }
+      setLoading(false)
+      setNotFound(true)
+      onValidated?.(false)
+    })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync query when ticker is changed externally (bulk update from parent)
@@ -862,6 +881,9 @@ export default function CSVImportWizard({ onClose }: Props) {
                                   assetType={trade.assetType}
                                   isConfirmed={trade.tickerConfirmed}
                                   required
+                                  extraCandidates={positions
+                                    .filter((p) => p.name.toLowerCase() === trade.name.toLowerCase() && p.ticker !== trade.ticker)
+                                    .map((p) => p.ticker)}
                                   onChange={(ticker, result) => {
                                     if (result) {
                                       // Confirmed selection → bulk-confirm all rows with same name
