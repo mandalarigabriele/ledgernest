@@ -149,6 +149,16 @@ export default function EnableBankingPanel() {
       let added = 0, fixed = 0
       for (const tx of data.newTransactions) {
         const { eb_id: _, ...txData } = tx
+        // Match by ebId first — prevents fuzzy false-positives (e.g. same amount/date from CSV import)
+        const byEbId = txData.ebId ? transactions.find((t) => t.ebId === txData.ebId) : undefined
+        if (byEbId) {
+          if (byEbId.accountId !== acct.finance_account_id) {
+            updateTransaction(byEbId.id, { accountId: acct.finance_account_id })
+            fixed++
+          }
+          continue
+        }
+        // Fuzzy fallback for transactions without ebId
         const existing = transactions.find(
           (t) => t.date === txData.date && Math.abs(t.amount - txData.amount) < 0.01
             && t.type === txData.type && t.description === txData.description

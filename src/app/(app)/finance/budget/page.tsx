@@ -269,20 +269,35 @@ export default function BudgetPage() {
   function getCatBudget(catId: string): number { return plan.categories[catId] ?? 0 }
   function getGroupBudget(key: string): number  { return plan.groupBudgets?.[key] ?? 0 }
 
-  // ── spent by category ─────────────────────────────────────
+  // ── spent by category (goal-allocated portions excluded) ──
   const spentByCategory = useMemo(() => {
     const map: Record<string, number> = {}
     for (const tx of transactions) {
       if (tx.type === 'expense' && tx.date.startsWith(month)) {
+        const allocatedTotal = tx.goalAllocations?.reduce((s, a) => s + a.amount, 0) ?? 0
+        const effective = tx.amount - allocatedTotal
+        if (effective <= 0) continue
         const cat = budgetCategories.find(
           (c) => c.id === tx.category || c.name === tx.category || c.name.toLowerCase() === tx.category.toLowerCase()
         )
         const key = cat?.id ?? tx.category
-        map[key] = (map[key] ?? 0) + tx.amount
+        map[key] = (map[key] ?? 0) + effective
       }
     }
     return map
   }, [transactions, month, budgetCategories])
+
+  // ── actual goal contributions this month (from allocations) ─
+  const goalAllocatedThisMonth = useMemo(() => {
+    const map: Record<string, number> = {}
+    for (const tx of transactions) {
+      if (!tx.date.startsWith(month) || !tx.goalAllocations) continue
+      for (const alloc of tx.goalAllocations) {
+        map[alloc.goalId] = (map[alloc.goalId] ?? 0) + alloc.amount
+      }
+    }
+    return map
+  }, [transactions, month])
 
   const receivedByCategory = useMemo(() => {
     const map: Record<string, number> = {}
@@ -935,9 +950,11 @@ export default function BudgetPage() {
                 <div style={{ ...colLabelStyle, textAlign: 'right' }}>{tl('colProgress')}</div>
               </div>
               {goals.map((goal) => {
-                const contrib  = goal.monthlyContribution ?? 0
-                const pct      = income > 0 ? (contrib / income) * 100 : 0
-                const progress = goal.targetAmount > 0 ? Math.min(100, (goal.currentAmount / goal.targetAmount) * 100) : 0
+                const contrib      = goal.monthlyContribution ?? 0
+                const allocatedNow = goalAllocatedThisMonth[goal.id] ?? 0
+                const currentAmt   = allocatedNow > 0 ? allocatedNow : goal.currentAmount
+                const pct          = income > 0 ? (contrib / income) * 100 : 0
+                const progress     = goal.targetAmount > 0 ? Math.min(100, (currentAmt / goal.targetAmount) * 100) : 0
                 return (
                   <div key={goal.id}
                     style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background .1s' }}
@@ -948,7 +965,12 @@ export default function BudgetPage() {
                       <div style={{ width: 28, height: 28, borderRadius: 7, background: `${goal.color}28`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>{goal.icon}</div>
                       <div style={{ paddingLeft: 8 }}>
                         <div style={{ fontWeight: 600, fontSize: 13 }}>{goal.name}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 1 }}>{progress.toFixed(0)}% · {fmt(goal.currentAmount)} di {fmt(goal.targetAmount)}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 1 }}>
+                          {progress.toFixed(0)}% · {fmt(currentAmt)} di {fmt(goal.targetAmount)}
+                          {allocatedNow > 0 && (
+                            <span style={{ marginLeft: 6, color: 'var(--success, #3fb950)', fontWeight: 600 }}>+{fmt(allocatedNow)} questo mese</span>
+                          )}
+                        </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg-elevated)', borderRadius: 8, padding: '3px 8px', border: '1px solid var(--border-subtle)', width: 'fit-content' }}>
                         <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>€</span>

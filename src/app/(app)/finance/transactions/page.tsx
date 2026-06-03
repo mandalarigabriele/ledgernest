@@ -48,7 +48,7 @@ function DeleteConfirmModal({ message, onConfirm, onCancel, title, cancelLabel, 
 
 function EditMovementModal({ tx, onClose }: { tx: Transaction; onClose: () => void }) {
   const tl = useTranslations('movimenti')
-  const { updateTransaction, accounts } = useFinanceStore()
+  const { updateTransaction, accounts, goals } = useFinanceStore()
   const [date, setDate] = useState(tx.date)
   const [description, setDescription] = useState(tx.description)
   const [amount, setAmount] = useState(String(tx.amount))
@@ -57,19 +57,31 @@ function EditMovementModal({ tx, onClose }: { tx: Transaction; onClose: () => vo
   const [accountId, setAccountId] = useState(tx.accountId)
   const [merchant, setMerchant] = useState(tx.merchant ?? '')
   const [note, setNote] = useState(tx.note ?? '')
+  const [goalAllocations, setGoalAllocations] = useState<{ goalId: string; amount: number }[]>(tx.goalAllocations ?? [])
   const modalRef = useRef<HTMLDivElement>(null)
 
+  const txAmount = parseFloat(amount) || 0
+  const allocatedTotal = goalAllocations.reduce((s, a) => s + a.amount, 0)
+  const allocationsValid = allocatedTotal <= txAmount + 0.001
+
+  function addAllocation() {
+    const unusedGoal = goals.find((g) => !goalAllocations.some((a) => a.goalId === g.id))
+    if (!unusedGoal) return
+    setGoalAllocations((prev) => [...prev, { goalId: unusedGoal.id, amount: 0 }])
+  }
+
   function handleSave() {
-    if (!description.trim() || !amount) return
+    if (!description.trim() || !amount || !allocationsValid) return
     updateTransaction(tx.id, {
       date,
       description: description.trim(),
       merchant: merchant.trim() || undefined,
-      amount: parseFloat(amount) || 0,
+      amount: txAmount,
       type,
       category,
       accountId,
       note: note.trim() || undefined,
+      goalAllocations: goalAllocations.length > 0 ? goalAllocations : undefined,
     })
     onClose()
   }
@@ -155,11 +167,71 @@ function EditMovementModal({ tx, onClose }: { tx: Transaction; onClose: () => vo
           <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={tl('editOptional')} style={inputStyle} />
         </div>
 
+        {/* Goal allocations */}
+        {goals.length > 0 && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={labelStyle}>Alloca a goal</div>
+              {allocatedTotal > 0 && (
+                <span style={{ fontSize: 11, color: allocationsValid ? 'var(--text-tertiary)' : 'var(--danger)', fontVariantNumeric: 'tabular-nums' }}>
+                  {allocatedTotal.toFixed(2)} / {txAmount.toFixed(2)} €
+                </span>
+              )}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {goalAllocations.map((alloc, i) => {
+                const goal = goals.find((g) => g.id === alloc.goalId)
+                return (
+                  <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <select
+                      value={alloc.goalId}
+                      onChange={(e) => setGoalAllocations((prev) => prev.map((a, j) => j === i ? { ...a, goalId: e.target.value } : a))}
+                      style={{ ...inputStyle, flex: 1 }}
+                    >
+                      {goals.map((g) => (
+                        <option key={g.id} value={g.id} disabled={goalAllocations.some((a, j) => j !== i && a.goalId === g.id)}>
+                          {g.icon} {g.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--bg-elevated)', border: `1px solid ${goal?.color ?? 'var(--border-subtle)'}44`, borderRadius: 8, padding: '5px 10px', width: 100, flexShrink: 0 }}>
+                      <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>€</span>
+                      <input
+                        type="number" min="0" step="0.01" value={alloc.amount || ''}
+                        onChange={(e) => setGoalAllocations((prev) => prev.map((a, j) => j === i ? { ...a, amount: parseFloat(e.target.value) || 0 } : a))}
+                        style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', fontSize: 13, fontWeight: 700, color: goal?.color ?? 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}
+                      />
+                    </div>
+                    <button
+                      onClick={() => setGoalAllocations((prev) => prev.filter((_, j) => j !== i))}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', fontSize: 16, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}
+                    >×</button>
+                  </div>
+                )
+              })}
+            </div>
+            {goalAllocations.length < goals.length && (
+              <button
+                onClick={addAllocation}
+                className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm"
+                style={{ marginTop: goalAllocations.length > 0 ? 8 : 0, fontSize: 12 }}
+              >
+                + Aggiungi goal
+              </button>
+            )}
+            {!allocationsValid && (
+              <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 4 }}>
+                Il totale allocato supera l&apos;importo della transazione
+              </div>
+            )}
+          </div>
+        )}
+
         <button
           onClick={handleSave}
           className="ledgernest-btn ledgernest-btn-primary"
           style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}
-          disabled={!description.trim()}
+          disabled={!description.trim() || !allocationsValid}
         >
           {tl('editSave')}
         </button>
@@ -384,7 +456,7 @@ const INVEST_CATS = new Set(Object.values(ASSET_CAT_ALIAS))
 export default function MovimentiPage() {
   const tl = useTranslations('movimenti')
   const { fmt } = useFormatters()
-  const { transactions, accounts, budgetCategories, budgetGroups, monthlyIncome, monthlyExpenses, deleteTransaction, merchantLogos } = useFinanceStore()
+  const { transactions, accounts, budgetCategories, budgetGroups, monthlyIncome, monthlyExpenses, deleteTransaction, merchantLogos, goals } = useFinanceStore()
   const { trades } = usePortfolioStore()
   const { openModal } = useUIStore()
 
@@ -736,10 +808,27 @@ export default function MovimentiPage() {
                         </div>
                       </div>
 
-                      {/* Category label */}
-                      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', flexShrink: 0 }}>
-                        {tx.category}
-                      </span>
+                      {/* Goal badges or category label */}
+                      {tx.goalAllocations && tx.goalAllocations.length > 0 ? (
+                        <div style={{ display: 'flex', gap: 4, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: 160 }}>
+                          {tx.goalAllocations.map((alloc) => {
+                            const g = goals.find((g) => g.id === alloc.goalId)
+                            if (!g) return null
+                            return (
+                              <span key={alloc.goalId} style={{
+                                fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 6,
+                                background: `${g.color}22`, color: g.color, whiteSpace: 'nowrap',
+                              }}>
+                                {g.icon} {fmt(alloc.amount)}
+                              </span>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: 12, color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                          {tx.category}
+                        </span>
+                      )}
 
                       {/* Amount */}
                       <div style={{

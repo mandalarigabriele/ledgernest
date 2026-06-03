@@ -23,6 +23,11 @@ export interface Account {
   updatedAt: string
 }
 
+export interface GoalAllocation {
+  goalId: string
+  amount: number
+}
+
 export interface Transaction {
   id: string
   date: string
@@ -34,6 +39,7 @@ export interface Transaction {
   accountId: string
   note?: string
   ebId?: string   // Enable Banking transaction ID — present only on OB-synced transactions
+  goalAllocations?: GoalAllocation[]
   createdAt: string
 }
 

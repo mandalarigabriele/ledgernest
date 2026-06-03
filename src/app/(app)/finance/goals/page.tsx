@@ -303,15 +303,35 @@ function DeleteConfirm({ goal, onConfirm, onCancel }: { goal: Goal; onConfirm: (
 export default function ObiettiviPage() {
   const tl = useTranslations('obiettivi')
   const { fmt } = useFormatters()
-  const { goals, featuredGoalId, deleteGoal, setFeaturedGoal } = useFinanceStore()
+  const { goals, transactions, featuredGoalId, deleteGoal, setFeaturedGoal } = useFinanceStore()
   const { openModal } = useUIStore()
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
   const [deletingGoal, setDeletingGoal] = useState<Goal | null>(null)
 
-  const active = goals.filter((g) => g.currentAmount < g.targetAmount)
-  const totalSaved = goals.reduce((s, g) => s + g.currentAmount, 0)
-  const totalTarget = goals.reduce((s, g) => s + g.targetAmount, 0)
-  const totalMonthly = goals.reduce((s, g) => s + g.monthlyContribution, 0)
+  // Compute currentAmount from transaction allocations; fall back to manual value
+  const goalAllocatedTotals = useMemo(() => {
+    const map: Record<string, number> = {}
+    for (const tx of transactions) {
+      for (const alloc of tx.goalAllocations ?? []) {
+        map[alloc.goalId] = (map[alloc.goalId] ?? 0) + alloc.amount
+      }
+    }
+    return map
+  }, [transactions])
+
+  // Enrich goals with computed currentAmount
+  const resolvedGoals = useMemo(() =>
+    goals.map((g) => {
+      const allocated = goalAllocatedTotals[g.id]
+      return allocated != null ? { ...g, currentAmount: allocated } : g
+    }),
+    [goals, goalAllocatedTotals]
+  )
+
+  const active = resolvedGoals.filter((g) => g.currentAmount < g.targetAmount)
+  const totalSaved = resolvedGoals.reduce((s, g) => s + g.currentAmount, 0)
+  const totalTarget = resolvedGoals.reduce((s, g) => s + g.targetAmount, 0)
+  const totalMonthly = resolvedGoals.reduce((s, g) => s + g.monthlyContribution, 0)
   const shortTermCount = active.filter(isShortTerm).length
   const longTermCount = active.length - shortTermCount
 
@@ -323,7 +343,7 @@ export default function ObiettiviPage() {
   }, [active.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Featured: explicit choice, else first goal
-  const featured = (featuredGoalId ? goals.find((g) => g.id === featuredGoalId) : null) ?? goals[0] ?? null
+  const featured = (featuredGoalId ? resolvedGoals.find((g) => g.id === featuredGoalId) : null) ?? resolvedGoals[0] ?? null
   const featuredPct = featured ? Math.min(100, (featured.currentAmount / featured.targetAmount) * 100) : 0
   const featuredMonths = featured ? monthsToCompletion(featured) : null
 
@@ -417,7 +437,7 @@ export default function ObiettiviPage() {
                 {tl('featuredTitle')}
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-                {goals.length > 1 && (
+                {resolvedGoals.length > 1 && (
                   <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>
                     {tl('featuredEmpty')}
                   </span>
@@ -461,7 +481,7 @@ export default function ObiettiviPage() {
       {/* ── All goals ──────────────────────────────────────────── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <div style={{ fontSize: 16, fontWeight: 700 }}>{tl('sectionTitle', { n: goals.length })}</div>
+          <div style={{ fontSize: 16, fontWeight: 700 }}>{tl('sectionTitle', { n: resolvedGoals.length })}</div>
           <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{tl('sectionSubtitle')}</div>
         </div>
         <button className="ledgernest-btn ledgernest-btn-primary" onClick={() => openModal('goal')} style={{ gap: 6 }}>
@@ -470,7 +490,7 @@ export default function ObiettiviPage() {
       </div>
 
       <div className="ledgernest-obj-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        {goals.map((g) => (
+        {resolvedGoals.map((g) => (
           <GoalCard
             key={g.id}
             g={g}

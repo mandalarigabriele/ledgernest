@@ -187,6 +187,7 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
     const broker = (account.broker ?? '').toLowerCase()
     return positions.filter((p) => {
       const b = p.broker.toLowerCase()
+      if (!b) return false
       return broker === b || name === b
         || (broker && (broker.includes(b) || b.includes(broker)))
         || name.includes(b) || b.includes(name)
@@ -227,13 +228,22 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
       let added = 0, fixed = 0
       for (const tx of data.newTransactions ?? []) {
         const { eb_id: _, ...txData } = tx as { eb_id: string } & Parameters<typeof addTransaction>[0]
+        const ebId = (txData as { ebId?: string }).ebId
+        // Match by ebId first — prevents fuzzy false-positives (e.g. same amount/date from CSV import)
+        const byEbId = ebId ? transactions.find((t) => t.ebId === ebId) : undefined
+        if (byEbId) {
+          const needsFix = byEbId.accountId !== account.id
+          if (needsFix) { updateTransaction(byEbId.id, { accountId: account.id }); fixed++ }
+          continue
+        }
+        // Fuzzy fallback for transactions without ebId
         const existing = transactions.find(
           (t) => t.date === txData.date && Math.abs(t.amount - (txData.amount as number)) < 0.01
             && t.type === txData.type && t.description === txData.description
         )
         if (existing) {
           const needsFix = existing.accountId !== account.id || !existing.ebId
-          if (needsFix) { updateTransaction(existing.id, { accountId: account.id, ebId: (txData as { ebId?: string }).ebId }); fixed++ }
+          if (needsFix) { updateTransaction(existing.id, { accountId: account.id, ebId }); fixed++ }
         } else {
           addTransaction({ ...txData, note: undefined }); added++
         }
@@ -257,7 +267,8 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
   }
   const cfg = TYPE_CONFIG[account.type]
 
-  const pct = totalAssets > 0 ? (account.balance / totalAssets) * 100 : 0
+  const effectiveBalance = acctPositions.length > 0 ? account.balance + portfolioMktValue : account.balance
+  const pct = totalAssets > 0 ? (effectiveBalance / totalAssets) * 100 : 0
 
   return (
     <div className="ledgernest-card" style={{ display: 'flex', flexDirection: 'column', gap: 0, padding: 0, overflow: 'hidden', minWidth: 0, height: '100%' }}>
@@ -306,22 +317,29 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
           </div>
         </div>
 
-        {/* Balance — always at same Y thanks to fixed-height header zone above */}
+        {/* Balance — total (cash + portfolio) for broker accounts, cash only otherwise */}
         <div style={{ marginTop: 14, fontSize: 26, fontWeight: 800, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums' }}>
-          {fmt(account.balance)}
+          {fmt(acctPositions.length > 0 ? account.balance + portfolioMktValue : account.balance)}
         </div>
 
-        {/* Portfolio P&L — single line, subtle */}
+        {/* Portfolio breakdown — cash + invested + P&L */}
         {acctPositions.length > 0 && (() => {
           const pnl    = portfolioMktValue - portfolioCost
           const pnlPct = portfolioCost > 0 ? (pnl / portfolioCost) * 100 : 0
           const isPos  = pnl >= 0
           return (
-            <div style={{ fontSize: 12, marginTop: 2, color: isPos ? '#2dd4bf' : '#f85149', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-              {isPos ? '+' : ''}{fmt(pnl)} ({isPos ? '+' : ''}{pnlPct.toFixed(1)}%)
-              <span style={{ color: 'var(--text-tertiary)', fontWeight: 400, marginLeft: 6 }}>
-                su {fmt(portfolioCost)} investiti
-              </span>
+            <div style={{ marginTop: 3, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+                <span>{fmt(account.balance)} liquidità</span>
+                <span style={{ margin: '0 5px', opacity: 0.4 }}>·</span>
+                <span>{fmt(portfolioMktValue)} investiti</span>
+              </div>
+              <div style={{ fontSize: 12, color: isPos ? '#2dd4bf' : '#f85149', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                {isPos ? '+' : ''}{fmt(pnl)} ({isPos ? '+' : ''}{pnlPct.toFixed(1)}%)
+                <span style={{ color: 'var(--text-tertiary)', fontWeight: 400, marginLeft: 5 }}>
+                  su {fmt(portfolioCost)} di costo
+                </span>
+              </div>
             </div>
           )
         })()}
