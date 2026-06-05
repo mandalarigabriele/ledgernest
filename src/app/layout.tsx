@@ -15,6 +15,30 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang={locale} suppressHydrationWarning>
+      <head>
+        {/* Blocking script: applies theme class before first paint to prevent white flash */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function() {
+            try {
+              var s = localStorage.getItem('ledgernest-settings');
+              if (s) {
+                var settings = JSON.parse(s).state?.settings;
+                var theme = settings?.theme || 'dark';
+                if (theme === 'system') {
+                  theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                }
+                document.documentElement.className = 'ledgernest-theme-' + theme;
+                var acc = settings?.accentColor;
+                if (acc) document.documentElement.style.setProperty('--accent', acc);
+              } else {
+                document.documentElement.className = 'ledgernest-theme-dark';
+              }
+            } catch(e) {
+              document.documentElement.className = 'ledgernest-theme-dark';
+            }
+          })();
+        `}} />
+      </head>
       <body suppressHydrationWarning>
         <AuthProvider>
           <NextIntlClientProvider messages={messages}>
