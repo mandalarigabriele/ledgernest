@@ -126,8 +126,8 @@ export async function POST(req: NextRequest) {
       const mapped = mapTransaction(eb, financeAccountId)
 
       const existing = db.prepare(
-        `SELECT id, user_deleted FROM banking_transactions WHERE id = ? AND user_email = ?`
-      ).get(mapped.eb_id, session.user.email) as { id: string; user_deleted: number } | undefined
+        `SELECT id, user_deleted FROM banking_transactions WHERE id = ? AND account_uid = ? AND user_email = ?`
+      ).get(mapped.eb_id, accountUid, session.user.email) as { id: string; user_deleted: number } | undefined
 
       // Skip if already in dedup (includes user-deleted entries in delta/force modes)
       if (existing) continue
