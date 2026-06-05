@@ -118,7 +118,7 @@ export default function PortfolioPerformanceChart({ filter = 'all', title, subti
     : timeframe === '1A' ? t('pfPeriodYear')
     : t('pfPeriodAll'))
 
-  if (points.length < 3) {
+  if (points.length < 2) {
     return (
       <div className="pfchart">
         <div className="pfchart-header">

@@ -1299,5 +1299,12 @@
     "deleteBody": "Questa azione eliminerà definitivamente la posizione e tutte le operazioni associate.",
     "cancel": "Annulla",
     "delete": "Elimina"
+  },
+  "demo": {
+    "bannerPre": "Stai esplorando la",
+    "bannerMode": "modalità demo",
+    "bannerPost": "— i dati sono fittizi",
+    "exit": "Esci dalla demo",
+    "exiting": "Uscita…"
   }
 }

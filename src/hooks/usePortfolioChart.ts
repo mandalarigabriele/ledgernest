@@ -49,6 +49,7 @@ export function usePortfolioChart(timeframe: Timeframe, filter: AssetFilter = 'a
   const { positions } = usePortfolioStore()
   const { quotes, eurUsd } = usePricesStore()
   const showPrePostMarket = useSettingsStore((s) => s.settings.showPrePostMarket)
+  const demoMode = useSettingsStore((s) => s.settings.demoMode)
 
   // Compute live value as scalar numbers — reactive to quotes/positions changes,
   // and passed as primitive deps to the snapshot useMemo below.
@@ -105,8 +106,9 @@ export function usePortfolioChart(timeframe: Timeframe, filter: AssetFilter = 'a
       }
     }).filter(p => p.value > 0)
 
-    // Inject live "now" point so the chart always ends at the current price
-    if (liveValue > 0) {
+    // In demo mode the seeded snapshots already go up to the current hour —
+    // injecting live prices would create a mismatch spike.
+    if (liveValue > 0 && !demoMode) {
       const today = new Date().toISOString().slice(0, 10)
       const nowPoint: ChartPoint = {
         date: new Date().toISOString(),
@@ -134,7 +136,7 @@ export function usePortfolioChart(timeframe: Timeframe, filter: AssetFilter = 'a
     })
 
     return { points, currentValue, totalInvested, gainAbs, gainPct, availableTimeframes }
-  }, [snapshots, timeframe, filter, oldestTs, liveValue, liveInvested])
+  }, [snapshots, timeframe, filter, oldestTs, liveValue, liveInvested, demoMode])
 
   return data
 }

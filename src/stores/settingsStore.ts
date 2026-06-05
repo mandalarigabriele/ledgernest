@@ -32,6 +32,7 @@ const defaultSettings: AppSettings = {
   alertEmailEnabled: true,
   alertToastEnabled: true,
   targetAllocation: {},
+  demoMode: false,
 }
 
 export const useSettingsStore = create<SettingsStore>()(

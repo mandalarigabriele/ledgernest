@@ -254,6 +254,7 @@ export interface AppSettings {
   alertEmailEnabled?: boolean
   alertToastEnabled?: boolean
   targetAllocation?: Record<string, number>
+  demoMode?: boolean
 }
 
 // ---- UI Store -----------------------------------------------

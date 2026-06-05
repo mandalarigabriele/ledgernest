@@ -11,6 +11,7 @@ import { useSettingsStore } from '@/stores/settingsStore'
 import { effectivePriceEur } from '@/lib/utils/price'
 import { fmtDate } from '@/lib/utils/format'
 import { useFormatters } from '@/hooks/useFormatters'
+import { computeDivRows } from '@/lib/utils/dividends'
 import Donut from '@/components/charts/Donut'
 import type { DivEvent } from '@/components/charts/DivCalendar'
 import BarChart from '@/components/charts/BarChart'
@@ -32,7 +33,7 @@ export default function DashboardPage() {
   const tn = useTranslations('nav')
   const { fmt, fmt0, fmtCpt, fmtDlt } = useFormatters()
 
-  const { positions } = usePortfolioStore()
+  const { positions, dividends, trades } = usePortfolioStore()
   const { snapshots } = usePortfolioSnapshotStore()
   const { accounts, transactions, monthlyExpenses, monthlyIncome, totalCash, budgetCategories, merchantLogos, budgetPlans } = useFinanceStore()
   const { quotes, eurUsd } = usePricesStore()
@@ -241,19 +242,14 @@ export default function DashboardPage() {
       .catch(() => {})
   }, [positions.map((p) => p.ticker).join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* ─── Dividend calendar — predicted upcoming ex-div dates ─── */
-  const [divEvents, setDivEvents] = useState<DivEvent[]>([])
-
-  useEffect(() => {
-    const divTickers = positions
-      .filter((p) => p.type === 'stock' || p.type === 'etf')
-      .map((p) => p.ticker)
-    if (divTickers.length === 0) { setDivEvents([]); return }
-    fetch(`/api/dividends?tickers=${encodeURIComponent(divTickers.join(','))}`)
-      .then((r) => r.json())
-      .then(({ events }: { events: DivEvent[] }) => setDivEvents(events))
-      .catch(() => {})
-  }, [positions.filter((p) => p.type === 'stock' || p.type === 'etf').map((p) => p.ticker).join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
+  /* ─── Dividend calendar — same source as dividends page ─── */
+  const divEvents = useMemo<DivEvent[]>(() => {
+    const rows = computeDivRows(positions, dividends, trades, eurUsd)
+    const evts: DivEvent[] = []
+    for (const d of dividends) if (d.exDate) evts.push({ date: d.exDate, ticker: d.ticker })
+    for (const r of rows) if (r.nextDate && r.status === 'stimato') evts.push({ date: r.nextDate, ticker: r.pos.ticker })
+    return evts
+  }, [positions, dividends, trades, eurUsd])
 
   const recentTx = transactions.slice(0, 7)
 

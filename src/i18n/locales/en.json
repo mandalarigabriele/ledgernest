@@ -1299,5 +1299,12 @@
     "deleteBody": "This will permanently delete the position and all associated trades.",
     "cancel": "Cancel",
     "delete": "Delete"
+  },
+  "demo": {
+    "bannerPre": "You are exploring",
+    "bannerMode": "demo mode",
+    "bannerPost": "— data is fictional",
+    "exit": "Exit demo",
+    "exiting": "Exiting…"
   }
 }

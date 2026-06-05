@@ -7,6 +7,9 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'LedgerNest — Personal Finance',
   description: 'Portfolio e finanza personale',
+  icons: {
+    icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }],
+  },
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

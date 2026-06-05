@@ -4,12 +4,51 @@
 
 **Personal finance dashboard — portfolio, budget, net worth and cashflow in one place.**
 
-![Version](https://img.shields.io/badge/version-0.5.12-blue)
+![Version](https://img.shields.io/badge/version-0.5.13-blue)
 ![Next.js](https://img.shields.io/badge/Next.js-14-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.5-blue)
 ![License](https://img.shields.io/badge/license-private-lightgrey)
 
 </div>
+
+---
+
+## 📸 Screenshots
+
+<table>
+  <tr>
+    <td align="center"><b>Dashboard</b></td>
+    <td align="center"><b>Stocks</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/dashboard.png" alt="Dashboard" /></td>
+    <td><img src="docs/screenshots/stocks.png" alt="Stocks" /></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Transactions</b></td>
+    <td align="center"><b>Budget</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/transactions.png" alt="Transactions" /></td>
+    <td><img src="docs/screenshots/budget.png" alt="Budget" /></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Dividends</b></td>
+    <td align="center"><b>Report</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/dividends.png" alt="Dividends" /></td>
+    <td><img src="docs/screenshots/report.png" alt="Report" /></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Heatmap</b></td>
+    <td align="center"><b>Watchlist</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/heatmap.png" alt="Heatmap" /></td>
+    <td><img src="docs/screenshots/watchlist.png" alt="Watchlist" /></td>
+  </tr>
+</table>
 
 ---
 

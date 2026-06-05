@@ -14,9 +14,10 @@ import SearchPalette from '@/components/shared/SearchPalette'
 import ModalHost from '@/components/shared/ModalHost'
 import OnboardingWizard from '@/components/shared/OnboardingWizard'
 import AlertToastHost from '@/components/shared/AlertToastHost'
+import DemoBanner from '@/components/shared/DemoBanner'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { settings } = useSettingsStore()
+  const { settings, updateSettings } = useSettingsStore()
   const { searchOpen, sidebarOpen, setSearchOpen, openModal } = useUIStore()
   const { accounts } = useFinanceStore()
   const [mounted, setMounted] = useState(false)
@@ -25,6 +26,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   usePriceAlerts()
 
   useEffect(() => { setMounted(true) }, [])
+
+  // Auto-clear stale demoMode flag if the demo cookie is absent
+  useEffect(() => {
+    if (settings.demoMode && !document.cookie.includes('ledgernest-demo=')) {
+      updateSettings({ demoMode: false })
+    }
+  }, [settings.demoMode, updateSettings])
 
   const needsOnboarding = mounted && accounts.length === 0
 
@@ -102,6 +110,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <Sidebar />
       <div className="ledgernest-main">
         <Topbar />
+        {mounted && settings.demoMode && <DemoBanner />}
         <main className="ledgernest-page ledgernest-animate-in">
           {mounted && children}
         </main>
