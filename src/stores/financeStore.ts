@@ -40,6 +40,7 @@ interface FinanceStore {
   addTransaction: (tx: Omit<Transaction, 'id' | 'createdAt'>) => void
   updateTransaction: (id: string, patch: Partial<Transaction>) => void
   deleteTransaction: (id: string) => void
+  clearAccountOBTransactions: (accountId: string) => void
 
   // Budget
   addBudgetCategory: (cat: Omit<BudgetCategory, 'id'>) => void
@@ -223,6 +224,11 @@ export const useFinanceStore = create<FinanceStore>()(
       })),
       clearAccountTransactions: (id) => set((s) => ({
         transactions: s.transactions.filter((t) => t.accountId !== id),
+      })),
+      // Silently removes OB-synced transactions (ebId set) for an account — used by hard-reset
+      // Does NOT call the PATCH endpoint; server dedup is already cleared by the API
+      clearAccountOBTransactions: (accountId) => set((s) => ({
+        transactions: s.transactions.filter((t) => !(t.accountId === accountId && !!t.ebId)),
       })),
 
       addTransaction: (tx) => {

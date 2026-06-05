@@ -184,7 +184,7 @@ function EditAccountModal({ account, onClose }: { account: Account; onClose: () 
 function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { account: Account; totalAssets: number; onEdit: () => void; onDelete: () => void; onClearTx: () => void }) {
   const t = useTranslations('conti')
   const { fmt } = useFormatters()
-  const { transactions, updateAccount, addTransaction, updateTransaction } = useFinanceStore()
+  const { transactions, updateAccount, addTransaction, updateTransaction, clearAccountOBTransactions } = useFinanceStore()
   const { positions } = usePortfolioStore()
   const { quotes } = usePricesStore()
   const showPrePost = useSettingsStore((s) => s.settings.showPrePostMarket)
@@ -237,19 +237,23 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
       }
       setRateLimited(false)
       if (data.newBalance != null) updateAccount(account.id, { balance: data.newBalance })
+      // Hard reset: wipe OB-synced transactions from local store so they all reimport cleanly
+      if (mode === 'hard-reset') clearAccountOBTransactions(account.id)
+      // Use fresh snapshot after potential clear
+      const currentTxs = useFinanceStore.getState().transactions
       let added = 0, fixed = 0
       for (const tx of data.newTransactions ?? []) {
         const { eb_id: _, ...txData } = tx as { eb_id: string } & Parameters<typeof addTransaction>[0]
         const ebId = (txData as { ebId?: string }).ebId
         // Match by ebId first — prevents fuzzy false-positives (e.g. same amount/date from CSV import)
-        const byEbId = ebId ? transactions.find((t) => t.ebId === ebId) : undefined
+        const byEbId = ebId ? currentTxs.find((t) => t.ebId === ebId) : undefined
         if (byEbId) {
           const needsFix = byEbId.accountId !== account.id
           if (needsFix) { updateTransaction(byEbId.id, { accountId: account.id }); fixed++ }
           continue
         }
         // Fuzzy fallback for transactions without ebId
-        const existing = transactions.find(
+        const existing = currentTxs.find(
           (t) => t.date === txData.date && Math.abs(t.amount - (txData.amount as number)) < 0.01
             && t.type === txData.type && t.description === txData.description
         )

@@ -604,7 +604,7 @@ export default function BudgetPage() {
       </div>
 
       {/* ── 2-col layout 60/40: [Budget + Pianifica] | DA ASSEGNARE (sticky) ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 20, alignItems: 'start' }}>
+      <div className="ledgernest-budget-layout" style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 20, alignItems: 'start' }}>
 
         {/* Budget header + Pianifica — unica card col 1 */}
         <div className="ledgernest-card ledgernest-budget-table-card" style={{ padding: 0, overflow: 'hidden', gridColumn: 1 }}>

@@ -144,13 +144,17 @@ export default function EnableBankingPanel() {
       const data = await res.json() as SyncResult
       if (!res.ok) { showFlash(data.error ?? 'Errore sync'); return }
 
-      // Client-side dedup: update accountId on existing matches, add only truly new ones
-      const { transactions } = useFinanceStore.getState()
+      // Hard reset: wipe OB-synced transactions from local store so they all reimport cleanly
+      if (mode === 'hard-reset' && acct.finance_account_id) {
+        useFinanceStore.getState().clearAccountOBTransactions(acct.finance_account_id)
+      }
+      // Use fresh snapshot after potential clear
+      const { transactions: currentTxs } = useFinanceStore.getState()
       let added = 0, fixed = 0
       for (const tx of data.newTransactions) {
         const { eb_id: _, ...txData } = tx
         // Match by ebId first — prevents fuzzy false-positives (e.g. same amount/date from CSV import)
-        const byEbId = txData.ebId ? transactions.find((t) => t.ebId === txData.ebId) : undefined
+        const byEbId = txData.ebId ? currentTxs.find((t) => t.ebId === txData.ebId) : undefined
         if (byEbId) {
           if (byEbId.accountId !== acct.finance_account_id) {
             updateTransaction(byEbId.id, { accountId: acct.finance_account_id })
@@ -159,7 +163,7 @@ export default function EnableBankingPanel() {
           continue
         }
         // Fuzzy fallback for transactions without ebId
-        const existing = transactions.find(
+        const existing = currentTxs.find(
           (t) => t.date === txData.date && Math.abs(t.amount - txData.amount) < 0.01
             && t.type === txData.type && t.description === txData.description
         )

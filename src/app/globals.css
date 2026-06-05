@@ -2812,6 +2812,8 @@ ul, ol { list-style: none; }
   .ledgernest-budget-sidebar {
     position: static !important;
     max-height: none !important;
+    grid-column: 1 !important;
+    grid-row: auto !important;
   }
   /* Settings: collapse sidebar nav early */
   .ledgernest-settings-layout {
@@ -2996,6 +2998,8 @@ ul, ol { list-style: none; }
   .ledgernest-budget-sidebar {
     position: static !important;
     max-height: none !important;
+    grid-column: 1 !important;
+    grid-row: auto !important;
   }
   /* Budget table: horizontal scroll for table content only */
   .ledgernest-budget-table-card {
