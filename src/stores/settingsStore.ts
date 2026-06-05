@@ -31,6 +31,7 @@ const defaultSettings: AppSettings = {
   ignoreTransfers: true,
   alertEmailEnabled: true,
   alertToastEnabled: true,
+  targetAllocation: {},
 }
 
 export const useSettingsStore = create<SettingsStore>()(

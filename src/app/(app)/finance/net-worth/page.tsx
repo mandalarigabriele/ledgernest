@@ -331,6 +331,8 @@ export default function PatrimonioPage() {
   const [showAddProperty, setShowAddProperty] = useState(false)
   const [editingProperty, setEditingProperty] = useState<Property | null>(null)
   const [chartRange, setChartRange] = useState<'1M' | '3M' | '6M' | '1A' | 'MAX'>('6M')
+  const [exclProperties, setExclProperties] = useState(false)
+  const [exclLiquidity,   setExclLiquidity]  = useState(false)
 
   const portfolioValue = useMemo(() => {
     return positions.reduce((sum, p) => {
@@ -571,57 +573,102 @@ export default function PatrimonioPage() {
                 {tl('compSubtitle', { n: compositionItems.length, total: fmt(totalAssets) })}
               </div>
             </div>
-          </div>
-          {compositionItems.length === 0 ? (
-            <div className="ledgernest-empty" style={{ padding: '32px 0' }}>{tl('compositionEmpty')}</div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 20, padding: '12px 20px 20px' }}>
-              {/* SVG Donut */}
-              <div style={{ flexShrink: 0 }}>
-                <svg width="180" height="180" viewBox="0 0 180 180">
-                  {(() => {
-                    const cx = 90, cy = 90, R = 70, r = 48
-                    let angle = -Math.PI / 2
-                    const segs = compositionItems.map((item) => {
-                      const sweep = (item.value / totalAssets) * 2 * Math.PI
-                      const sa = angle, ea = angle + sweep
-                      angle = ea
-                      const x1 = cx + R * Math.cos(sa), y1 = cy + R * Math.sin(sa)
-                      const x2 = cx + R * Math.cos(ea), y2 = cy + R * Math.sin(ea)
-                      const x3 = cx + r * Math.cos(ea), y3 = cy + r * Math.sin(ea)
-                      const x4 = cx + r * Math.cos(sa), y4 = cy + r * Math.sin(sa)
-                      const large = sweep > Math.PI ? 1 : 0
-                      return { ...item, d: `M${x1},${y1} A${R},${R},0,${large},1,${x2},${y2} L${x3},${y3} A${r},${r},0,${large},0,${x4},${y4}Z` }
-                    })
-                    const label = totalAssets >= 1e6
-                      ? `€${(totalAssets / 1e6).toFixed(1)}M`
-                      : `€${(totalAssets / 1e3).toFixed(1)}k`
-                    return (
-                      <>
-                        {segs.map((s) => <path key={s.label} d={s.d} fill={s.color} />)}
-                        <text x={cx} y={cy - 6} textAnchor="middle" fontSize={16} fontWeight={800} fill="var(--text-primary)" fontFamily="inherit">{label}</text>
-                        <text x={cx} y={cy + 12} textAnchor="middle" fontSize={11} fill="var(--text-tertiary)" fontFamily="inherit">{tl('compCenter')}</text>
-                      </>
-                    )
-                  })()}
-                </svg>
-              </div>
-              {/* Legend */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {compositionItems.map((item) => {
-                  const pct = totalAssets > 0 ? (item.value / totalAssets) * 100 : 0
-                  return (
-                    <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.color, flexShrink: 0 }} />
-                      <span style={{ fontSize: 13, flex: 1 }}>{item.label}</span>
-                      <span style={{ fontSize: 12, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>{fmt(item.value)}</span>
-                      <span style={{ fontSize: 11, color: 'var(--text-tertiary)', minWidth: 38, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{pct.toFixed(1)}%</span>
-                    </div>
-                  )
-                })}
-              </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+              {[
+                { label: 'Proprietà', active: exclProperties, toggle: () => setExclProperties(v => !v) },
+                { label: 'Liquidità', active: exclLiquidity,  toggle: () => setExclLiquidity(v => !v)  },
+              ].map(({ label, active, toggle }) => (
+                <label key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none' }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{label}</span>
+                  <span
+                    onClick={toggle}
+                    style={{
+                      display: 'inline-block', width: 28, height: 16, borderRadius: 8,
+                      background: active ? 'var(--accent)' : 'var(--border)',
+                      position: 'relative', transition: 'background 0.2s', cursor: 'pointer', flexShrink: 0,
+                    }}
+                  >
+                    <span style={{
+                      position: 'absolute', top: 2, left: active ? 14 : 2,
+                      width: 12, height: 12, borderRadius: '50%', background: '#fff',
+                      transition: 'left 0.2s',
+                    }} />
+                  </span>
+                </label>
+              ))}
             </div>
-          )}
+          </div>
+          {(() => {
+            const propLabel = 'Properties'
+            const liqLabel  = tl('compLiquidity')
+            const compFiltered = compositionItems.filter((d) =>
+              !(exclProperties && d.label === propLabel) &&
+              !(exclLiquidity  && d.label === liqLabel)
+            )
+            const compTotal = compFiltered.reduce((s, d) => s + d.value, 0)
+            return compositionItems.length === 0 ? (
+              <div className="ledgernest-empty" style={{ padding: '32px 0' }}>{tl('compositionEmpty')}</div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 20, padding: '12px 20px 20px' }}>
+                {/* SVG Donut */}
+                <div style={{ flexShrink: 0 }}>
+                  <svg width="180" height="180" viewBox="0 0 180 180">
+                    {(() => {
+                      const cx = 90, cy = 90, R = 70, r = 48
+                      const label = compTotal >= 1e6
+                        ? `€${(compTotal / 1e6).toFixed(1)}M`
+                        : `€${(compTotal / 1e3).toFixed(1)}k`
+                      const centerText = (
+                        <>
+                          <text x={cx} y={cy - 6} textAnchor="middle" fontSize={16} fontWeight={800} fill="var(--text-primary)" fontFamily="inherit">{label}</text>
+                          <text x={cx} y={cy + 12} textAnchor="middle" fontSize={11} fill="var(--text-tertiary)" fontFamily="inherit">{tl('compCenter')}</text>
+                        </>
+                      )
+                      if (compFiltered.length === 0) return centerText
+                      if (compFiltered.length === 1) return (
+                        <>
+                          <circle cx={cx} cy={cy} r={(R + r) / 2} fill="none" stroke={compFiltered[0].color} strokeWidth={R - r} />
+                          {centerText}
+                        </>
+                      )
+                      let angle = -Math.PI / 2
+                      const segs = compFiltered.map((item) => {
+                        const sweep = (item.value / compTotal) * 2 * Math.PI
+                        const sa = angle, ea = angle + sweep
+                        angle = ea
+                        const x1 = cx + R * Math.cos(sa), y1 = cy + R * Math.sin(sa)
+                        const x2 = cx + R * Math.cos(ea), y2 = cy + R * Math.sin(ea)
+                        const x3 = cx + r * Math.cos(ea), y3 = cy + r * Math.sin(ea)
+                        const x4 = cx + r * Math.cos(sa), y4 = cy + r * Math.sin(sa)
+                        const large = sweep > Math.PI ? 1 : 0
+                        return { ...item, d: `M${x1},${y1} A${R},${R},0,${large},1,${x2},${y2} L${x3},${y3} A${r},${r},0,${large},0,${x4},${y4}Z` }
+                      })
+                      return (
+                        <>
+                          {segs.map((s) => <path key={s.label} d={s.d} fill={s.color} />)}
+                          {centerText}
+                        </>
+                      )
+                    })()}
+                  </svg>
+                </div>
+                {/* Legend */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {compFiltered.map((item) => {
+                    const pct = compTotal > 0 ? (item.value / compTotal) * 100 : 0
+                    return (
+                      <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.color, flexShrink: 0 }} />
+                        <span style={{ fontSize: 13, flex: 1 }}>{item.label}</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>{fmt(item.value)}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)', minWidth: 38, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{pct.toFixed(1)}%</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })()}
         </div>
 
         {/* Financial health */}

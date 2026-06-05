@@ -36,8 +36,13 @@ export default function DashboardPage() {
   const { snapshots } = usePortfolioSnapshotStore()
   const { accounts, transactions, monthlyExpenses, monthlyIncome, totalCash, budgetCategories, merchantLogos, budgetPlans } = useFinanceStore()
   const { quotes, eurUsd } = usePricesStore()
-  const showPrePostMarket = useSettingsStore((s) => s.settings.showPrePostMarket)
-  const [excludeCash, setExcludeCash] = useState(false)
+  const showPrePostMarket  = useSettingsStore((s) => s.settings.showPrePostMarket)
+  const targetAllocation   = useSettingsStore((s) => s.settings.targetAllocation ?? {})
+  const updateSettings     = useSettingsStore((s) => s.updateSettings)
+  const [excludeCash,    setExcludeCash]    = useState(false)
+  const [allocView,      setAllocView]      = useState<'actual' | 'target'>('actual')
+  const [editingTarget,  setEditingTarget]  = useState(false)
+  const [targetDraft,    setTargetDraft]    = useState<Record<string, number>>({})
 
   const currentMonth = new Date().toISOString().slice(0, 7)
 
@@ -103,6 +108,13 @@ export default function DashboardPage() {
     commodity: tn('commodity'),
     bond:      'Bond',
   }
+
+  const TARGET_CATEGORIES = [
+    { label: tn('azioni'),    color: '#5bc8d0' },
+    { label: 'ETF',           color: '#7c6df7' },
+    { label: 'Crypto',        color: '#f77c3a' },
+    { label: tn('commodity'), color: '#3fb950' },
+  ]
 
   const byType = useMemo(() => {
     const map: Record<string, number> = {}
@@ -323,38 +335,91 @@ export default function DashboardPage() {
         </div>
 
         <div className="ledgernest-card" style={{ padding: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+          {/* ── Header row 1: title + tab switch ── */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
             <div style={{ fontWeight: 700, fontSize: 14 }}>{t('allocationTitle')}</div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none' }}>
-              <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Senza liquidità</span>
-              <span
-                onClick={() => setExcludeCash(v => !v)}
-                style={{
-                  display: 'inline-block', width: 28, height: 16, borderRadius: 8,
-                  background: excludeCash ? 'var(--accent)' : 'var(--border)',
-                  position: 'relative', transition: 'background 0.2s', cursor: 'pointer',
-                  flexShrink: 0,
-                }}
-              >
-                <span style={{
-                  position: 'absolute', top: 2, left: excludeCash ? 14 : 2,
-                  width: 12, height: 12, borderRadius: '50%', background: '#fff',
-                  transition: 'left 0.2s',
-                }} />
-              </span>
-            </label>
+            <div style={{ display: 'flex', gap: 2, background: 'var(--bg-elevated)', borderRadius: 8, padding: 2 }}>
+              {(['actual', 'target'] as const).map((v) => (
+                <button key={v} type="button"
+                  onClick={() => { setAllocView(v); setEditingTarget(false) }}
+                  style={{
+                    fontSize: 11, padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                    background: allocView === v ? 'var(--accent)' : 'transparent',
+                    color: allocView === v ? '#fff' : 'var(--text-secondary)',
+                    fontWeight: allocView === v ? 700 : 400, transition: 'all .15s',
+                  }}
+                >{v === 'actual' ? 'Attuale' : 'vs Target'}</button>
+              ))}
+            </div>
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>{donutFiltered.length} asset · {fmt0(totalFiltered)}</div>
+          {/* ── Header row 2: subtitle + controls ── */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{donutFiltered.length} asset · {fmt0(totalFiltered)}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {allocView === 'target' && !editingTarget && (
+                <button type="button" onClick={() => {
+                  setTargetDraft({ ...targetAllocation })
+                  setEditingTarget(true)
+                }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 13, padding: '2px 4px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Icon name="edit" size={13} /> <span style={{ fontSize: 11 }}>Modifica target</span>
+                </button>
+              )}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none' }}>
+                <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Senza liquidità</span>
+                <span onClick={() => setExcludeCash(v => !v)} style={{ display: 'inline-block', width: 28, height: 16, borderRadius: 8, background: excludeCash ? 'var(--accent)' : 'var(--border)', position: 'relative', transition: 'background 0.2s', cursor: 'pointer', flexShrink: 0 }}>
+                  <span style={{ position: 'absolute', top: 2, left: excludeCash ? 14 : 2, width: 12, height: 12, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+                </span>
+              </label>
+            </div>
+          </div>
+
           {donutFiltered.length === 0 ? (
             <div className="ledgernest-empty"><div className="ledgernest-empty-icon">📊</div>{t('noPositions')}</div>
-          ) : (
+          ) : editingTarget ? (
+            /* ── Inline target editor ── */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {TARGET_CATEGORIES.map((d) => {
+                const val = targetDraft[d.label] ?? 0
+                return (
+                  <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: d.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 13, flex: 1 }}>{d.label}</span>
+                    <input
+                      type="number" min={0} max={100} step={1}
+                      value={val === 0 ? '' : val}
+                      placeholder="0"
+                      onChange={(e) => setTargetDraft(prev => ({ ...prev, [d.label]: Math.min(100, Math.max(0, Number(e.target.value) || 0)) }))}
+                      style={{ width: 52, textAlign: 'right', padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: 13, fontVariantNumeric: 'tabular-nums' }}
+                    />
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)', width: 12 }}>%</span>
+                  </div>
+                )
+              })}
+              {/* Remaining counter */}
+              {(() => {
+                const used = Object.values(targetDraft).reduce((s, v) => s + v, 0)
+                const remaining = 100 - used
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid var(--border-subtle)' }}>
+                    <span style={{ fontSize: 12, color: remaining === 0 ? 'var(--positive)' : remaining < 0 ? 'var(--negative)' : 'var(--text-secondary)' }}>
+                      {remaining === 0 ? '✓ 100%' : remaining > 0 ? `Rimanente: ${remaining}%` : `Eccedenza: ${Math.abs(remaining)}%`}
+                    </span>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button type="button" onClick={() => setEditingTarget(false)} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>Annulla</button>
+                      <button type="button" disabled={remaining !== 0} onClick={() => { updateSettings({ targetAllocation: targetDraft }); setEditingTarget(false) }}
+                        style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: 'none', background: remaining === 0 ? 'var(--accent)' : 'var(--border)', color: remaining === 0 ? '#fff' : 'var(--text-tertiary)', cursor: remaining === 0 ? 'pointer' : 'not-allowed', fontWeight: 600 }}>
+                        Salva
+                      </button>
+                    </div>
+                  </div>
+                )
+              })()}
+            </div>
+          ) : allocView === 'actual' ? (
+            /* ── Actual donut view ── */
             <>
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-                <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Donut data={donutFiltered} size={150} thickness={24}
-                    label={fmtCpt(totalFiltered)}
-                    sublabel={t('inPortfolio')} />
-                </div>
+                <Donut data={donutFiltered} size={150} thickness={24} label={fmtCpt(totalFiltered)} sublabel={t('inPortfolio')} />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {donutFiltered.map((d) => (
@@ -369,6 +434,53 @@ export default function DashboardPage() {
                 ))}
               </div>
             </>
+          ) : (
+            /* ── vs Target drift view ── */
+            (() => {
+              const hasTargets = Object.keys(targetAllocation).length > 0
+              if (!hasTargets) return (
+                <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-secondary)', fontSize: 13 }}>
+                  <div style={{ fontSize: 22, marginBottom: 8 }}>🎯</div>
+                  Nessun target definito.<br />
+                  <button type="button" onClick={() => { setTargetDraft({}); setEditingTarget(true) }}
+                    style={{ marginTop: 10, fontSize: 12, padding: '5px 14px', borderRadius: 6, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>
+                    Definisci target
+                  </button>
+                </div>
+              )
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {donutFiltered.map((d) => {
+                    const actPct = totalFiltered > 0 ? (d.value / totalFiltered) * 100 : 0
+                    const tgtPct = targetAllocation[d.label] ?? 0
+                    const delta  = actPct - tgtPct
+                    const absDelta = Math.abs(delta)
+                    const driftColor = absDelta <= 3 ? 'var(--positive)' : absDelta <= 10 ? '#f0a500' : 'var(--negative)'
+                    return (
+                      <div key={d.label}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: d.color, flexShrink: 0 }} />
+                          <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{d.label}</span>
+                          <span style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>{actPct.toFixed(1)}%</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>→</span>
+                          <span style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>{tgtPct > 0 ? `${tgtPct}%` : '—'}</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: driftColor, minWidth: 42, textAlign: 'right' }}>
+                            {tgtPct > 0 ? (delta >= 0 ? `+${delta.toFixed(1)}%` : `${delta.toFixed(1)}%`) : ''}
+                          </span>
+                        </div>
+                        {/* Bar: actual fill + target marker */}
+                        <div style={{ position: 'relative', height: 6, background: 'var(--bg-elevated)', borderRadius: 3, overflow: 'visible' }}>
+                          <div style={{ width: `${Math.min(actPct, 100)}%`, height: '100%', background: d.color, borderRadius: 3, transition: 'width 0.3s' }} />
+                          {tgtPct > 0 && (
+                            <div style={{ position: 'absolute', top: -3, left: `${Math.min(tgtPct, 100)}%`, width: 2, height: 12, background: 'var(--text-secondary)', borderRadius: 1, transform: 'translateX(-50%)' }} />
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()
           )}
         </div>
       </div>

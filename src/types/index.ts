@@ -253,6 +253,7 @@ export interface AppSettings {
   obSyncInterval?: 3600 | 14400 | 86400 | null
   alertEmailEnabled?: boolean
   alertToastEnabled?: boolean
+  targetAllocation?: Record<string, number>
 }
 
 // ---- UI Store -----------------------------------------------
