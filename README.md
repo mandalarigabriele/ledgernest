@@ -13,45 +13,6 @@
 
 ---
 
-## 📸 Screenshots
-
-<table>
-  <tr>
-    <td align="center"><b>Dashboard</b></td>
-    <td align="center"><b>Stocks</b></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/dashboard.png" alt="Dashboard" /></td>
-    <td><img src="docs/screenshots/stocks.png" alt="Stocks" /></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Transactions</b></td>
-    <td align="center"><b>Budget</b></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/transactions.png" alt="Transactions" /></td>
-    <td><img src="docs/screenshots/budget.png" alt="Budget" /></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Dividends</b></td>
-    <td align="center"><b>Report</b></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/dividends.png" alt="Dividends" /></td>
-    <td><img src="docs/screenshots/report.png" alt="Report" /></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Heatmap</b></td>
-    <td align="center"><b>Watchlist</b></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/heatmap.png" alt="Heatmap" /></td>
-    <td><img src="docs/screenshots/watchlist.png" alt="Watchlist" /></td>
-  </tr>
-</table>
-
----
-
 ## ✨ Features
 
 ### 📊 Dashboard
@@ -111,6 +72,45 @@
 - Fully responsive layout
 - Bottom navigation bar on mobile
 - Charts and tables with intelligent horizontal scroll
+
+---
+
+## 📸 Screenshots
+
+<table>
+  <tr>
+    <td align="center"><b>Dashboard</b></td>
+    <td align="center"><b>Stocks</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/dashboard.png" alt="Dashboard" /></td>
+    <td><img src="docs/screenshots/stocks.png" alt="Stocks" /></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Transactions</b></td>
+    <td align="center"><b>Budget</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/transactions.png" alt="Transactions" /></td>
+    <td><img src="docs/screenshots/budget.png" alt="Budget" /></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Dividends</b></td>
+    <td align="center"><b>Report</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/dividends.png" alt="Dividends" /></td>
+    <td><img src="docs/screenshots/report.png" alt="Report" /></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Heatmap</b></td>
+    <td align="center"><b>Watchlist</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/heatmap.png" alt="Heatmap" /></td>
+    <td><img src="docs/screenshots/watchlist.png" alt="Watchlist" /></td>
+  </tr>
+</table>
 
 ---
 
