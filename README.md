@@ -110,6 +110,14 @@
     <td><img src="docs/screenshots/heatmap.png" alt="Heatmap" /></td>
     <td><img src="docs/screenshots/watchlist.png" alt="Watchlist" /></td>
   </tr>
+  <tr>
+    <td align="center"><b>Goals</b></td>
+    <td align="center"><b>Settings</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/goals.png" alt="Goals" /></td>
+    <td><img src="docs/screenshots/settings.png" alt="Settings" /></td>
+  </tr>
 </table>
 
 ---
