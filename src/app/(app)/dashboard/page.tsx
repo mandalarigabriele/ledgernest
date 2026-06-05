@@ -37,6 +37,7 @@ export default function DashboardPage() {
   const { accounts, transactions, monthlyExpenses, monthlyIncome, totalCash, budgetCategories, merchantLogos, budgetPlans } = useFinanceStore()
   const { quotes, eurUsd } = usePricesStore()
   const showPrePostMarket = useSettingsStore((s) => s.settings.showPrePostMarket)
+  const [excludeCash, setExcludeCash] = useState(false)
 
   const currentMonth = new Date().toISOString().slice(0, 7)
 
@@ -107,7 +108,7 @@ export default function DashboardPage() {
     const map: Record<string, number> = {}
     for (const p of positions) {
       const q     = quotes[p.ticker]
-      const label = TYPE_LABEL[p.type] ?? p.type
+      const label = p.monetary ? t('cash') : (TYPE_LABEL[p.type] ?? p.type)
       map[label] = (map[label] ?? 0) + effectivePriceEur(q, p.avgPrice, showPrePostMarket) * p.quantity
     }
     if (cash > 0) map[t('cash')] = (map[t('cash')] ?? 0) + cash
@@ -116,6 +117,10 @@ export default function DashboardPage() {
 
   const totalAlloc = Object.values(byType).reduce((s, v) => s + v, 0)
   const donutData  = Object.entries(byType).map(([label, value], i) => ({ label, value, color: PALETTE[i % PALETTE.length] }))
+
+  const cashLabel      = t('cash')
+  const donutFiltered  = excludeCash ? donutData.filter(d => d.label !== cashLabel) : donutData
+  const totalFiltered  = donutFiltered.reduce((s, d) => s + d.value, 0)
 
   /* ─── Positions table ─── */
   const sortedPositions = useMemo(() =>
@@ -318,27 +323,47 @@ export default function DashboardPage() {
         </div>
 
         <div className="ledgernest-card" style={{ padding: '20px' }}>
-          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{t('allocationTitle')}</div>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>{donutData.length} asset · {fmt0(totalAlloc)}</div>
-          {donutData.length === 0 ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{t('allocationTitle')}</div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none' }}>
+              <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Senza liquidità</span>
+              <span
+                onClick={() => setExcludeCash(v => !v)}
+                style={{
+                  display: 'inline-block', width: 28, height: 16, borderRadius: 8,
+                  background: excludeCash ? 'var(--accent)' : 'var(--border)',
+                  position: 'relative', transition: 'background 0.2s', cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                <span style={{
+                  position: 'absolute', top: 2, left: excludeCash ? 14 : 2,
+                  width: 12, height: 12, borderRadius: '50%', background: '#fff',
+                  transition: 'left 0.2s',
+                }} />
+              </span>
+            </label>
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>{donutFiltered.length} asset · {fmt0(totalFiltered)}</div>
+          {donutFiltered.length === 0 ? (
             <div className="ledgernest-empty"><div className="ledgernest-empty-icon">📊</div>{t('noPositions')}</div>
           ) : (
             <>
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
                 <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Donut data={donutData} size={150} thickness={24}
-                    label={fmtCpt(totalAlloc)}
+                  <Donut data={donutFiltered} size={150} thickness={24}
+                    label={fmtCpt(totalFiltered)}
                     sublabel={t('inPortfolio')} />
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {donutData.map((d) => (
+                {donutFiltered.map((d) => (
                   <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{ width: 10, height: 10, borderRadius: '50%', background: d.color, flexShrink: 0 }} />
                     <span style={{ fontSize: 13, fontWeight: 600, flex: 1, minWidth: 0 }}>{d.label}</span>
                     <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', marginRight: 8 }}>{fmt0(d.value)}</span>
                     <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)' }}>
-                      {totalAlloc > 0 ? ((d.value / totalAlloc) * 100).toFixed(1) : '0'}%
+                      {totalFiltered > 0 ? ((d.value / totalFiltered) * 100).toFixed(1) : '0'}%
                     </span>
                   </div>
                 ))}

@@ -34,6 +34,7 @@ export default function EditPositionModal() {
   const [avgPrice,     setAvgPrice]     = useState(pos ? pos.avgPrice.toFixed(6).replace(/\.?0+$/, '') : '')
   const [broker,       setBroker]       = useState(pos?.broker   ?? '')
   const [purchaseDate, setPurchaseDate] = useState(pos?.purchaseDate ?? pos?.createdAt.slice(0, 10) ?? '')
+  const [monetary,     setMonetary]     = useState(pos?.monetary  ?? false)
 
   if (!pos) return null
 
@@ -50,6 +51,7 @@ export default function EditPositionModal() {
       avgPrice:     price,
       broker:       broker.trim(),
       purchaseDate: purchaseDate || undefined,
+      monetary:     assetType === 'etf' ? monetary : undefined,
     })
     closeModal()
   }
@@ -106,6 +108,30 @@ export default function EditPositionModal() {
                 ))}
               </div>
             </div>
+
+            {/* Monetary ETF toggle */}
+            {assetType === 'etf' && (
+              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', padding: '10px 14px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)' }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>ETF monetario</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>Trattato come liquidità nell&apos;allocazione</div>
+                </div>
+                <span
+                  onClick={() => setMonetary(v => !v)}
+                  style={{
+                    display: 'inline-block', width: 36, height: 20, borderRadius: 10,
+                    background: monetary ? 'var(--accent)' : 'var(--border)',
+                    position: 'relative', transition: 'background 0.2s', cursor: 'pointer', flexShrink: 0,
+                  }}
+                >
+                  <span style={{
+                    position: 'absolute', top: 3, left: monetary ? 18 : 3,
+                    width: 14, height: 14, borderRadius: '50%', background: '#fff',
+                    transition: 'left 0.2s',
+                  }} />
+                </span>
+              </label>
+            )}
 
             {/* Name */}
             <div className="ledgernest-field">
