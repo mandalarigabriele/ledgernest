@@ -17,6 +17,7 @@
     "obiettivi": "Obiettivi",
     "ricorrenti": "Ricorrenti",
     "report": "Report",
+    "condivisione": "Condivisione",
     "impostazioni": "Impostazioni",
     "analisi": "Analisi",
     "sistema": "Sistema"
@@ -213,6 +214,7 @@
     "sidebarMercati": "Mercati",
     "sidebarCategorie": "Categorie",
     "sidebarEsercenti": "Esercenti",
+    "sidebarCondivisione": "Condivisione",
     "sidebarNotifiche": "Notifiche",
     "sidebarPrivacy": "Privacy",
     "sidebarDati": "Dati",

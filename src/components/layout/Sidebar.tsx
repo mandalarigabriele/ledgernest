@@ -35,8 +35,9 @@ const financeItems: NavItem[] = [
   { href: '/finance/budget',         icon: 'budget',     labelKey: 'budget' },
   { href: '/finance/net-worth',      icon: 'patrimonio', labelKey: 'patrimonio' },
   { href: '/finance/goals',          icon: 'obiettivi',  labelKey: 'obiettivi' },
-  { href: '/finance/recurring',      icon: 'ricorrenti', labelKey: 'ricorrenti' },
-  { href: '/finance/report',         icon: 'report',     labelKey: 'report' },
+  { href: '/finance/recurring',      icon: 'ricorrenti',    labelKey: 'ricorrenti' },
+  { href: '/finance/report',         icon: 'report',        labelKey: 'report' },
+  { href: '/finance/shared',         icon: 'shared',        labelKey: 'condivisione' },
 ]
 
 function NavLink({ item }: { item: NavItem }) {

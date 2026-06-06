@@ -17,6 +17,7 @@
     "obiettivi": "Goals",
     "ricorrenti": "Recurring",
     "report": "Report",
+    "condivisione": "Shared",
     "impostazioni": "Settings",
     "analisi": "Analysis",
     "sistema": "System"
@@ -213,6 +214,7 @@
     "sidebarMercati": "Markets",
     "sidebarCategorie": "Categories",
     "sidebarEsercenti": "Merchants",
+    "sidebarCondivisione": "Sharing",
     "sidebarNotifiche": "Notifications",
     "sidebarPrivacy": "Privacy",
     "sidebarDati": "Data",

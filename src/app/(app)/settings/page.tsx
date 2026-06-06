@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { useTranslations } from 'next-intl'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
@@ -613,14 +614,15 @@ function MergeModal({ merchants, counts, onClose, onMerge }: {
 // ── page ──────────────────────────────────────────────────────
 
 const SIDEBAR_ITEMS = [
-  { id: 'profilo',   icon: 'briefcase'   },
-  { id: 'aspetto',   icon: 'impostazioni'},
-  { id: 'mercati',   icon: 'azioni'      },
-  { id: 'categorie', icon: 'movimenti'   },
-  { id: 'esercenti', icon: 'wallet'      },
-  { id: 'notifiche', icon: 'bell'        },
-  { id: 'privacy',   icon: 'report'      },
-  { id: 'dati',      icon: 'download'    },
+  { id: 'profilo',        icon: 'briefcase'   },
+  { id: 'aspetto',        icon: 'impostazioni'},
+  { id: 'mercati',        icon: 'azioni'      },
+  { id: 'categorie',      icon: 'movimenti'   },
+  { id: 'esercenti',      icon: 'wallet'      },
+  { id: 'condivisione',   icon: 'shared'      },
+  { id: 'notifiche',      icon: 'bell'        },
+  { id: 'privacy',        icon: 'report'      },
+  { id: 'dati',           icon: 'download'    },
 ]
 
 export default function ImpostazioniPage() {
@@ -659,6 +661,48 @@ export default function ImpostazioniPage() {
   const [confirmSnapshotReset, setConfirmSnapshotReset] = useState(false)
   const [confirmFullReset, setConfirmFullReset]   = useState(false)
   const [importOpen, setImportOpen]               = useState(false)
+
+  // sharing
+  const { data: session } = useSession()
+  const [sharingPartner, setSharingPartner]       = useState<string | null>(null)
+  const [sharingGroupId, setSharingGroupId]       = useState<string | null>(null)
+  const [sharingLoading, setSharingLoading]       = useState(false)
+  const [newPartnerEmail, setNewPartnerEmail]     = useState('')
+  const [sharingError, setSharingError]           = useState('')
+  const [sharingMsg, setSharingMsg]               = useState('')
+  const [unpairConfirm, setUnpairConfirm]         = useState(false)
+
+  useEffect(() => {
+    if (section !== 'condivisione') return
+    fetch('/api/sharing-group').then((r) => r.json()).then((d) => {
+      setSharingPartner(d.group?.partnerEmail ?? null)
+      setSharingGroupId(d.group?.id ?? null)
+    })
+  }, [section])
+
+  async function handlePair() {
+    if (!newPartnerEmail.trim()) { setSharingError('Enter partner email'); return }
+    setSharingLoading(true); setSharingError(''); setSharingMsg('')
+    const res = await fetch('/api/sharing-group', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ partnerEmail: newPartnerEmail.trim() }),
+    })
+    const d = await res.json()
+    setSharingLoading(false)
+    if (!res.ok) { setSharingError(d.error ?? 'Failed'); return }
+    setSharingPartner(d.group?.partnerEmail ?? newPartnerEmail.trim())
+    setSharingGroupId(d.group?.id ?? null)
+    setSharingMsg('Paired successfully!')
+    setNewPartnerEmail('')
+  }
+
+  async function handleUnpair() {
+    setSharingLoading(true); setSharingError(''); setSharingMsg('')
+    await fetch('/api/sharing-group', { method: 'DELETE' })
+    setSharingPartner(null); setSharingGroupId(null)
+    setSharingLoading(false); setUnpairConfirm(false)
+    setSharingMsg('Sharing pairing removed.')
+  }
 
   // esercenti
   const [merchantSearch, setMerchantSearch]       = useState('')
@@ -1542,6 +1586,92 @@ export default function ImpostazioniPage() {
             </div>
           </div>
         )
+
+      // ── Condivisione ──────────────────────────────────────────
+      case 'condivisione': {
+        const inputSt: React.CSSProperties = {
+          padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border-subtle)',
+          background: 'var(--bg-elevated)', color: 'var(--text-primary)', width: '100%',
+          boxSizing: 'border-box', fontSize: 13,
+        }
+        return (
+          <div>
+            <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 4 }}>Sharing</h2>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 28 }}>
+              Pair with a partner to track shared expenses and a running settlement balance. Both users need a separate Google account registered in this app.
+            </p>
+
+            <div style={{ background: 'var(--bg-elevated)', borderRadius: 14, padding: '20px 22px', marginBottom: 20, border: '1px solid var(--border-subtle)' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Your account</div>
+              <div style={{ fontSize: 14, color: 'var(--text-primary)' }}>{session?.user?.email ?? '—'}</div>
+            </div>
+
+            {sharingPartner ? (
+              <div>
+                <div style={{ background: 'color-mix(in oklch, var(--accent) 8%, transparent)', border: '1px solid color-mix(in oklch, var(--accent) 30%, transparent)', borderRadius: 14, padding: '20px 22px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Paired with</div>
+                    <div style={{ fontSize: 15, fontWeight: 700 }}>{sharingPartner}</div>
+                    {sharingGroupId && <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>Group ID: {sharingGroupId}</div>}
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', color: 'var(--accent)' }}>
+                    <Icon name="check" size={20} />
+                  </div>
+                </div>
+
+                {unpairConfirm ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 20px', background: 'color-mix(in oklch, var(--danger) 8%, transparent)', border: '1px solid color-mix(in oklch, var(--danger) 30%, transparent)', borderRadius: 12 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>Remove sharing pairing?</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Shared expenses and settlement history will be kept in the database but you will lose access from both accounts.</div>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <button className="ledgernest-btn ledgernest-btn-ghost" onClick={() => setUnpairConfirm(false)}>{tc('cancel')}</button>
+                      <button className="ledgernest-btn" style={{ background: 'var(--danger)', border: 'none', color: '#fff' }} onClick={handleUnpair} disabled={sharingLoading}>
+                        {sharingLoading ? 'Removing…' : 'Remove Pairing'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button className="ledgernest-btn ledgernest-btn-ghost" style={{ color: 'var(--danger)', borderColor: 'color-mix(in oklch, var(--danger) 40%, transparent)' }} onClick={() => setUnpairConfirm(true)}>
+                    Remove Pairing
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                  No partner paired yet. Enter your partner&apos;s email address to link your accounts.
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <input
+                    style={{ ...inputSt, flex: 1 }}
+                    type="email"
+                    placeholder="partner@email.com"
+                    value={newPartnerEmail}
+                    onChange={(e) => setNewPartnerEmail(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handlePair()}
+                  />
+                  <button className="ledgernest-btn" onClick={handlePair} disabled={sharingLoading} style={{ flexShrink: 0 }}>
+                    {sharingLoading ? 'Pairing…' : 'Pair'}
+                  </button>
+                </div>
+                {sharingError && <div style={{ color: 'var(--danger)', fontSize: 13 }}>{sharingError}</div>}
+              </div>
+            )}
+
+            {sharingMsg && <div style={{ marginTop: 12, color: 'var(--success)', fontSize: 13 }}>{sharingMsg}</div>}
+
+            <div style={{ marginTop: 32, padding: '16px 20px', background: 'var(--bg-elevated)', borderRadius: 12, border: '1px solid var(--border-subtle)' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>How it works</div>
+              <ul style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, paddingLeft: 20, margin: 0 }}>
+                <li>Add your partner&apos;s Google email to <code>ALLOWED_EMAILS</code> in your <code>.env</code> file so they can log in</li>
+                <li>Pair here using their email — only needs to be done once by either of you</li>
+                <li>Go to <strong>Finances → Shared</strong> to add shared expenses and track the balance</li>
+                <li>Use <strong>Settle Up</strong> to record payments and optionally auto-create an income/expense transaction</li>
+              </ul>
+            </div>
+          </div>
+        )
+      }
 
       default: return null
     }

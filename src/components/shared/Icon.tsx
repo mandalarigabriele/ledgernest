@@ -321,6 +321,13 @@ const icons: Record<string, (size: number) => React.ReactElement> = {
       <circle cx="11.5" cy="13" r=".8" fill="currentColor"/>
     </svg>
   ),
+  shared: (s) => (
+    <svg width={s} height={s} viewBox="0 0 20 20" fill="none">
+      <circle cx="7" cy="6" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
+      <circle cx="13" cy="6" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M2 17c0-2.8 2.2-5 5-5h6c2.8 0 5 2.2 5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  ),
 }
 
 export default function Icon({ name, size = 18, className }: IconProps) {

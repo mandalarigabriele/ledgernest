@@ -146,5 +146,49 @@ function initSchema(db: Database.Database) {
       imported_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (account_uid) REFERENCES banking_accounts(uid) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS sharing_groups (
+      id TEXT PRIMARY KEY,
+      member1_email TEXT NOT NULL,
+      member2_email TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(member1_email, member2_email)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_sharing_groups_m1 ON sharing_groups(member1_email);
+    CREATE INDEX IF NOT EXISTS idx_sharing_groups_m2 ON sharing_groups(member2_email);
+
+    CREATE TABLE IF NOT EXISTS shared_expenses (
+      id TEXT PRIMARY KEY,
+      group_id TEXT NOT NULL,
+      payer_email TEXT NOT NULL,
+      amount REAL NOT NULL,
+      currency TEXT NOT NULL DEFAULT 'EUR',
+      description TEXT NOT NULL,
+      category TEXT,
+      date TEXT NOT NULL,
+      other_share REAL NOT NULL DEFAULT 0.5,
+      notes TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (group_id) REFERENCES sharing_groups(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_shared_expenses_group ON shared_expenses(group_id);
+
+    CREATE TABLE IF NOT EXISTS settlements (
+      id TEXT PRIMARY KEY,
+      group_id TEXT NOT NULL,
+      from_email TEXT NOT NULL,
+      to_email TEXT NOT NULL,
+      amount REAL NOT NULL,
+      currency TEXT NOT NULL DEFAULT 'EUR',
+      date TEXT NOT NULL,
+      notes TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (group_id) REFERENCES sharing_groups(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_settlements_group ON settlements(group_id);
   `)
 }
