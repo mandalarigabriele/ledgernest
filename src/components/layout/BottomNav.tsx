@@ -2,8 +2,9 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useSettingsStore } from '@/stores/settingsStore'
 
-const TABS = [
+const TABS: { href: string; label: string; matchPrefix?: string; section?: 'portfolio' | null; icon: React.ReactNode }[] = [
   {
     href: '/dashboard',
     label: 'Home',
@@ -18,6 +19,7 @@ const TABS = [
     href: '/portfolio/stocks',
     label: 'Portfolio',
     matchPrefix: '/portfolio',
+    section: 'portfolio',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
         <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
@@ -64,10 +66,16 @@ const TABS = [
 
 export default function BottomNav() {
   const pathname = usePathname()
+  const { settings } = useSettingsStore()
+
+  const visibleTabs = TABS.filter((tab) => {
+    if (tab.section === 'portfolio' && settings.hidePortfolio) return false
+    return true
+  })
 
   return (
     <nav className="ledgernest-bottom-nav">
-      {TABS.map((tab) => {
+      {visibleTabs.map((tab) => {
         const isActive = tab.matchPrefix
           ? pathname.startsWith(tab.matchPrefix)
           : pathname === tab.href

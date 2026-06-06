@@ -2,6 +2,24 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getDb } from '@/lib/db/schema'
+import { sendSharedExpenseRemovalNotification } from '@/lib/email'
+
+function readSettings(db: ReturnType<typeof getDb>, email: string): Record<string, unknown> {
+  const row = db.prepare(`SELECT data FROM user_data WHERE user_email = ? AND key = 'settings' LIMIT 1`).get(email) as { data: string } | undefined
+  if (!row) return {}
+  try { return JSON.parse(row.data) } catch { return {} }
+}
+
+function getSelfName(db: ReturnType<typeof getDb>, email: string): string | undefined {
+  const s = readSettings(db, email) as { settings?: { selfName?: string } }
+  const name = s?.settings?.selfName
+  return typeof name === 'string' && name.trim() ? name.trim() : undefined
+}
+
+function emailEnabled(db: ReturnType<typeof getDb>, email: string): boolean {
+  const s = readSettings(db, email) as { settings?: { sharedExpenseEmailEnabled?: boolean } }
+  return s?.settings?.sharedExpenseEmailEnabled !== false
+}
 
 interface SharedExpenseRow {
   id: string
@@ -92,5 +110,24 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   }
 
   db.prepare('DELETE FROM shared_expenses WHERE id = ?').run(params.id)
+
+  const partnerEmail = group.member1_email === session.user.email
+    ? group.member2_email
+    : group.member1_email
+
+  sendSharedExpenseRemovalNotification({
+    myEmail: session.user.email,
+    partnerEmail,
+    myName: getSelfName(db, session.user.email),
+    partnerName: getSelfName(db, partnerEmail),
+    amount: expense.amount,
+    description: expense.description,
+    category: expense.category,
+    date: expense.date,
+    removedByEmail: session.user.email,
+    sendToMe: emailEnabled(db, session.user.email),
+    sendToPartner: emailEnabled(db, partnerEmail),
+  }).catch(() => {})
+
   return NextResponse.json({ ok: true })
 }

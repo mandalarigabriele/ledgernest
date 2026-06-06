@@ -254,6 +254,9 @@ export interface AppSettings {
   alertEmailEnabled?: boolean
   alertToastEnabled?: boolean
   sharedExpenseEmailEnabled?: boolean
+  partnerName?: string
+  hidePortfolio?: boolean
+  hideAnalytics?: boolean
   targetAllocation?: Record<string, number>
   demoMode?: boolean
 }

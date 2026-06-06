@@ -19,6 +19,18 @@ function getGroup(db: ReturnType<typeof getDb>, email: string): SharingGroupRow 
   `).get(email, email) as SharingGroupRow | undefined
 }
 
+function readSelfName(db: ReturnType<typeof getDb>, email: string): string | null {
+  const row = db.prepare(
+    `SELECT data FROM user_data WHERE user_email = ? AND key = 'settings' LIMIT 1`
+  ).get(email) as { data: string } | undefined
+  if (!row) return null
+  try {
+    const parsed = JSON.parse(row.data)
+    const name = parsed?.settings?.selfName ?? parsed?.selfName
+    return typeof name === 'string' && name.trim() ? name.trim() : null
+  } catch { return null }
+}
+
 export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -31,7 +43,13 @@ export async function GET() {
     ? group.member2_email
     : group.member1_email
 
-  return NextResponse.json({ group: { ...group, partnerEmail }, myEmail: session.user.email })
+  // Try to read the partner's display name from their settings
+  const partnerDisplayName = readSelfName(db, partnerEmail)
+
+  return NextResponse.json({
+    group: { ...group, partnerEmail, partnerDisplayName },
+    myEmail: session.user.email,
+  })
 }
 
 export async function POST(req: NextRequest) {

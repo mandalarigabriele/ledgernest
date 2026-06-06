@@ -113,19 +113,23 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="ledgernest-nav">
-        <div className="ledgernest-nav-grp">
-          <div className="ledgernest-nav-label">{t('portfolio')}</div>
-          {portfolioItems.map((item) => (
-            <NavLink key={item.href} item={item} />
-          ))}
-        </div>
+        {!settings.hidePortfolio && (
+          <div className="ledgernest-nav-grp">
+            <div className="ledgernest-nav-label">{t('portfolio')}</div>
+            {portfolioItems.map((item) => (
+              <NavLink key={item.href} item={item} />
+            ))}
+          </div>
+        )}
 
-        <div className="ledgernest-nav-grp">
-          <div className="ledgernest-nav-label">{t('analisi')}</div>
-          {analisiItems.map((item) => (
-            <NavLink key={item.href} item={item} />
-          ))}
-        </div>
+        {!settings.hideAnalytics && (
+          <div className="ledgernest-nav-grp">
+            <div className="ledgernest-nav-label">{t('analisi')}</div>
+            {analisiItems.map((item) => (
+              <NavLink key={item.href} item={item} />
+            ))}
+          </div>
+        )}
 
         <div className="ledgernest-nav-grp">
           <div className="ledgernest-nav-label">{t('finanze')}</div>

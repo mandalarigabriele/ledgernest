@@ -932,12 +932,21 @@ export default function MovimentiPage() {
                         )}
                         <div style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {tx.category}{acct && <span> · {acct}</span>}
-                          {isShared && <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>🤝</span>}
                         </div>
-                        {/* Goal badges inline under meta */}
-                        {tx.goalAllocations && tx.goalAllocations.length > 0 && (
+                        {/* Badges row: shared + goal allocations */}
+                        {(isShared || (tx.goalAllocations && tx.goalAllocations.length > 0)) && (
                           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 3 }}>
-                            {tx.goalAllocations.map((alloc) => {
+                            {isShared && (
+                              <span style={{
+                                fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
+                                background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+                                color: 'var(--accent)', whiteSpace: 'nowrap',
+                                display: 'inline-flex', alignItems: 'center', gap: 3,
+                              }}>
+                                🤝 {tl('sharedBadge')}
+                              </span>
+                            )}
+                            {tx.goalAllocations?.map((alloc) => {
                               const g = goals.find((g) => g.id === alloc.goalId)
                               if (!g) return null
                               return (

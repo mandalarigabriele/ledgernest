@@ -5,6 +5,18 @@ import { getDb } from '@/lib/db/schema'
 import { randomUUID } from 'crypto'
 import { sendSharedExpenseNotification } from '@/lib/email'
 
+function readUserSettings(db: ReturnType<typeof getDb>, email: string): Record<string, unknown> {
+  const row = db.prepare(`SELECT data FROM user_data WHERE user_email = ? AND key = 'settings' LIMIT 1`).get(email) as { data: string } | undefined
+  if (!row) return {}
+  try { return JSON.parse(row.data) } catch { return {} }
+}
+
+function getSelfName(db: ReturnType<typeof getDb>, email: string): string | undefined {
+  const s = readUserSettings(db, email)
+  const name = (s as { settings?: { selfName?: string } })?.settings?.selfName
+  return typeof name === 'string' && name.trim() ? name.trim() : undefined
+}
+
 interface SharingGroupRow { id: string; member1_email: string; member2_email: string }
 
 function requireGroup(db: ReturnType<typeof getDb>, email: string): SharingGroupRow | null {
@@ -100,20 +112,18 @@ export async function POST(req: NextRequest) {
 
   const runningBalance = Math.round((partnerOwesMe - iOwePartner - received + paid) * 100) / 100
 
-  // Read each user's email preference from user_data
+  // Read each user's preferences and display names
   function emailEnabled(email: string): boolean {
-    const row = db.prepare(
-      `SELECT data FROM user_data WHERE user_email = ? AND key = 'settings' LIMIT 1`
-    ).get(email) as { data: string } | undefined
-    if (!row) return true // default on
-    try { return JSON.parse(row.data)?.settings?.sharedExpenseEmailEnabled !== false }
-    catch { return true }
+    const s = readUserSettings(db, email) as { settings?: { sharedExpenseEmailEnabled?: boolean } }
+    return s?.settings?.sharedExpenseEmailEnabled !== false
   }
 
   // Send email notifications — fire and forget, respects per-user preference
   sendSharedExpenseNotification({
     myEmail: session.user.email,
     partnerEmail,
+    myName: getSelfName(db, session.user.email),
+    partnerName: getSelfName(db, partnerEmail),
     amount,
     description: description.trim(),
     category: category ?? null,

@@ -7,9 +7,7 @@ function getResend(): Resend | null {
   return new Resend(process.env.RESEND_API_KEY)
 }
 
-function shortEmail(email: string) {
-  return email.split('@')[0]
-}
+function shortEmail(email: string) { return email.split('@')[0] }
 
 function fmtAmount(n: number) {
   return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(n)
@@ -21,11 +19,28 @@ function fmtDate(dateStr: string) {
   })
 }
 
+// Light-theme palette
+const C = {
+  bgPage:    '#f6f8fa',
+  bgCard:    '#ffffff',
+  bgInner:   '#f6f8fa',
+  border:    '#d0d7de',
+  accent:    '#5bc8d0',
+  accentDark:'#3aa8b0',
+  success:   '#1a7f37',
+  danger:    '#cf222e',
+  textMain:  '#1f2328',
+  textMuted: '#636c76',
+  textLight: '#ffffff',
+}
+
 // ── Shared expense notification ───────────────────────────────────────────────
 
 export interface SharedExpenseEmailParams {
-  myEmail: string        // creator / logged-in user
+  myEmail: string
   partnerEmail: string
+  myName?: string
+  partnerName?: string
   amount: number
   description: string
   category?: string | null
@@ -33,39 +48,74 @@ export interface SharedExpenseEmailParams {
   payerEmail: string
   otherShare: number     // fraction 0–1 that the non-payer owes
   notes?: string | null
-  // Running balance (positive = myEmail is owed by partner, negative = myEmail owes partner)
   runningBalance?: number
-  sendToMe?: boolean      // default true
-  sendToPartner?: boolean // default true
+  sendToMe?: boolean
+  sendToPartner?: boolean
+}
+
+function resolveName(email: string, myEmail: string, partnerEmail: string, myName?: string, partnerName?: string): string {
+  if (email === myEmail) return myName || shortEmail(email)
+  if (email === partnerEmail) return partnerName || shortEmail(email)
+  return shortEmail(email)
 }
 
 function buildSharedExpenseHtml(p: SharedExpenseEmailParams, recipientEmail: string): string {
-  const myName      = shortEmail(p.myEmail)
-  const partnerName = shortEmail(p.partnerEmail)
-
+  const myName      = p.myName      || shortEmail(p.myEmail)
+  const partnerName = p.partnerName || shortEmail(p.partnerEmail)
   const payerName   = p.payerEmail === p.myEmail ? myName : partnerName
+  const nonPayerName = p.payerEmail === p.myEmail ? partnerName : myName
+
   const iPaid       = p.payerEmail === recipientEmail
-  const myShare     = iPaid
-    ? p.amount * (1 - p.otherShare)
-    : p.amount * p.otherShare
+  const recipientName = recipientEmail === p.myEmail ? myName : partnerName
+  const myShare     = iPaid ? p.amount * (1 - p.otherShare) : p.amount * p.otherShare
   const theirShare  = p.amount - myShare
 
-  const balanceText = iPaid
-    ? `Ti verranno rimborsati <strong>${fmtAmount(theirShare)}</strong>`
-    : `Devi <strong>${fmtAmount(myShare)}</strong> a ${payerName}`
-
-  const accentColor  = '#5bc8d0'
-  const successColor = '#3fb950'
-  const dangerColor  = '#f85149'
-  const bgPage       = '#0d1117'
-  const bgCard       = '#161b22'
-  const bgInner      = '#1c2128'
-  const borderColor  = '#30363d'
-  const textPrimary  = '#e6edf3'
-  const textMuted    = '#8b949e'
-
-  const balanceColor = iPaid ? successColor : dangerColor
+  const balanceAmt   = iPaid ? theirShare : myShare
+  const balanceColor = iPaid ? C.success : C.danger
   const balanceSign  = iPaid ? '+' : '−'
+  const balanceLabel = iPaid
+    ? `Hai anticipato la quota di <strong>${nonPayerName}</strong>`
+    : `Devi a <strong>${payerName}</strong> la tua quota`
+
+  let runningSection = ''
+  if (p.runningBalance !== undefined) {
+    const recipientBalance = recipientEmail === p.myEmail ? p.runningBalance : -p.runningBalance
+    const otherName = recipientEmail === p.myEmail ? partnerName : myName
+    const isOwed  = recipientBalance > 0.005
+    const isOwing = recipientBalance < -0.005
+    const absTotal = Math.abs(recipientBalance)
+    const totalColor = isOwed ? C.success : isOwing ? C.danger : C.textMuted
+    const totalLabel = isOwed
+      ? `<strong>${otherName}</strong> ti deve in totale`
+      : isOwing
+      ? `Devi in totale a <strong>${otherName}</strong>`
+      : 'Siete in pari ✓'
+    const totalValue = (isOwed || isOwing) ? fmtAmount(absTotal) : ''
+
+    runningSection = `
+      <tr><td style="height:1px;background:${C.border};padding:0;font-size:0;line-height:0;">&nbsp;</td></tr>
+      <tr>
+        <td style="padding:20px 28px 24px;">
+          <div style="background:${C.bgInner};border:1px solid ${C.border};border-radius:10px;padding:16px 18px;">
+            <div style="font-size:10px;font-weight:700;color:${C.textMuted};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">
+              Saldo complessivo aggiornato
+            </div>
+            <div style="font-size:13px;color:${C.textMuted};margin-bottom:6px;">${totalLabel}</div>
+            ${totalValue ? `<div style="font-size:24px;font-weight:800;color:${totalColor};letter-spacing:-0.5px;">${totalValue}</div>` : `<div style="font-size:16px;font-weight:700;color:${totalColor};">${totalLabel}</div>`}
+          </div>
+        </td>
+      </tr>`
+  }
+
+  const notesSection = p.notes ? `
+      <tr>
+        <td style="padding:0 28px 20px;">
+          <div style="background:${C.bgInner};border:1px solid ${C.border};border-radius:10px;padding:12px 16px;">
+            <div style="font-size:10px;font-weight:700;color:${C.textMuted};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Note</div>
+            <div style="font-size:13px;color:${C.textMain};">${p.notes}</div>
+          </div>
+        </td>
+      </tr>` : ''
 
   return `<!DOCTYPE html>
 <html lang="it">
@@ -74,85 +124,63 @@ function buildSharedExpenseHtml(p: SharedExpenseEmailParams, recipientEmail: str
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Nuova spesa condivisa · LedgerNest</title>
 </head>
-<body style="margin:0;padding:0;background:${bgPage};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:${bgPage};padding:40px 16px;">
+<body style="margin:0;padding:0;background:${C.bgPage};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:${C.bgPage};padding:40px 16px;">
     <tr>
       <td align="center">
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
 
-          <!-- Header -->
+          <!-- Logo -->
           <tr>
-            <td style="padding-bottom:28px;text-align:center;">
-              <div style="display:inline-flex;align-items:center;gap:10px;">
-                <span style="font-size:22px;font-weight:800;color:${textPrimary};letter-spacing:-0.5px;">
-                  Ledger<span style="color:${accentColor};">Nest</span>
-                </span>
-              </div>
+            <td style="padding-bottom:24px;text-align:center;">
+              <span style="font-size:22px;font-weight:800;color:${C.textMain};letter-spacing:-0.5px;">
+                Ledger<span style="color:${C.accent};">Nest</span>
+              </span>
             </td>
           </tr>
 
-          <!-- Main card -->
+          <!-- Card -->
           <tr>
-            <td style="background:${bgCard};border:1px solid ${borderColor};border-radius:16px;overflow:hidden;">
-
-              <!-- Card header band -->
+            <td style="background:${C.bgCard};border:1px solid ${C.border};border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
               <table width="100%" cellpadding="0" cellspacing="0">
+
+                <!-- Header band -->
                 <tr>
-                  <td style="background:${accentColor};padding:20px 28px;">
-                    <div style="font-size:12px;font-weight:700;color:rgba(0,0,0,0.55);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">
-                      Nuova spesa condivisa
-                    </div>
-                    <div style="font-size:28px;font-weight:800;color:#0d1117;letter-spacing:-0.5px;">
-                      ${fmtAmount(p.amount)}
-                    </div>
+                  <td style="background:${C.accent};padding:20px 28px;">
+                    <div style="font-size:11px;font-weight:700;color:rgba(0,0,0,0.5);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Nuova spesa condivisa</div>
+                    <div style="font-size:30px;font-weight:800;color:${C.textMain};letter-spacing:-1px;">${fmtAmount(p.amount)}</div>
                   </td>
                 </tr>
-              </table>
 
-              <!-- Body -->
-              <table width="100%" cellpadding="0" cellspacing="0" style="padding:24px 28px;">
-
-                <!-- Description -->
+                <!-- Description + date -->
                 <tr>
-                  <td style="padding-bottom:20px;">
-                    <div style="font-size:19px;font-weight:700;color:${textPrimary};margin-bottom:6px;">
-                      ${p.description}
-                    </div>
-                    <div style="font-size:13px;color:${textMuted};">
-                      ${p.category ? `<span style="display:inline-block;background:${bgInner};border:1px solid ${borderColor};border-radius:20px;padding:3px 10px;margin-right:8px;font-size:12px;">${p.category}</span>` : ''}
+                  <td style="padding:24px 28px 0;">
+                    <div style="font-size:19px;font-weight:700;color:${C.textMain};margin-bottom:6px;">${p.description}</div>
+                    <div style="font-size:13px;color:${C.textMuted};">
+                      ${p.category ? `<span style="display:inline-block;background:${C.bgInner};border:1px solid ${C.border};border-radius:20px;padding:2px 10px;font-size:12px;margin-right:8px;">${p.category}</span>` : ''}
                       ${fmtDate(p.date)}
                     </div>
                   </td>
                 </tr>
 
                 <!-- Divider -->
-                <tr><td style="height:1px;background:${borderColor};padding:0;margin:0 0 20px;"></td></tr>
+                <tr><td style="padding:20px 28px 0;"><div style="height:1px;background:${C.border};"></div></td></tr>
 
-                <!-- Split detail table -->
+                <!-- Split table -->
                 <tr>
-                  <td style="padding:16px 0 20px;">
+                  <td style="padding:20px 28px 0;">
                     <table width="100%" cellpadding="0" cellspacing="0">
                       <tr>
-                        <!-- Payer column -->
-                        <td width="50%" style="padding-right:8px;vertical-align:top;">
-                          <div style="background:${bgInner};border:1px solid ${borderColor};border-radius:12px;padding:14px 16px;">
-                            <div style="font-size:10px;font-weight:700;color:${textMuted};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">
-                              ${p.payerEmail === p.myEmail ? myName : partnerName} · ha pagato
-                            </div>
-                            <div style="font-size:18px;font-weight:800;color:${successColor};">
-                              ${fmtAmount(p.amount)}
-                            </div>
+                        <td width="50%" style="padding-right:6px;vertical-align:top;">
+                          <div style="background:${C.bgInner};border:1px solid ${C.border};border-radius:10px;padding:14px 16px;">
+                            <div style="font-size:10px;font-weight:700;color:${C.textMuted};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">${payerName} · ha pagato</div>
+                            <div style="font-size:18px;font-weight:800;color:${C.success};">${fmtAmount(p.amount)}</div>
                           </div>
                         </td>
-                        <!-- Non-payer column -->
-                        <td width="50%" style="padding-left:8px;vertical-align:top;">
-                          <div style="background:${bgInner};border:1px solid ${borderColor};border-radius:12px;padding:14px 16px;">
-                            <div style="font-size:10px;font-weight:700;color:${textMuted};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">
-                              ${p.payerEmail === p.myEmail ? partnerName : myName} · quota
-                            </div>
-                            <div style="font-size:18px;font-weight:800;color:${dangerColor};">
-                              ${fmtAmount(p.payerEmail === p.myEmail ? theirShare : myShare)}
-                            </div>
+                        <td width="50%" style="padding-left:6px;vertical-align:top;">
+                          <div style="background:${C.bgInner};border:1px solid ${C.border};border-radius:10px;padding:14px 16px;">
+                            <div style="font-size:10px;font-weight:700;color:${C.textMuted};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">${nonPayerName} · quota</div>
+                            <div style="font-size:18px;font-weight:800;color:${C.danger};">${fmtAmount(p.payerEmail === p.myEmail ? theirShare : myShare)}</div>
                           </div>
                         </td>
                       </tr>
@@ -160,61 +188,20 @@ function buildSharedExpenseHtml(p: SharedExpenseEmailParams, recipientEmail: str
                   </td>
                 </tr>
 
-                <!-- Balance line for recipient -->
+                <!-- Per-recipient balance row -->
                 <tr>
-                  <td style="padding-bottom:20px;">
-                    <div style="background:${bgInner};border:1px solid ${borderColor};border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:12px;">
-                      <span style="font-size:20px;font-weight:800;color:${balanceColor};">
-                        ${balanceSign}${fmtAmount(iPaid ? theirShare : myShare)}
-                      </span>
-                      <span style="font-size:13px;color:${textMuted};">
-                        ${balanceText}
-                      </span>
+                  <td style="padding:16px 28px 0;">
+                    <div style="background:${C.bgInner};border:1px solid ${C.border};border-radius:10px;padding:14px 18px;">
+                      <div style="font-size:10px;font-weight:700;color:${C.textMuted};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">La tua quota, ${recipientName}</div>
+                      <div style="font-size:26px;font-weight:800;color:${balanceColor};letter-spacing:-0.5px;margin-bottom:4px;">${balanceSign}${fmtAmount(balanceAmt)}</div>
+                      <div style="font-size:13px;color:${C.textMuted};">${balanceLabel}</div>
                     </div>
                   </td>
                 </tr>
 
-                ${p.notes ? `
-                <!-- Notes -->
-                <tr>
-                  <td style="padding-bottom:20px;">
-                    <div style="background:${bgInner};border:1px solid ${borderColor};border-radius:10px;padding:12px 16px;">
-                      <div style="font-size:11px;font-weight:700;color:${textMuted};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Note</div>
-                      <div style="font-size:13px;color:${textPrimary};">${p.notes}</div>
-                    </div>
-                  </td>
-                </tr>` : ''}
+                ${notesSection}
 
-                ${p.runningBalance !== undefined ? (() => {
-                  // Compute running balance from recipient's perspective
-                  const recipientBalance = recipientEmail === p.myEmail
-                    ? p.runningBalance
-                    : -p.runningBalance!
-                  const isOwed   = recipientBalance > 0.005
-                  const isOwing  = recipientBalance < -0.005
-                  const absTotal = Math.abs(recipientBalance)
-                  const totalColor  = isOwed ? successColor : isOwing ? dangerColor : textMuted
-                  const totalLabel  = isOwed
-                    ? `${shortEmail(recipientEmail === p.myEmail ? p.partnerEmail : p.myEmail)} ti deve in totale`
-                    : isOwing
-                    ? `Devi in totale a ${shortEmail(recipientEmail === p.myEmail ? p.partnerEmail : p.myEmail)}`
-                    : 'Siete in pari'
-                  return `
-                <!-- Running balance -->
-                <tr>
-                  <td style="padding-bottom:20px;">
-                    <div style="background:${bgInner};border:1px solid ${borderColor};border-radius:12px;padding:16px 18px;">
-                      <div style="font-size:10px;font-weight:700;color:${textMuted};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">
-                        Saldo complessivo
-                      </div>
-                      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-                        <div style="font-size:13px;color:${textMuted};">${totalLabel}</div>
-                        <div style="font-size:22px;font-weight:800;color:${totalColor};">${isOwed || isOwing ? fmtAmount(absTotal) : '✓ Pari'}</div>
-                      </div>
-                    </div>
-                  </td>
-                </tr>`
-                })() : ''}
+                ${runningSection}
 
               </table>
             </td>
@@ -222,9 +209,9 @@ function buildSharedExpenseHtml(p: SharedExpenseEmailParams, recipientEmail: str
 
           <!-- Footer -->
           <tr>
-            <td style="padding:24px 0 8px;text-align:center;">
-              <div style="font-size:12px;color:${textMuted};">
-                Inviato da <strong style="color:${textPrimary};">LedgerNest</strong> · Gestione spese condivise
+            <td style="padding:20px 0 0;text-align:center;">
+              <div style="font-size:12px;color:${C.textMuted};">
+                Inviato da <strong style="color:${C.textMain};">LedgerNest</strong> · Gestione spese condivise
               </div>
             </td>
           </tr>
@@ -237,6 +224,99 @@ function buildSharedExpenseHtml(p: SharedExpenseEmailParams, recipientEmail: str
 </html>`
 }
 
+// ── Removal notification ──────────────────────────────────────────────────────
+
+export interface SharedExpenseRemovalEmailParams {
+  myEmail: string
+  partnerEmail: string
+  myName?: string
+  partnerName?: string
+  amount: number
+  description: string
+  category?: string | null
+  date: string
+  removedByEmail: string
+  sendToMe?: boolean
+  sendToPartner?: boolean
+}
+
+function buildRemovalHtml(p: SharedExpenseRemovalEmailParams, recipientEmail: string): string {
+  const myName      = p.myName      || shortEmail(p.myEmail)
+  const partnerName = p.partnerName || shortEmail(p.partnerEmail)
+  const removedByName = resolveName(p.removedByEmail, p.myEmail, p.partnerEmail, myName, partnerName)
+
+  return `<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Spesa condivisa rimossa · LedgerNest</title>
+</head>
+<body style="margin:0;padding:0;background:${C.bgPage};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:${C.bgPage};padding:40px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+
+          <!-- Logo -->
+          <tr>
+            <td style="padding-bottom:24px;text-align:center;">
+              <span style="font-size:22px;font-weight:800;color:${C.textMain};letter-spacing:-0.5px;">
+                Ledger<span style="color:${C.accent};">Nest</span>
+              </span>
+            </td>
+          </tr>
+
+          <!-- Card -->
+          <tr>
+            <td style="background:${C.bgCard};border:1px solid ${C.border};border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+              <table width="100%" cellpadding="0" cellspacing="0">
+
+                <!-- Header band -->
+                <tr>
+                  <td style="background:#ffd8d8;border-bottom:1px solid #f5c6c6;padding:20px 28px;">
+                    <div style="font-size:11px;font-weight:700;color:rgba(0,0,0,0.45);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Spesa condivisa rimossa</div>
+                    <div style="font-size:30px;font-weight:800;color:${C.danger};letter-spacing:-1px;">${fmtAmount(p.amount)}</div>
+                  </td>
+                </tr>
+
+                <!-- Body -->
+                <tr>
+                  <td style="padding:24px 28px;">
+                    <div style="font-size:18px;font-weight:700;color:${C.textMain};margin-bottom:6px;">${p.description}</div>
+                    <div style="font-size:13px;color:${C.textMuted};margin-bottom:20px;">
+                      ${p.category ? `<span style="display:inline-block;background:${C.bgInner};border:1px solid ${C.border};border-radius:20px;padding:2px 10px;font-size:12px;margin-right:8px;">${p.category}</span>` : ''}
+                      ${fmtDate(p.date)}
+                    </div>
+                    <div style="background:${C.bgInner};border:1px solid ${C.border};border-radius:10px;padding:14px 18px;font-size:13px;color:${C.textMuted};">
+                      Rimossa da <strong style="color:${C.textMain};">${removedByName}</strong>. Questa spesa non contribuisce più al saldo.
+                    </div>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:20px 0 0;text-align:center;">
+              <div style="font-size:12px;color:${C.textMuted};">
+                Inviato da <strong style="color:${C.textMain};">LedgerNest</strong> · Gestione spese condivise
+              </div>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`
+}
+
+// ── Send functions ────────────────────────────────────────────────────────────
+
 export async function sendSharedExpenseNotification(p: SharedExpenseEmailParams): Promise<void> {
   const resend = getResend()
   if (!resend) return
@@ -245,7 +325,7 @@ export async function sendSharedExpenseNotification(p: SharedExpenseEmailParams)
   const sendToPartner = p.sendToPartner !== false
   if (!sendToMe && !sendToPartner) return
 
-  const payerName = shortEmail(p.payerEmail)
+  const payerName = resolveName(p.payerEmail, p.myEmail, p.partnerEmail, p.myName, p.partnerName)
   const subject   = `🤝 ${payerName} ha aggiunto una spesa condivisa · ${fmtAmount(p.amount)}`
 
   const sends: Promise<unknown>[] = []
@@ -254,9 +334,27 @@ export async function sendSharedExpenseNotification(p: SharedExpenseEmailParams)
   if (sendToPartner)
     sends.push(resend.emails.send({ from: FROM, to: p.partnerEmail, subject, html: buildSharedExpenseHtml(p, p.partnerEmail) }))
 
-  try {
-    await Promise.all(sends)
-  } catch (err) {
-    console.error('[email] sendSharedExpenseNotification failed:', err)
-  }
+  try { await Promise.all(sends) }
+  catch (err) { console.error('[email] sendSharedExpenseNotification failed:', err) }
+}
+
+export async function sendSharedExpenseRemovalNotification(p: SharedExpenseRemovalEmailParams): Promise<void> {
+  const resend = getResend()
+  if (!resend) return
+
+  const sendToMe      = p.sendToMe      !== false
+  const sendToPartner = p.sendToPartner !== false
+  if (!sendToMe && !sendToPartner) return
+
+  const removedByName = resolveName(p.removedByEmail, p.myEmail, p.partnerEmail, p.myName, p.partnerName)
+  const subject = `🗑 ${removedByName} ha rimosso una spesa condivisa · ${fmtAmount(p.amount)}`
+
+  const sends: Promise<unknown>[] = []
+  if (sendToMe)
+    sends.push(resend.emails.send({ from: FROM, to: p.myEmail,      subject, html: buildRemovalHtml(p, p.myEmail) }))
+  if (sendToPartner)
+    sends.push(resend.emails.send({ from: FROM, to: p.partnerEmail, subject, html: buildRemovalHtml(p, p.partnerEmail) }))
+
+  try { await Promise.all(sends) }
+  catch (err) { console.error('[email] sendSharedExpenseRemovalNotification failed:', err) }
 }

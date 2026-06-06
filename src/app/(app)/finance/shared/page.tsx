@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTranslations } from 'next-intl'
 import { useFinanceStore } from '@/stores/financeStore'
+import { useSettingsStore } from '@/stores/settingsStore'
 import Icon from '@/components/shared/Icon'
 import MerchantInput from '@/components/shared/MerchantInput'
 import { CategoryPicker } from '@/components/shared/CategoryPicker'
@@ -287,6 +288,7 @@ function SettleUpModal({
   balance,
   myEmail,
   partnerEmail,
+  partnerName,
   accounts,
   onClose,
   onSaved,
@@ -294,6 +296,7 @@ function SettleUpModal({
   balance: number
   myEmail: string
   partnerEmail: string
+  partnerName: string
   accounts: { id: string; name: string }[]
   onClose: () => void
   onSaved: () => void
@@ -330,8 +333,8 @@ function SettleUpModal({
       addTransaction({
         date,
         description: receiving
-          ? t('reimbFromPartner', { partner: shortEmail(partnerEmail) })
-          : t('reimbToPartner', { partner: shortEmail(partnerEmail) }),
+          ? t('reimbFromPartner', { partner: partnerName })
+          : t('reimbToPartner', { partner: partnerName }),
         amount: amt,
         type,
         category: receiving ? 'Income' : 'Transfer',
@@ -358,8 +361,8 @@ function SettleUpModal({
             <div style={labelStyle}>{t('fieldDirection')}</div>
             <div style={{ display: 'flex', gap: 8 }}>
               {[
-                { from: partnerEmail, label: t('directionPartnerToMe', { partner: shortEmail(partnerEmail) }) },
-                { from: myEmail, label: t('directionMeToPartner', { partner: shortEmail(partnerEmail) }) },
+                { from: partnerEmail, label: t('directionPartnerToMe', { partner: partnerName }) },
+                { from: myEmail, label: t('directionMeToPartner', { partner: partnerName }) },
               ].map((opt) => (
                 <button
                   key={opt.from}
@@ -391,7 +394,7 @@ function SettleUpModal({
 
           <div>
             <div style={labelStyle}>{t('fieldNotes')}</div>
-            <input style={inputStyle} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={receiving ? t('reimbFromPartner', { partner: shortEmail(partnerEmail) }) : t('reimbToPartner', { partner: shortEmail(partnerEmail) })} />
+            <input style={inputStyle} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={receiving ? t('reimbFromPartner', { partner: partnerName }) : t('reimbToPartner', { partner: partnerName })} />
           </div>
 
           <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13 }}>
@@ -430,6 +433,7 @@ function BalanceCard({
   balance,
   loading,
   partnerEmail,
+  partnerName,
   myEmail,
   onAddExpense,
   onSettleUp,
@@ -437,6 +441,7 @@ function BalanceCard({
   balance: Balance | null
   loading: boolean
   partnerEmail: string
+  partnerName: string
   myEmail: string
   onAddExpense: () => void
   onSettleUp: () => void
@@ -452,7 +457,7 @@ function BalanceCard({
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>
             {myEmail && partnerEmail
-              ? t('subtitle', { partner: shortEmail(partnerEmail) }).toUpperCase()
+              ? t('subtitle', { partner: partnerName }).toUpperCase()
               : t('title').toUpperCase()}
           </div>
           {loading ? (
@@ -461,12 +466,12 @@ function BalanceCard({
             <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--success)' }}>{t('allSettled')}</div>
           ) : partnerOwes ? (
             <div>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 2 }}>{t('partnerOwes', { partner: shortEmail(partnerEmail) })}</div>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 2 }}>{t('partnerOwes', { partner: partnerName })}</div>
               <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--success)' }}>{fmt(absBalance)}</div>
             </div>
           ) : (
             <div>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 2 }}>{t('youOwe', { partner: shortEmail(partnerEmail) })}</div>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 2 }}>{t('youOwe', { partner: partnerName })}</div>
               <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--danger)' }}>{fmt(absBalance)}</div>
             </div>
           )}
@@ -510,12 +515,14 @@ function ExpenseRow({
   expense,
   myEmail,
   partnerEmail,
+  partnerName,
   onEdit,
   onDelete,
 }: {
   expense: SharedExpense
   myEmail: string
   partnerEmail: string
+  partnerName: string
   onEdit: (e: SharedExpense) => void
   onDelete: (id: string) => void
 }) {
@@ -537,7 +544,7 @@ function ExpenseRow({
         <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>
           {expense.category ? `${expense.category} · ` : ''}
           <span style={{ color: iPaid ? 'var(--success)' : 'var(--text-tertiary)' }}>
-            {iPaid ? t('paidByMe') : t('paidByPartner', { partner: shortEmail(partnerEmail) })}
+            {iPaid ? t('paidByMe') : t('paidByPartner', { partner: partnerName })}
           </span>
           {' · '}
           <span style={{ fontWeight: 600 }}>{fmt(expense.amount)}</span>
@@ -621,10 +628,12 @@ export default function SharedPage() {
   const t = useTranslations('condivisione')
   const { data: session } = useSession()
   const { accounts } = useFinanceStore()
+  const { settings } = useSettingsStore()
   const myEmail = session?.user?.email ?? ''
 
-  const [partnerEmail, setPartnerEmail] = useState<string | null>(null)
-  const [groupLoaded, setGroupLoaded] = useState(false)
+  const [partnerEmail,       setPartnerEmail]       = useState<string | null>(null)
+  const [partnerDisplayName, setPartnerDisplayName] = useState<string | null>(null)
+  const [groupLoaded,        setGroupLoaded]        = useState(false)
 
   const [expenses, setExpenses] = useState<SharedExpense[]>([])
   const [settlements, setSettlements] = useState<Settlement[]>([])
@@ -646,9 +655,16 @@ export default function SharedPage() {
       .then((r) => r.json())
       .then((d) => {
         setPartnerEmail(d.group?.partnerEmail ?? null)
+        setPartnerDisplayName(d.group?.partnerDisplayName ?? null)
         setGroupLoaded(true)
       })
   }, [myEmail])
+
+  // Effective partner name: local override > deduced from their account > email prefix
+  const effectivePartnerName = (email: string) =>
+    settings.partnerName?.trim()
+    || partnerDisplayName
+    || email.split('@')[0]
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -730,6 +746,7 @@ export default function SharedPage() {
         balance={balance}
         loading={loading}
         partnerEmail={partnerEmail}
+        partnerName={effectivePartnerName(partnerEmail)}
         myEmail={myEmail}
         onAddExpense={() => { setEditExpense(undefined); setShowAddModal(true) }}
         onSettleUp={() => setShowSettleUp(true)}
@@ -789,7 +806,7 @@ export default function SharedPage() {
                   color: filterPayer === f ? 'var(--accent)' : 'var(--text-secondary)',
                 }}
               >
-                {f === 'all' ? t('filterAll') : f === 'me' ? t('filterMe') : t('filterPartner', { partner: shortEmail(partnerEmail) })}
+                {f === 'all' ? t('filterAll') : f === 'me' ? t('filterMe') : t('filterPartner', { partner: effectivePartnerName(partnerEmail) })}
               </button>
             ))}
           </div>
@@ -812,6 +829,7 @@ export default function SharedPage() {
               expense={e}
               myEmail={myEmail}
               partnerEmail={partnerEmail}
+              partnerName={effectivePartnerName(partnerEmail)}
               onEdit={(exp) => { setEditExpense(exp); setShowAddModal(true) }}
               onDelete={(id) => setDeleteConfirm(id)}
             />
@@ -872,6 +890,7 @@ export default function SharedPage() {
           balance={balance?.balance ?? 0}
           myEmail={myEmail}
           partnerEmail={partnerEmail}
+          partnerName={effectivePartnerName(partnerEmail)}
           accounts={bankAccounts}
           onClose={() => setShowSettleUp(false)}
           onSaved={loadData}
