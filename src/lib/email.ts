@@ -93,7 +93,6 @@ function buildSharedExpenseHtml(p: SharedExpenseEmailParams, recipientEmail: str
     const totalValue = (isOwed || isOwing) ? fmtAmount(absTotal) : ''
 
     runningSection = `
-      <tr><td style="height:1px;background:${C.border};padding:0;font-size:0;line-height:0;">&nbsp;</td></tr>
       <tr>
         <td style="padding:20px 28px 24px;">
           <div style="background:${C.bgInner};border:1px solid ${C.border};border-radius:10px;padding:16px 18px;">

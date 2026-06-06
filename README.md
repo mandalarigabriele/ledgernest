@@ -4,7 +4,7 @@
 
 **Personal finance dashboard — portfolio, budget, net worth and cashflow in one place.**
 
-![Version](https://img.shields.io/badge/version-0.5.17-blue)
+![Version](https://img.shields.io/badge/version-0.5.18-blue)
 ![Next.js](https://img.shields.io/badge/Next.js-14-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.5-blue)
 ![License](https://img.shields.io/badge/license-private-lightgrey)
@@ -26,6 +26,8 @@
 - **Stocks** — live prices from Yahoo Finance, per-position P&L, 60-day sparklines, sectors
 - **ETF** — TER, regional exposure, historical chart, EUR/USD-corrected P&L
 - **Crypto** — live prices from CoinGecko, historical charts
+- **Commodities** — gold, silver and other commodity positions with live prices
+- **Dividends** — dedicated dividend tracking page with history, yield and calendar view
 - Automatic EUR/USD exchange-rate correction on average cost basis
 - **Heatmap** — TradingView stock heatmap widget (S&P 500, by sector, size = market cap, colour = 1D change)
 
@@ -44,19 +46,21 @@
 
 ### 🏦 Finances
 - **Accounts** — bank accounts, brokers, crypto wallets with aggregated balance; Open Banking (PSD2) connection via Enable Banking
-- **Transactions** — merchant logo, categories, CSV import, automatic import from connected bank accounts
+- **Transactions** — merchant logo, categories, CSV import, automatic import from connected bank accounts; shared-expense badge for linked shared entries
 - **Budget** — monthly planning by group/category, planned vs actual, 50/30/20 targets, per-category notes, pinnable default month, dynamic date range (first data month → +11 months)
 - **Recurring** — recurring income and expenses with annual projection
 - **Goals** — savings targets with progress tracking
 - **Net Worth** — historical net worth with assets and liabilities
 - **Report** — expense analysis by category, month over month
+- **Shared Expenses** — split expenses between two partners with a cumulative running balance; monthly view with pill-selector; add/edit/delete shared entries; settle-up flow; email notifications to both partners on every change (opt-in per user); partner display name auto-deduced from Google account or manually overridden
 
 ### ⚙️ Settings
-- **Appearance** — dark/light theme, 8 colour themes, density (comfortable/normal/compact), font
+- **Appearance** — dark/light/system theme, 8 colour themes, density (comfortable/normal/compact), font (Inter/Mono/System), animations toggle, large-number display, hide sensitive amounts, hide portfolio section, hide analytics section
 - **Profile** — language (EN/IT), currency display, account holder name for transfer detection
 - **Categories** — full category/subcategory manager with emoji, colour and group assignment
 - **Merchants** — logo management, name normalisation, merchant merge/alias rules
 - **Markets** — price refresh interval (UI), snapshot interval (server cron), Open Banking auto-sync interval (1h / 4h / daily), pre/post market prices, portfolio visibility
+- **Sharing** — pair with a partner by email, customise partner display name, toggle shared-expense email notifications
 - **Data** — CSV import, portfolio reset, snapshot reset, full data reset
 
 ### 🌐 Internationalisation
@@ -67,6 +71,7 @@
 ### 🔒 Authentication
 - Google OAuth via NextAuth v4
 - Configurable email whitelist (only authorised addresses can log in)
+- **Demo mode** — one-click demo login on the login page; loads a read-only sample dataset so anyone can explore the UI without credentials
 
 ### 📱 Mobile-first
 - Fully responsive layout
@@ -405,7 +410,8 @@ ledgernest/
 │   │   │   │   ├── recurring/       # Recurring income/expenses
 │   │   │   │   ├── goals/           # Savings goals
 │   │   │   │   ├── net-worth/       # Net worth history
-│   │   │   │   └── report/          # Expense reports
+│   │   │   │   ├── report/          # Expense reports
+│   │   │   │   └── shared/          # Shared expenses & running balance
 │   │   │   └── settings/            # App settings
 │   │   ├── api/
 │   │   │   ├── auth/                # NextAuth Google OAuth
@@ -421,6 +427,10 @@ ledgernest/
 │   │   │   ├── portfolio-chart/     # Portfolio performance data
 │   │   │   ├── portfolio/heatmap/   # Heatmap data
 │   │   │   ├── prices/              # Live stock/crypto quotes + history
+│   │   │   ├── sharing-group/       # GET/POST — create/read partner pair
+│   │   │   ├── shared-expenses/     # GET/POST — list + add shared expenses
+│   │   │   │   └── [id]/            # PUT/DELETE — update/remove a shared expense
+│   │   │   ├── settlements/         # GET/POST — list + record balance settlements
 │   │   │   ├── snapshots/           # Portfolio & net worth snapshots
 │   │   │   ├── sparklines/          # 7-day sparklines
 │   │   │   ├── sync/                # Server-side Zustand state sync
@@ -499,6 +509,9 @@ npm run db:reset     # ⚠️ FULL RESET (deletes all data)
 | `banking_transactions` | Deduplication ledger for imported OB transactions |
 | `watchlist_items` | Watchlist entries with ticker, currency, target price and list tags |
 | `watchlist_alerts` | Per-ticker price alerts with threshold, direction, triggered state and timestamp |
+| `sharing_groups` | Partner pairs (two user emails) for shared expense tracking |
+| `shared_expenses` | Individual shared expense entries linked to a sharing group |
+| `settlements` | Settlement payments that reduce the running balance between partners |
 
 ---
 

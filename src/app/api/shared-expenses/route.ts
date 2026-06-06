@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getDb } from '@/lib/db/schema'
 import { randomUUID } from 'crypto'
-import { sendSharedExpenseNotification } from '@/lib/email'
+import { sendSharedExpenseNotification, sendSharedExpenseRemovalNotification } from '@/lib/email'
 
 function readUserSettings(db: ReturnType<typeof getDb>, email: string): Record<string, unknown> {
   const row = db.prepare(`SELECT data FROM user_data WHERE user_email = ? AND key = 'settings' LIMIT 1`).get(email) as { data: string } | undefined
@@ -151,9 +151,38 @@ export async function DELETE(req: NextRequest) {
   const group = requireGroup(db, session.user.email)
   if (!group) return NextResponse.json({ error: 'No sharing group found' }, { status: 404 })
 
+  const expense = db.prepare(
+    `SELECT * FROM shared_expenses WHERE group_id = ? AND source_tx_id = ? LIMIT 1`
+  ).get(group.id, sourceTxId) as { amount: number; description: string; category: string | null; date: string } | undefined
+
   db.prepare(
     `DELETE FROM shared_expenses WHERE group_id = ? AND source_tx_id = ?`
   ).run(group.id, sourceTxId)
+
+  if (expense) {
+    const partnerEmail = group.member1_email === session.user.email
+      ? group.member2_email
+      : group.member1_email
+
+    function emailEnabled(email: string): boolean {
+      const s = readUserSettings(db, email) as { settings?: { sharedExpenseEmailEnabled?: boolean } }
+      return s?.settings?.sharedExpenseEmailEnabled !== false
+    }
+
+    sendSharedExpenseRemovalNotification({
+      myEmail: session.user.email,
+      partnerEmail,
+      myName: getSelfName(db, session.user.email),
+      partnerName: getSelfName(db, partnerEmail),
+      amount: expense.amount,
+      description: expense.description,
+      category: expense.category,
+      date: expense.date,
+      removedByEmail: session.user.email,
+      sendToMe: emailEnabled(session.user.email),
+      sendToPartner: emailEnabled(partnerEmail),
+    }).catch(() => {})
+  }
 
   return NextResponse.json({ ok: true })
 }
