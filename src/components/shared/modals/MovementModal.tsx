@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useUIStore } from '@/stores/uiStore'
 import { useFinanceStore } from '@/stores/financeStore'
@@ -10,9 +10,12 @@ import { CategoryPicker } from '../CategoryPicker'
 
 // ─────────────────────────────────────────────────────────────
 
+function shortEmail(email: string) { return email.split('@')[0] }
+
 export default function MovementModal() {
-  const t = useTranslations('modals')
+  const t  = useTranslations('modals')
   const tc = useTranslations('common')
+  const ts = useTranslations('condivisione')
   const { closeModal } = useUIStore()
   const { accounts, addTransaction } = useFinanceStore()
   const modalRef = useRef<HTMLDivElement>(null)
@@ -26,15 +29,63 @@ export default function MovementModal() {
   const [merchant, setMerchant]       = useState('')
   const [note, setNote]               = useState('')
 
+  // Sharing
+  const [partnerEmail, setPartnerEmail] = useState<string | null>(null)
+  const [myEmail,      setMyEmail]      = useState<string>('')
+  const [shared,       setShared]       = useState(false)
+  const [payerEmail,   setPayerEmail]   = useState('')
+  const [otherShare,   setOtherShare]   = useState('50')
+
+  useEffect(() => {
+    fetch('/api/sharing-group')
+      .then((r) => r.ok ? r.json() : null)
+      .then((d: { group: { partnerEmail: string } | null; myEmail: string } | null) => {
+        if (d?.group) {
+          setPartnerEmail(d.group.partnerEmail ?? null)
+          setMyEmail(d.myEmail ?? '')
+          setPayerEmail(d.myEmail ?? '')
+        }
+      })
+      .catch(() => {})
+  }, [])
+
   function handleTypeChange(next: 'income' | 'expense') {
     setType(next)
     setCategory('')
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!description || !amount || !accountId) return
-    addTransaction({ description, merchant: merchant.trim() || undefined, amount: parseFloat(amount), type, category, accountId, date, note: note.trim() || undefined })
+
+    const txId = addTransaction({
+      description,
+      merchant: merchant.trim() || undefined,
+      amount: parseFloat(amount),
+      type,
+      category,
+      accountId,
+      date,
+      note: note.trim() || undefined,
+    })
+
+    if (shared && partnerEmail) {
+      const share = Math.min(1, Math.max(0, parseFloat(otherShare) / 100))
+      await fetch('/api/shared-expenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: parseFloat(amount),
+          description,
+          category: category || null,
+          date,
+          payerEmail,
+          otherShare: share,
+          sourceTxId: txId,
+        }),
+      })
+    }
+
     closeModal()
   }
 
@@ -83,7 +134,7 @@ export default function MovementModal() {
               <MerchantInput value={merchant} onChange={setMerchant} />
             </div>
 
-            {/* Category picker */}
+            {/* Category */}
             <div className="ledgernest-field">
               <label className="ledgernest-label">{t('category')}</label>
               <CategoryPicker value={category} onChange={setCategory} typeFilter={type} containerRef={modalRef} />
@@ -120,6 +171,73 @@ export default function MovementModal() {
                 style={{ resize: 'none', lineHeight: 1.5 }}
               />
             </div>
+
+            {/* ── Sharing section — only if partner exists ── */}
+            {partnerEmail && (
+              <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 14 }}>
+                <button
+                  type="button"
+                  onClick={() => setShared((v) => !v)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                    background: shared ? 'color-mix(in oklch, var(--accent) 10%, transparent)' : 'var(--bg-elevated)',
+                    border: `1.5px solid ${shared ? 'var(--accent)' : 'var(--border-subtle)'}`,
+                    borderRadius: 10, padding: '10px 14px', cursor: 'pointer', transition: 'all .15s',
+                  }}
+                >
+                  <Icon name="shared" size={16} />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: shared ? 'var(--accent)' : 'var(--text-secondary)', flex: 1, textAlign: 'left' }}>
+                    {ts('toggleShared')}
+                  </span>
+                  <div style={{
+                    width: 32, height: 18, borderRadius: 9, background: shared ? 'var(--accent)' : 'var(--border-subtle)',
+                    position: 'relative', transition: 'background .15s',
+                  }}>
+                    <div style={{
+                      position: 'absolute', top: 2, left: shared ? 14 : 2, width: 14, height: 14,
+                      borderRadius: '50%', background: '#fff', transition: 'left .15s',
+                    }} />
+                  </div>
+                </button>
+
+                {shared && (
+                  <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+                    {/* Paid by */}
+                    <div className="ledgernest-field">
+                      <label className="ledgernest-label">{ts('fieldPaidBy')}</label>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {[myEmail, partnerEmail].map((email) => (
+                          <button key={email} type="button" onClick={() => setPayerEmail(email)} style={{
+                            flex: 1, padding: '9px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                            border: `1.5px solid ${payerEmail === email ? 'var(--accent)' : 'var(--border-subtle)'}`,
+                            background: payerEmail === email ? 'color-mix(in oklch, var(--accent) 12%, transparent)' : 'transparent',
+                            color: payerEmail === email ? 'var(--accent)' : 'var(--text-secondary)',
+                            transition: 'all .15s',
+                          }}>
+                            {email === myEmail ? ts('fieldPaidByMe') : shortEmail(email)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Split */}
+                    <div className="ledgernest-field">
+                      <label className="ledgernest-label">{ts('fieldSplit', { pct: otherShare })}</label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <input type="range" min={0} max={100} step={5} value={otherShare}
+                          onChange={(e) => setOtherShare(e.target.value)} style={{ flex: 1 }} />
+                        <input className="ledgernest-input" style={{ width: 70, textAlign: 'center' }}
+                          type="number" min={0} max={100} value={otherShare}
+                          onChange={(e) => setOtherShare(e.target.value)} />
+                        <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>%</span>
+                      </div>
+                    </div>
+
+                  </div>
+                )}
+              </div>
+            )}
 
           </div>
 

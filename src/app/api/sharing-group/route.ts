@@ -31,7 +31,7 @@ export async function GET() {
     ? group.member2_email
     : group.member1_email
 
-  return NextResponse.json({ group: { ...group, partnerEmail } })
+  return NextResponse.json({ group: { ...group, partnerEmail }, myEmail: session.user.email })
 }
 
 export async function POST(req: NextRequest) {

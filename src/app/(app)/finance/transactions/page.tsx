@@ -342,6 +342,105 @@ function AddAsRecurringModal({ tx, onClose }: { tx: TxSnap; onClose: () => void 
   )
 }
 
+// ── Mark as shared modal ──────────────────────────────────────
+
+function MarkAsSharedModal({ tx, onClose, onShared }: { tx: Transaction; onClose: () => void; onShared: (txId: string) => void }) {
+  const tl = useTranslations('movimenti')
+  const tc = useTranslations('common')
+  const [otherShare, setOtherShare] = useState('50')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [done, setDone] = useState(false)
+
+  const inputSt: React.CSSProperties = {
+    padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border-subtle)',
+    background: 'var(--bg-elevated)', color: 'var(--text-primary)', width: '100%',
+    boxSizing: 'border-box', fontSize: 13,
+  }
+  const labelSt: React.CSSProperties = {
+    fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase',
+    letterSpacing: '0.05em', marginBottom: 5,
+  }
+
+  async function handleAdd() {
+    setSaving(true); setError('')
+    const share = Math.min(1, Math.max(0, parseFloat(otherShare) / 100))
+    const res = await fetch('/api/shared-expenses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: tx.amount,
+        description: tx.description,
+        category: tx.category,
+        date: tx.date,
+        otherShare: share,
+        sourceTxId: tx.id,
+      }),
+    })
+    setSaving(false)
+    if (!res.ok) {
+      const d = await res.json()
+      if (d.error === 'already_shared') { onShared(tx.id); setDone(true); setTimeout(onClose, 900); return }
+      setError(d.error === 'No sharing group found' ? tl('markSharedNoGroup') : (d.error ?? tl('markSharedNoGroup')))
+      return
+    }
+    onShared(tx.id)
+    setDone(true)
+    setTimeout(onClose, 900)
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, padding: '28px 32px', width: 420, display: 'flex', flexDirection: 'column', gap: 18, boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontSize: 16, fontWeight: 700 }}>{tl('markSharedTitle')}</div>
+          <button className="ledgernest-icon-btn" onClick={onClose}><Icon name="close" size={16} /></button>
+        </div>
+
+        {/* Transaction preview */}
+        <div style={{ background: 'var(--bg-elevated)', borderRadius: 12, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>{tx.description}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{tx.date} · {tx.category}</div>
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: tx.type === 'expense' ? 'var(--danger)' : 'var(--success)' }}>
+            {new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR' }).format(tx.amount)}
+          </div>
+        </div>
+
+        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{tl('markSharedDesc')}</div>
+
+        <div>
+          <div style={labelSt}>{tl('markSharedSplit', { pct: otherShare })}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <input
+              type="range" min={0} max={100} step={5} value={otherShare}
+              onChange={(e) => setOtherShare(e.target.value)}
+              style={{ flex: 1 }}
+            />
+            <input
+              style={{ ...inputSt, width: 70, textAlign: 'center' }}
+              type="number" min={0} max={100} value={otherShare}
+              onChange={(e) => setOtherShare(e.target.value)}
+            />
+            <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>%</span>
+          </div>
+        </div>
+
+        {error && <div style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</div>}
+        {done && <div style={{ color: 'var(--success)', fontSize: 13, fontWeight: 600 }}>✓ Added to shared expenses</div>}
+
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <button className="ledgernest-btn ledgernest-btn-ghost" onClick={onClose}>{tc('cancel')}</button>
+          <button className="ledgernest-btn" onClick={handleAdd} disabled={saving || done}>
+            {saving ? tl('markSharedSaving') : tl('markSharedAdd')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Tx row kebab ──────────────────────────────────────────────
 
 const TRADE_DESC_RE = /^(Acquisto|Vendita) (\S+) ×([\d.]+) @ ([\d.]+)$/
@@ -364,6 +463,8 @@ type TxActions = {
   onEdit: () => void
   onDelete: () => void
   onEditTrade?: () => void
+  onMarkShared?: () => void
+  onUnshare?: () => void
 }
 
 function TxRowMenu({ actions }: { actions: TxActions }) {
@@ -434,6 +535,20 @@ function TxRowMenu({ actions }: { actions: TxActions }) {
             onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
             <Icon name="edit" size={13} /> {tl('menuEdit')}
           </button>
+          {actions.onUnshare && (
+            <button onClick={() => { setOpen(false); actions.onUnshare!() }} style={{ ...menuItem, color: 'var(--text-secondary)' }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-elevated)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
+              <Icon name="shared" size={13} /> {tl('menuUnshare')}
+            </button>
+          )}
+          {actions.onMarkShared && (
+            <button onClick={() => { setOpen(false); actions.onMarkShared!() }} style={{ ...menuItem, color: 'var(--accent)' }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-elevated)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
+              <Icon name="shared" size={13} /> {tl('menuMarkShared')}
+            </button>
+          )}
           <button onClick={() => { setOpen(false); actions.onDelete() }} style={{ ...menuItem, color: 'var(--danger)' }}
             onMouseEnter={(e) => (e.currentTarget.style.background = 'color-mix(in oklch, var(--danger) 10%, transparent)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
@@ -466,6 +581,17 @@ export default function MovimentiPage() {
   const [editingTx, setEditingTx] = useState<Transaction | null>(null)
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null)
   const [deletingTxId, setDeletingTxId] = useState<string | null>(null)
+  const [sharingTx, setSharingTx] = useState<Transaction | null>(null)
+  const [sharedTxIds, setSharedTxIds] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    fetch('/api/shared-expenses')
+      .then((r) => r.ok ? r.json() : { expenses: [] })
+      .then((d: { expenses: Array<{ source_tx_id: string | null }> }) => {
+        setSharedTxIds(new Set(d.expenses.map((e) => e.source_tx_id).filter(Boolean) as string[]))
+      })
+      .catch(() => {})
+  }, [])
 
   const FILTERS: Array<[TxFilter, string]> = [
     ['all',      tl('filterAll')],
@@ -768,12 +894,13 @@ export default function MovimentiPage() {
                   const color = catColor(tx.category, budgetCategories)
                   const acct = accountName(tx.accountId)
                   const logo = tx.merchant ? merchantLogos[tx.merchant] : undefined
+                  const isShared = sharedTxIds.has(tx.id)
                   return (
                     <div
                       key={tx.id}
                       style={{
-                        display: 'flex', alignItems: 'center', gap: 14,
-                        padding: '12px 20px',
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '12px 16px',
                         borderTop: '1px solid var(--border-subtle)',
                         transition: 'background .1s',
                         cursor: 'default',
@@ -803,38 +930,34 @@ export default function MovimentiPage() {
                             {tx.description}
                           </div>
                         )}
-                        <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {tx.category}{acct && <span> · {acct}</span>}
+                          {isShared && <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>🤝</span>}
                         </div>
+                        {/* Goal badges inline under meta */}
+                        {tx.goalAllocations && tx.goalAllocations.length > 0 && (
+                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 3 }}>
+                            {tx.goalAllocations.map((alloc) => {
+                              const g = goals.find((g) => g.id === alloc.goalId)
+                              if (!g) return null
+                              return (
+                                <span key={alloc.goalId} style={{
+                                  fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 6,
+                                  background: `${g.color}22`, color: g.color, whiteSpace: 'nowrap',
+                                }}>
+                                  {g.icon} {fmt(alloc.amount)}
+                                </span>
+                              )
+                            })}
+                          </div>
+                        )}
                       </div>
-
-                      {/* Goal badges or category label */}
-                      {tx.goalAllocations && tx.goalAllocations.length > 0 ? (
-                        <div style={{ display: 'flex', gap: 4, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: 160 }}>
-                          {tx.goalAllocations.map((alloc) => {
-                            const g = goals.find((g) => g.id === alloc.goalId)
-                            if (!g) return null
-                            return (
-                              <span key={alloc.goalId} style={{
-                                fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 6,
-                                background: `${g.color}22`, color: g.color, whiteSpace: 'nowrap',
-                              }}>
-                                {g.icon} {fmt(alloc.amount)}
-                              </span>
-                            )
-                          })}
-                        </div>
-                      ) : (
-                        <span style={{ fontSize: 12, color: 'var(--text-tertiary)', flexShrink: 0 }}>
-                          {tx.category}
-                        </span>
-                      )}
 
                       {/* Amount */}
                       <div style={{
                         fontWeight: 700, fontSize: 14, fontVariantNumeric: 'tabular-nums',
                         color: tx.type === 'income' ? 'var(--success)' : 'var(--text-primary)',
-                        flexShrink: 0, minWidth: 80, textAlign: 'right',
+                        flexShrink: 0, textAlign: 'right', whiteSpace: 'nowrap',
                       }}>
                         {tx.type === 'income' ? '+' : '−'}{fmt(tx.amount)}
                       </div>
@@ -847,6 +970,11 @@ export default function MovimentiPage() {
                         onEditTrade: INVEST_CATS.has(tx.category) && TRADE_DESC_RE.test(tx.description)
                           ? () => { const tr = findTradeForTx(tx, trades); if (tr) setEditingTrade(tr) }
                           : undefined,
+                        onMarkShared: tx.type === 'expense' && !isShared ? () => setSharingTx(tx) : undefined,
+                        onUnshare: tx.type === 'expense' && isShared ? () => {
+                          fetch(`/api/shared-expenses?sourceTxId=${encodeURIComponent(tx.id)}`, { method: 'DELETE' })
+                            .then(() => setSharedTxIds((prev) => { const next = new Set(prev); next.delete(tx.id); return next }))
+                        } : undefined,
                       }} />
                     </div>
                   )
@@ -877,6 +1005,7 @@ export default function MovimentiPage() {
           onCancel={() => setDeletingTxId(null)}
         />
       )}
+      {sharingTx && <MarkAsSharedModal tx={sharingTx} onClose={() => setSharingTx(null)} onShared={(id) => setSharedTxIds((prev) => { const next = new Set(prev); next.add(id); return next })} />}
     </div>
   )
 }

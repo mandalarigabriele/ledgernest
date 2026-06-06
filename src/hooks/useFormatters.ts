@@ -1,6 +1,6 @@
 import { useSettingsStore } from '@/stores/settingsStore'
 import { usePricesStore } from '@/stores/pricesStore'
-import { fmtCurrency, fmtCompact, fmtDelta } from '@/lib/utils/format'
+import { fmtCurrency, fmtCompact, fmtDelta, fmtPrice } from '@/lib/utils/format'
 import type { Currency } from '@/types'
 
 const EUR0 = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 })
@@ -27,6 +27,8 @@ export function useFormatters() {
     fmtCpt: (n: number) => fmtCompact(n * rate, currency),
     /** Signed delta format (+/-) in the user's display currency */
     fmtDlt: (n: number) => fmtDelta(n * rate, currency),
+    /** Price format: 4 decimal places for sub-1 values (crypto), 2 otherwise */
+    fmtPrc: (n: number) => fmtPrice(n * rate, currency),
     currency,
     symbol: currency === 'USD' ? '$' : '€',
     rate,

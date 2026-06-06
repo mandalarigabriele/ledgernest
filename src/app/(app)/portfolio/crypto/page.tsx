@@ -82,7 +82,7 @@ function CryptoChart({
   pnl: number
 }) {
   const tl = useTranslations('crypto')
-  const { fmt, fmtDlt } = useFormatters()
+  const { fmt, fmtDlt, fmtPrc } = useFormatters()
   const { trades } = usePortfolioStore()
   const [apiPoints, setApiPoints] = useState<{ date: string; value: number }[]>([])
   const [apiLoading, setApiLoading] = useState(false)
@@ -335,7 +335,7 @@ function PositionRowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: (
 
 export default function CryptoPage() {
   const tl = useTranslations('crypto')
-  const { fmt, fmtDlt } = useFormatters()
+  const { fmt, fmtDlt, fmtPrc } = useFormatters()
   const { refetch } = usePrices()
   const { positions, deletePosition, updatePosition } = usePortfolioStore()
   const { quotes, eurUsd, loading: quotesLoading } = usePricesStore()
@@ -568,10 +568,10 @@ export default function CryptoPage() {
                     {fmt(r.avgPriceEur)}
                   </td>
                   <td className="num ledgernest-mono" style={{ fontSize: 13, fontWeight: 600 }}>
-                    {fmt(r.price)}
+                    {fmtPrc(r.price)}
                     {r.q?.price > 0 && (
                       <div style={{ fontSize: 10, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', marginTop: 1 }}>
-                        ${r.q.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        ${r.q.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: r.q.price < 1 ? 4 : 2 })}
                       </div>
                     )}
                   </td>

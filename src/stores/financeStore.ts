@@ -37,7 +37,7 @@ interface FinanceStore {
   clearAccountTransactions: (id: string) => void
 
   // Transactions
-  addTransaction: (tx: Omit<Transaction, 'id' | 'createdAt'>) => void
+  addTransaction: (tx: Omit<Transaction, 'id' | 'createdAt'>) => string
   updateTransaction: (id: string, patch: Partial<Transaction>) => void
   deleteTransaction: (id: string) => void
   clearAccountOBTransactions: (accountId: string) => void
@@ -232,8 +232,9 @@ export const useFinanceStore = create<FinanceStore>()(
       })),
 
       addTransaction: (tx) => {
+        const id = nanoid()
         const now = new Date().toISOString()
-        set((s) => ({ transactions: [{ ...tx, id: nanoid(), createdAt: now }, ...s.transactions] }))
+        set((s) => ({ transactions: [{ ...tx, id, createdAt: now }, ...s.transactions] }))
         // OB-synced accounts: balance is managed by the banking API — never modify locally
         const { accounts } = get()
         const acct = accounts.find((a) => a.id === tx.accountId)
@@ -245,6 +246,7 @@ export const useFinanceStore = create<FinanceStore>()(
             ),
           }))
         }
+        return id
       },
       updateTransaction: (id, patch) => {
         set((s) => ({ transactions: s.transactions.map((t) => (t.id === id ? { ...t, ...patch } : t)) }))

@@ -42,10 +42,10 @@ function AlertToast({ toast, onDismiss }: { toast: Toast; onDismiss: () => void 
           {toast.ticker}
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-          {isAbove ? tw('above') : tw('below')} {toast.threshold.toLocaleString()}
+          {isAbove ? tw('above') : tw('below')} {toast.threshold.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: toast.threshold < 1 ? 4 : 2 })}
           {' · '}
           <span style={{ color: isAbove ? 'var(--success)' : 'var(--danger)', fontWeight: 600 }}>
-            {toast.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {toast.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: toast.price < 1 ? 4 : 2 })}
           </span>
         </div>
       </div>

@@ -51,6 +51,17 @@ export function fmtQty(value: number): string {
   return value.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 8 })
 }
 
+/** Format a price: 4 decimal places when below 1 (e.g. crypto sub-cent coins), 2 otherwise. */
+export function fmtPrice(value: number, currency: Currency = 'EUR'): string {
+  const decimals = Math.abs(value) < 1 ? 4 : 2
+  return new Intl.NumberFormat(currency === 'USD' ? 'en-US' : 'it-IT', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: decimals,
+  }).format(value)
+}
+
 export function fmtDelta(value: number, currency: Currency = 'EUR'): string {
   const sign = value >= 0 ? '+' : ''
   return sign + fmtCurrency(value, currency)

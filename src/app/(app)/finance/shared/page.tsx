@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { useTranslations } from 'next-intl'
 import { useFinanceStore } from '@/stores/financeStore'
 import Icon from '@/components/shared/Icon'
+import MerchantInput from '@/components/shared/MerchantInput'
+import { CategoryPicker } from '@/components/shared/CategoryPicker'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -72,7 +75,7 @@ function shortEmail(email: string) {
   return email.split('@')[0]
 }
 
-// ── Add Expense Modal ─────────────────────────────────────────────────────────
+// ── Add / Edit Expense Modal ──────────────────────────────────────────────────
 
 function AddExpenseModal({
   myEmail,
@@ -87,128 +90,192 @@ function AddExpenseModal({
   onClose: () => void
   onSaved: () => void
 }) {
-  const { budgetCategories } = useFinanceStore()
-  const [description, setDescription] = useState(expense?.description ?? '')
-  const [amount, setAmount] = useState(expense ? String(expense.amount) : '')
-  const [date, setDate] = useState(expense?.date ?? new Date().toISOString().slice(0, 10))
-  const [payerEmail, setPayerEmail] = useState(expense?.payer_email ?? myEmail)
-  const [otherShare, setOtherShare] = useState(expense ? String(Math.round(expense.other_share * 100)) : '50')
-  const [category, setCategory] = useState(expense?.category ?? '')
-  const [notes, setNotes] = useState(expense?.notes ?? '')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
+  const t  = useTranslations('condivisione')
+  const tm = useTranslations('modals')
+  const tc = useTranslations('common')
+  const { accounts, addTransaction } = useFinanceStore()
+  const modalRef = useRef<HTMLDivElement>(null)
 
-  const expenseCategories = budgetCategories.filter(
-    (c) => !c.parentId && (c.type === 'expense' || !c.type)
-  )
+  // Movement fields — same order as MovementModal
+  const [type, setType]               = useState<'income' | 'expense'>('expense')
+  const [amount, setAmount]           = useState(expense ? String(expense.amount) : '')
+  const [description, setDescription] = useState(expense?.description ?? '')
+  const [merchant, setMerchant]       = useState('')
+  const [category, setCategory]       = useState(expense?.category ?? '')
+  const [accountId, setAccountId]     = useState(accounts[0]?.id ?? '')
+  const [date, setDate]               = useState(expense?.date ?? new Date().toISOString().slice(0, 10))
+  const [note, setNote]               = useState(expense?.notes ?? '')
+
+  // Sharing fields
+  const [payerEmail, setPayerEmail]   = useState(expense?.payer_email ?? myEmail)
+  const [otherShare, setOtherShare]   = useState(expense ? String(Math.round(expense.other_share * 100)) : '50')
+
+  const [saving, setSaving] = useState(false)
+  const [error,  setError]  = useState('')
 
   async function handleSave() {
-    if (!description.trim()) { setError('Description is required'); return }
+    if (!description.trim()) { setError(t('errorDescription')); return }
     const amt = parseFloat(amount)
-    if (isNaN(amt) || amt <= 0) { setError('Amount must be a positive number'); return }
+    if (isNaN(amt) || amt <= 0) { setError(t('errorAmount')); return }
     setSaving(true); setError('')
+
     const share = Math.min(1, Math.max(0, parseFloat(otherShare) / 100))
-    const body = { amount: amt, description: description.trim(), date, payerEmail, otherShare: share, category: category || null, notes: notes.trim() || null }
-    const url = expense ? `/api/shared-expenses/${expense.id}` : '/api/shared-expenses'
-    const method = expense ? 'PUT' : 'POST'
-    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-    setSaving(false)
-    if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Failed to save'); return }
+
+    if (expense) {
+      // Edit: update only the shared_expense record
+      const res = await fetch(`/api/shared-expenses/${expense.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: amt, description: description.trim(), date, payerEmail, otherShare: share, category: category || null, notes: note.trim() || null }),
+      })
+      setSaving(false)
+      if (!res.ok) { const d = await res.json(); setError(d.error ?? t('errorGeneric')); return }
+    } else {
+      // New: if I'm the payer, create a personal transaction first
+      let sourceTxId: string | undefined
+      if (payerEmail === myEmail) {
+        sourceTxId = addTransaction({ description: description.trim(), merchant: merchant.trim() || undefined, amount: amt, type, category, accountId, date, note: note.trim() || undefined })
+      }
+      const res = await fetch('/api/shared-expenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: amt, description: description.trim(), date, payerEmail, otherShare: share, category: category || null, notes: note.trim() || null, sourceTxId }),
+      })
+      setSaving(false)
+      if (!res.ok) { const d = await res.json(); setError(d.error ?? t('errorGeneric')); return }
+    }
+
     onSaved()
     onClose()
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, padding: '28px 32px', width: 440, display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.5)', maxHeight: '90vh', overflowY: 'auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 16, fontWeight: 700 }}>{expense ? 'Edit Shared Expense' : 'Add Shared Expense'}</div>
-          <button className="ledgernest-icon-btn" onClick={onClose}><Icon name="close" size={16} /></button>
+    <div className="ledgernest-modal-overlay">
+      <div className="ledgernest-modal" ref={modalRef} onClick={(e) => e.stopPropagation()}>
+        <div className="ledgernest-modal-header">
+          <span className="ledgernest-modal-title">{expense ? t('editModalTitle') : t('addModalTitle')}</span>
+          <button className="ledgernest-modal-close" onClick={onClose}><Icon name="close" size={16} /></button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div>
-            <div style={labelStyle}>Description</div>
-            <input style={inputStyle} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Grocery shopping" autoFocus />
-          </div>
+        <form onSubmit={(e) => { e.preventDefault(); handleSave() }}>
+          <div className="ledgernest-modal-body">
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>
-              <div style={labelStyle}>Amount (€)</div>
-              <input style={inputStyle} type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
-            </div>
-            <div>
-              <div style={labelStyle}>Date</div>
-              <input style={inputStyle} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-            </div>
-          </div>
-
-          <div>
-            <div style={labelStyle}>Paid by</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {[myEmail, partnerEmail].map((email) => (
-                <button
-                  key={email}
-                  onClick={() => setPayerEmail(email)}
-                  style={{
-                    flex: 1, padding: '9px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                    border: `1.5px solid ${payerEmail === email ? 'var(--accent)' : 'var(--border-subtle)'}`,
-                    background: payerEmail === email ? 'color-mix(in oklch, var(--accent) 12%, transparent)' : 'transparent',
-                    color: payerEmail === email ? 'var(--accent)' : 'var(--text-secondary)',
-                    transition: 'all .15s',
-                  }}
-                >
-                  {email === myEmail ? 'Me' : shortEmail(email)}
+            {/* Type toggle — only for new expenses */}
+            {!expense && (
+              <div className="ledgernest-toggle-group">
+                <button type="button" className={`ledgernest-toggle-btn${type === 'expense' ? ' active' : ''}`} onClick={() => { setType('expense'); setCategory('') }}>
+                  {tc('expense')}
                 </button>
-              ))}
+                <button type="button" className={`ledgernest-toggle-btn${type === 'income' ? ' active' : ''}`} onClick={() => { setType('income'); setCategory('') }}>
+                  {tc('income')}
+                </button>
+              </div>
+            )}
+
+            {/* Amount */}
+            <div className="ledgernest-field">
+              <label className="ledgernest-label">{tm('amount')}</label>
+              <input className="ledgernest-input" type="number" step="0.01" min="0" placeholder="0,00"
+                value={amount} onChange={(e) => setAmount(e.target.value)} autoFocus={!expense} required />
+            </div>
+
+            {/* Description */}
+            <div className="ledgernest-field">
+              <label className="ledgernest-label">{tm('description')}</label>
+              <input className="ledgernest-input" type="text" placeholder={tm('descriptionPlaceholder')}
+                value={description} onChange={(e) => setDescription(e.target.value)} required />
+            </div>
+
+            {/* Merchant — only for new */}
+            {!expense && (
+              <div className="ledgernest-field">
+                <label className="ledgernest-label">
+                  {tm('merchant')} <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>({tm('optional')})</span>
+                </label>
+                <MerchantInput value={merchant} onChange={setMerchant} />
+              </div>
+            )}
+
+            {/* Category */}
+            <div className="ledgernest-field">
+              <label className="ledgernest-label">{tm('category')}</label>
+              <CategoryPicker value={category} onChange={setCategory} typeFilter={expense ? 'expense' : type} containerRef={modalRef} />
+            </div>
+
+            {/* Account — only for new and only when I'm the payer */}
+            {!expense && payerEmail === myEmail && (
+              <div className="ledgernest-field">
+                <label className="ledgernest-label">{tm('account')}</label>
+                <select className="ledgernest-input ledgernest-select" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+                  {accounts.length === 0
+                    ? <option value="">{tm('noAccountFallback')}</option>
+                    : accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)
+                  }
+                </select>
+              </div>
+            )}
+
+            {/* Date */}
+            <div className="ledgernest-field">
+              <label className="ledgernest-label">{tm('date')}</label>
+              <input className="ledgernest-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            </div>
+
+            {/* Note */}
+            <div className="ledgernest-field">
+              <label className="ledgernest-label">
+                {tc('note')} <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>({tm('optional')})</span>
+              </label>
+              <textarea className="ledgernest-input" placeholder={tm('notePlaceholder')} value={note}
+                onChange={(e) => setNote(e.target.value)} rows={2} style={{ resize: 'none', lineHeight: 1.5 }} />
+            </div>
+
+            {/* ── Sharing fields ── */}
+            <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+              {/* Paid by */}
+              <div className="ledgernest-field">
+                <label className="ledgernest-label">{t('fieldPaidBy')}</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[myEmail, partnerEmail].map((email) => (
+                    <button key={email} type="button" onClick={() => setPayerEmail(email)} style={{
+                      flex: 1, padding: '9px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                      border: `1.5px solid ${payerEmail === email ? 'var(--accent)' : 'var(--border-subtle)'}`,
+                      background: payerEmail === email ? 'color-mix(in oklch, var(--accent) 12%, transparent)' : 'transparent',
+                      color: payerEmail === email ? 'var(--accent)' : 'var(--text-secondary)',
+                      transition: 'all .15s',
+                    }}>
+                      {email === myEmail ? t('fieldPaidByMe') : shortEmail(email)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Split */}
+              <div className="ledgernest-field">
+                <label className="ledgernest-label">{t('fieldSplit', { pct: otherShare })}</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <input type="range" min={0} max={100} step={5} value={otherShare}
+                    onChange={(e) => setOtherShare(e.target.value)} style={{ flex: 1 }} />
+                  <input className="ledgernest-input" style={{ width: 70, textAlign: 'center' }}
+                    type="number" min={0} max={100} value={otherShare}
+                    onChange={(e) => setOtherShare(e.target.value)} />
+                  <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>%</span>
+                </div>
+              </div>
+
             </div>
           </div>
 
-          <div>
-            <div style={labelStyle}>Split — other person pays {otherShare}%</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <input
-                type="range" min={0} max={100} step={5} value={otherShare}
-                onChange={(e) => setOtherShare(e.target.value)}
-                style={{ flex: 1 }}
-              />
-              <input
-                style={{ ...inputStyle, width: 70, textAlign: 'center' }}
-                type="number" min={0} max={100} value={otherShare}
-                onChange={(e) => setOtherShare(e.target.value)}
-              />
-              <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>%</span>
-            </div>
+          {error && <div style={{ padding: '0 24px 4px', color: 'var(--danger)', fontSize: 13 }}>{error}</div>}
+
+          <div className="ledgernest-modal-footer">
+            <button type="button" className="ledgernest-btn ledgernest-btn-ghost" onClick={onClose}>{tc('cancel')}</button>
+            <button type="submit" className="ledgernest-btn ledgernest-btn-primary" disabled={saving}>
+              {saving ? '…' : tc('save')}
+            </button>
           </div>
-
-          <div>
-            <div style={labelStyle}>Category (optional)</div>
-            <select
-              style={{ ...inputStyle, appearance: 'none' }}
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              <option value="">— none —</option>
-              {expenseCategories.map((c) => (
-                <option key={c.id} value={c.name}>{c.emoji ? `${c.emoji} ` : ''}{c.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <div style={labelStyle}>Notes (optional)</div>
-            <input style={inputStyle} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any details…" />
-          </div>
-        </div>
-
-        {error && <div style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</div>}
-
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button className="ledgernest-btn ledgernest-btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="ledgernest-btn" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving…' : (expense ? 'Save Changes' : 'Add Expense')}
-          </button>
-        </div>
+        </form>
       </div>
     </div>
   )
@@ -231,10 +298,9 @@ function SettleUpModal({
   onClose: () => void
   onSaved: () => void
 }) {
+  const t = useTranslations('condivisione')
   const { addTransaction } = useFinanceStore()
   const absBalance = Math.abs(balance)
-  // If balance > 0, partner owes me → fromEmail = partnerEmail
-  // If balance < 0, I owe partner → fromEmail = myEmail
   const defaultFrom = balance >= 0 ? partnerEmail : myEmail
   const [amount, setAmount] = useState(String(absBalance.toFixed(2)))
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
@@ -245,11 +311,11 @@ function SettleUpModal({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  const receiving = fromEmail !== myEmail // partner is paying me
+  const receiving = fromEmail !== myEmail
 
   async function handleSave() {
     const amt = parseFloat(amount)
-    if (isNaN(amt) || amt <= 0) { setError('Amount must be a positive number'); return }
+    if (isNaN(amt) || amt <= 0) { setError(t('errorAmount')); return }
     setSaving(true); setError('')
 
     const res = await fetch('/api/settlements', {
@@ -257,18 +323,20 @@ function SettleUpModal({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ amount: amt, date, fromEmail, notes: notes.trim() || null }),
     })
-    if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Failed'); setSaving(false); return }
+    if (!res.ok) { const d = await res.json(); setError(d.error ?? t('errorFailed')); setSaving(false); return }
 
     if (autoRecord && accountId) {
       const type = receiving ? 'income' : 'expense'
       addTransaction({
         date,
-        description: receiving ? `Reimbursement from ${shortEmail(partnerEmail)}` : `Reimbursement to ${shortEmail(partnerEmail)}`,
+        description: receiving
+          ? t('reimbFromPartner', { partner: shortEmail(partnerEmail) })
+          : t('reimbToPartner', { partner: shortEmail(partnerEmail) }),
         amount: amt,
         type,
         category: receiving ? 'Income' : 'Transfer',
         accountId,
-        note: notes.trim() || `Shared expense settlement`,
+        note: notes.trim() || t('sharedSettlement'),
       })
     }
 
@@ -281,17 +349,17 @@ function SettleUpModal({
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
       <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, padding: '28px 32px', width: 420, display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 16, fontWeight: 700 }}>Settle Up</div>
+          <div style={{ fontSize: 16, fontWeight: 700 }}>{t('settleModalTitle')}</div>
           <button className="ledgernest-icon-btn" onClick={onClose}><Icon name="close" size={16} /></button>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
-            <div style={labelStyle}>Direction</div>
+            <div style={labelStyle}>{t('fieldDirection')}</div>
             <div style={{ display: 'flex', gap: 8 }}>
               {[
-                { from: partnerEmail, label: `${shortEmail(partnerEmail)} → Me` },
-                { from: myEmail, label: `Me → ${shortEmail(partnerEmail)}` },
+                { from: partnerEmail, label: t('directionPartnerToMe', { partner: shortEmail(partnerEmail) }) },
+                { from: myEmail, label: t('directionMeToPartner', { partner: shortEmail(partnerEmail) }) },
               ].map((opt) => (
                 <button
                   key={opt.from}
@@ -312,30 +380,30 @@ function SettleUpModal({
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <div style={labelStyle}>Amount (€)</div>
+              <div style={labelStyle}>{t('fieldAmount')}</div>
               <input style={inputStyle} type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
             </div>
             <div>
-              <div style={labelStyle}>Date</div>
+              <div style={labelStyle}>{t('fieldDate')}</div>
               <input style={inputStyle} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
           </div>
 
           <div>
-            <div style={labelStyle}>Notes (optional)</div>
-            <input style={inputStyle} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Bank transfer" />
+            <div style={labelStyle}>{t('fieldNotes')}</div>
+            <input style={inputStyle} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={receiving ? t('reimbFromPartner', { partner: shortEmail(partnerEmail) }) : t('reimbToPartner', { partner: shortEmail(partnerEmail) })} />
           </div>
 
           <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13 }}>
             <input type="checkbox" checked={autoRecord} onChange={(e) => setAutoRecord(e.target.checked)} />
             <span style={{ color: 'var(--text-secondary)' }}>
-              Auto-create {receiving ? 'income' : 'expense'} transaction in my accounts
+              {t('autoRecord', { type: receiving ? t('autoRecordIncome') : t('autoRecordExpense') })}
             </span>
           </label>
 
           {autoRecord && accounts.length > 0 && (
             <div>
-              <div style={labelStyle}>Account</div>
+              <div style={labelStyle}>{t('fieldAccount')}</div>
               <select style={{ ...inputStyle, appearance: 'none' }} value={accountId} onChange={(e) => setAccountId(e.target.value)}>
                 {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
@@ -346,9 +414,9 @@ function SettleUpModal({
         {error && <div style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</div>}
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button className="ledgernest-btn ledgernest-btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="ledgernest-btn ledgernest-btn-ghost" onClick={onClose}>{t('cancel')}</button>
           <button className="ledgernest-btn" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Record Settlement'}
+            {saving ? t('saving') : t('recordSettlement')}
           </button>
         </div>
       </div>
@@ -373,6 +441,7 @@ function BalanceCard({
   onAddExpense: () => void
   onSettleUp: () => void
 }) {
+  const t = useTranslations('condivisione')
   const absBalance = balance ? Math.abs(balance.balance) : 0
   const balanced = balance ? Math.abs(balance.balance) < 0.01 : true
   const partnerOwes = balance && balance.balance > 0.01
@@ -382,20 +451,22 @@ function BalanceCard({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>
-            SHARED EXPENSES · {myEmail && partnerEmail ? `You & ${shortEmail(partnerEmail)}` : 'No partner paired'}
+            {myEmail && partnerEmail
+              ? t('subtitle', { partner: shortEmail(partnerEmail) }).toUpperCase()
+              : t('title').toUpperCase()}
           </div>
           {loading ? (
             <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-tertiary)' }}>…</div>
           ) : balanced ? (
-            <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--success)' }}>All settled up ✓</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--success)' }}>{t('allSettled')}</div>
           ) : partnerOwes ? (
             <div>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 2 }}>{shortEmail(partnerEmail)} owes you</div>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 2 }}>{t('partnerOwes', { partner: shortEmail(partnerEmail) })}</div>
               <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--success)' }}>{fmt(absBalance)}</div>
             </div>
           ) : (
             <div>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 2 }}>You owe {shortEmail(partnerEmail)}</div>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 2 }}>{t('youOwe', { partner: shortEmail(partnerEmail) })}</div>
               <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--danger)' }}>{fmt(absBalance)}</div>
             </div>
           )}
@@ -404,11 +475,11 @@ function BalanceCard({
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <button className="ledgernest-btn ledgernest-btn-ghost" onClick={onSettleUp} disabled={!partnerEmail}>
             <Icon name="check" size={14} />
-            <span style={{ marginLeft: 6 }}>Settle Up</span>
+            <span style={{ marginLeft: 6 }}>{t('settleUp')}</span>
           </button>
           <button className="ledgernest-btn" onClick={onAddExpense} disabled={!partnerEmail}>
             <Icon name="plus" size={14} />
-            <span style={{ marginLeft: 6 }}>Add Expense</span>
+            <span style={{ marginLeft: 6 }}>{t('addExpense')}</span>
           </button>
         </div>
       </div>
@@ -416,15 +487,15 @@ function BalanceCard({
       {balance && !loading && (
         <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total shared</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('totalShared')}</div>
             <div style={{ fontSize: 15, fontWeight: 700, marginTop: 2 }}>{fmt(balance.totalShared)}</div>
           </div>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>You paid</div>
-            <div style={{ fontSize: 15, fontWeight: 700, marginTop: 2 }}>{fmt(balance.partnerOwesMe / (balance.partnerOwesMe > 0 ? (balance.partnerOwesMe / balance.totalShared * 2) : 1) * 2 || 0)}</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('youPaid')}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, marginTop: 2 }}>{fmt(balance.partnerOwesMe / 0.5)}</div>
           </div>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Settlements received</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('settlementsReceived')}</div>
             <div style={{ fontSize: 15, fontWeight: 700, marginTop: 2 }}>{fmt(balance.received)}</div>
           </div>
         </div>
@@ -448,6 +519,7 @@ function ExpenseRow({
   onEdit: (e: SharedExpense) => void
   onDelete: (id: string) => void
 }) {
+  const t = useTranslations('condivisione')
   const iPaid = expense.payer_email === myEmail
   const myShare = iPaid ? expense.amount * (1 - expense.other_share) : expense.amount * expense.other_share
   const partnerShare = expense.amount - myShare
@@ -465,11 +537,11 @@ function ExpenseRow({
         <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>
           {expense.category ? `${expense.category} · ` : ''}
           <span style={{ color: iPaid ? 'var(--success)' : 'var(--text-tertiary)' }}>
-            {iPaid ? 'You paid' : `${shortEmail(partnerEmail)} paid`}
+            {iPaid ? t('paidByMe') : t('paidByPartner', { partner: shortEmail(partnerEmail) })}
           </span>
           {' · '}
           <span style={{ fontWeight: 600 }}>{fmt(expense.amount)}</span>
-          {' total'}
+          {' '}{t('expenseTotal')}
         </div>
         {expense.notes && <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{expense.notes}</div>}
       </div>
@@ -478,7 +550,7 @@ function ExpenseRow({
           {iPaid ? '+' : '-'}{fmt(iPaid ? partnerShare : myShare)}
         </div>
         <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
-          your share: {fmt(myShare)}
+          {t('yourShare', { amount: fmt(myShare) })}
         </div>
       </div>
       <div style={{ display: 'flex', gap: 6 }}>
@@ -497,12 +569,13 @@ function ExpenseRow({
 // ── No Partner State ──────────────────────────────────────────────────────────
 
 function NoPairState({ myEmail, onPaired }: { myEmail: string; onPaired: (partnerEmail: string) => void }) {
+  const t = useTranslations('condivisione')
   const [partnerEmail, setPartnerEmail] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
   async function handlePair() {
-    if (!partnerEmail.trim()) { setError('Enter your partner\'s email'); return }
+    if (!partnerEmail.trim()) { setError(t('errorPartnerEmail')); return }
     setSaving(true); setError('')
     const res = await fetch('/api/sharing-group', {
       method: 'POST',
@@ -510,7 +583,7 @@ function NoPairState({ myEmail, onPaired }: { myEmail: string; onPaired: (partne
       body: JSON.stringify({ partnerEmail: partnerEmail.trim() }),
     })
     setSaving(false)
-    if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Failed'); return }
+    if (!res.ok) { const d = await res.json(); setError(d.error ?? t('errorPairFailed')); return }
     onPaired(partnerEmail.trim())
   }
 
@@ -520,25 +593,22 @@ function NoPairState({ myEmail, onPaired }: { myEmail: string; onPaired: (partne
         <Icon name="shared" size={28} />
       </div>
       <div>
-        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Set up expense sharing</div>
-        <div style={{ fontSize: 14, color: 'var(--text-secondary)', maxWidth: 360 }}>
-          Enter your partner&apos;s email to start tracking shared expenses together.
-          They need to be registered in the app (add their email to <code>ALLOWED_EMAILS</code>).
-        </div>
+        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>{t('noPairTitle')}</div>
+        <div style={{ fontSize: 14, color: 'var(--text-secondary)', maxWidth: 360 }}>{t('noPairDesc')}</div>
       </div>
       <div style={{ width: '100%', maxWidth: 340, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'left' }}>Your email: <strong>{myEmail}</strong></div>
+        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'left' }}>{t('yourEmail')} <strong>{myEmail}</strong></div>
         <input
           style={inputStyle}
           type="email"
-          placeholder="partner@email.com"
+          placeholder={t('partnerEmailPlaceholder')}
           value={partnerEmail}
           onChange={(e) => setPartnerEmail(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handlePair()}
         />
         {error && <div style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</div>}
         <button className="ledgernest-btn" onClick={handlePair} disabled={saving}>
-          {saving ? 'Pairing…' : 'Pair with partner'}
+          {saving ? t('pairing') : t('pairBtn')}
         </button>
       </div>
     </div>
@@ -548,6 +618,7 @@ function NoPairState({ myEmail, onPaired }: { myEmail: string; onPaired: (partne
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function SharedPage() {
+  const t = useTranslations('condivisione')
   const { data: session } = useSession()
   const { accounts } = useFinanceStore()
   const myEmail = session?.user?.email ?? ''
@@ -568,7 +639,6 @@ export default function SharedPage() {
   const [filterPayer, setFilterPayer] = useState<'all' | 'me' | 'partner'>('all')
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
-  // Load sharing group
   useEffect(() => {
     if (!myEmail) return
     fetch('/api/sharing-group')
@@ -620,9 +690,9 @@ export default function SharedPage() {
     return (
       <div className="ledgernest-page">
         <div className="ledgernest-page-header">
-          <h1 className="ledgernest-page-title">Shared Expenses</h1>
+          <h1 className="ledgernest-page-title">{t('title')}</h1>
         </div>
-        <div style={{ color: 'var(--text-tertiary)', padding: 32 }}>Loading…</div>
+        <div style={{ color: 'var(--text-tertiary)', padding: 32 }}>{t('loading')}</div>
       </div>
     )
   }
@@ -631,7 +701,7 @@ export default function SharedPage() {
     return (
       <div className="ledgernest-page">
         <div className="ledgernest-page-header">
-          <h1 className="ledgernest-page-title">Shared Expenses</h1>
+          <h1 className="ledgernest-page-title">{t('title')}</h1>
         </div>
         <NoPairState myEmail={myEmail} onPaired={(email) => { setPartnerEmail(email); loadData() }} />
       </div>
@@ -641,10 +711,9 @@ export default function SharedPage() {
   return (
     <div className="ledgernest-page">
       <div className="ledgernest-page-header">
-        <h1 className="ledgernest-page-title">Shared Expenses</h1>
+        <h1 className="ledgernest-page-title">{t('title')}</h1>
       </div>
 
-      {/* Balance Card */}
       <BalanceCard
         balance={balance}
         loading={loading}
@@ -654,10 +723,9 @@ export default function SharedPage() {
         onSettleUp={() => setShowSettleUp(true)}
       />
 
-      {/* Expenses List */}
       <div style={{ ...cardStyle, marginTop: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
-          <div style={{ fontSize: 14, fontWeight: 700 }}>Expenses ({filteredExpenses.length})</div>
+          <div style={{ fontSize: 14, fontWeight: 700 }}>{t('expensesCount', { count: filteredExpenses.length })}</div>
           <div style={{ display: 'flex', gap: 6 }}>
             {(['all', 'me', 'partner'] as const).map((f) => (
               <button
@@ -670,20 +738,20 @@ export default function SharedPage() {
                   color: filterPayer === f ? 'var(--accent)' : 'var(--text-secondary)',
                 }}
               >
-                {f === 'all' ? 'All' : f === 'me' ? 'Paid by me' : `Paid by ${shortEmail(partnerEmail)}`}
+                {f === 'all' ? t('filterAll') : f === 'me' ? t('filterMe') : t('filterPartner', { partner: shortEmail(partnerEmail) })}
               </button>
             ))}
           </div>
         </div>
 
         {loading ? (
-          <div style={{ color: 'var(--text-tertiary)', padding: '20px 0' }}>Loading…</div>
+          <div style={{ color: 'var(--text-tertiary)', padding: '20px 0' }}>{t('loading')}</div>
         ) : filteredExpenses.length === 0 ? (
           <div style={{ color: 'var(--text-tertiary)', padding: '20px 0', textAlign: 'center' }}>
-            No shared expenses yet.{' '}
+            {t('noExpenses')}{' '}
             <button style={{ color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
               onClick={() => { setEditExpense(undefined); setShowAddModal(true) }}>
-              Add the first one
+              {t('noExpensesAdd')}
             </button>
           </div>
         ) : (
@@ -700,13 +768,12 @@ export default function SharedPage() {
         )}
       </div>
 
-      {/* Settlement History */}
       <div style={{ ...cardStyle, marginTop: 16 }}>
         <button
           onClick={() => setShowSettlements(!showSettlements)}
           style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 0 }}
         >
-          <div style={{ fontSize: 14, fontWeight: 700 }}>Settlement History ({settlements.length})</div>
+          <div style={{ fontSize: 14, fontWeight: 700 }}>{t('settlementHistory', { count: settlements.length })}</div>
           <span style={{ display: 'flex', transform: showSettlements ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}>
             <Icon name="chevron" size={16} />
           </span>
@@ -715,15 +782,15 @@ export default function SharedPage() {
         {showSettlements && (
           <div style={{ marginTop: 16 }}>
             {settlements.length === 0 ? (
-              <div style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>No settlements recorded yet.</div>
+              <div style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>{t('noExpenses')}</div>
             ) : (
               settlements.map((s) => (
                 <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '90px 1fr auto auto', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border-subtle)' }}>
                   <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{fmtDate(s.date)}</div>
                   <div style={{ fontSize: 13 }}>
-                    <span style={{ fontWeight: 600 }}>{s.from_email === myEmail ? 'You' : shortEmail(s.from_email)}</span>
+                    <span style={{ fontWeight: 600 }}>{s.from_email === myEmail ? t('fieldPaidByMe') : shortEmail(s.from_email)}</span>
                     {' → '}
-                    <span style={{ fontWeight: 600 }}>{s.to_email === myEmail ? 'You' : shortEmail(s.to_email)}</span>
+                    <span style={{ fontWeight: 600 }}>{s.to_email === myEmail ? t('fieldPaidByMe') : shortEmail(s.to_email)}</span>
                     {s.notes && <span style={{ color: 'var(--text-tertiary)', marginLeft: 6 }}>· {s.notes}</span>}
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: s.to_email === myEmail ? 'var(--success)' : 'var(--danger)' }}>
@@ -739,7 +806,6 @@ export default function SharedPage() {
         )}
       </div>
 
-      {/* Modals */}
       {showAddModal && (
         <AddExpenseModal
           myEmail={myEmail}
@@ -764,16 +830,16 @@ export default function SharedPage() {
       {deleteConfirm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
           <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: '28px 32px', width: 360, display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>Delete expense?</div>
-            <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>This action cannot be undone.</div>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>{t('deleteTitle')}</div>
+            <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{t('deleteBody')}</div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button className="ledgernest-btn ledgernest-btn-ghost" onClick={() => setDeleteConfirm(null)}>Cancel</button>
+              <button className="ledgernest-btn ledgernest-btn-ghost" onClick={() => setDeleteConfirm(null)}>{t('cancel')}</button>
               <button
                 className="ledgernest-btn"
                 style={{ background: 'var(--danger)', color: 'white', border: 'none' }}
                 onClick={() => handleDelete(deleteConfirm)}
               >
-                Delete
+                {t('delete')}
               </button>
             </div>
           </div>

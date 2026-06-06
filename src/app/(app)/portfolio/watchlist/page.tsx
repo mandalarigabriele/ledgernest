@@ -314,7 +314,7 @@ function WatchlistRow({ item, quote, alerts, onRemove, currencySymbol, showPrePo
 
   const toTarget = item.targetPrice && displayPrice > 0 ? ((item.targetPrice - displayPrice) / displayPrice) * 100 : null
 
-  const fmtPrice = (p: number) => `${currencySymbol}${p.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const fmtPrice = (p: number) => `${currencySymbol}${p.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: p < 1 ? 4 : 2 })}`
 
   return (
     <tr>
