@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTranslations } from 'next-intl'
 import { useFinanceStore } from '@/stores/financeStore'
@@ -637,6 +637,7 @@ export default function SharedPage() {
   const [showSettlements, setShowSettlements] = useState(false)
 
   const [filterPayer, setFilterPayer] = useState<'all' | 'me' | 'partner'>('all')
+  const [filterMonth, setFilterMonth] = useState<string>('all') // 'all' | 'YYYY-MM'
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
   useEffect(() => {
@@ -657,10 +658,14 @@ export default function SharedPage() {
       fetch('/api/shared-expenses/balance'),
     ])
     const [eData, sData, bData] = await Promise.all([eRes.json(), sRes.json(), bRes.json()])
-    setExpenses(eData.expenses ?? [])
-    setSettlements(sData.settlements ?? [])
+    const expList = eData.expenses ?? []
+    const setList = sData.settlements ?? []
+    setExpenses(expList)
+    setSettlements(setList)
     setBalance(bData)
     setLoading(false)
+    // Auto-expand settlement history when settlements exist but no expenses (orphaned records)
+    if (setList.length > 0 && expList.length === 0) setShowSettlements(true)
   }, [])
 
   useEffect(() => {
@@ -669,7 +674,23 @@ export default function SharedPage() {
 
   const bankAccounts = accounts.filter((a) => a.type === 'bank')
 
+  // Build sorted list of months present in expenses (YYYY-MM)
+  const availableMonths = useMemo(() => {
+    const set = new Set(expenses.map((e) => e.date.slice(0, 7)))
+    return Array.from(set).sort().reverse()
+  }, [expenses])
+
+  // Default to current month when expenses load
+  useEffect(() => {
+    if (availableMonths.length > 0 && filterMonth === 'all') {
+      const currentMonth = new Date().toISOString().slice(0, 7)
+      if (availableMonths.includes(currentMonth)) setFilterMonth(currentMonth)
+      else setFilterMonth(availableMonths[0])
+    }
+  }, [availableMonths]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const filteredExpenses = expenses.filter((e) => {
+    if (filterMonth !== 'all' && !e.date.startsWith(filterMonth)) return false
     if (filterPayer === 'me') return e.payer_email === myEmail
     if (filterPayer === 'partner') return e.payer_email !== myEmail
     return true
@@ -688,10 +709,7 @@ export default function SharedPage() {
 
   if (!groupLoaded) {
     return (
-      <div className="ledgernest-page">
-        <div className="ledgernest-page-header">
-          <h1 className="ledgernest-page-title">{t('title')}</h1>
-        </div>
+      <div className="ledgernest-gap-5">
         <div style={{ color: 'var(--text-tertiary)', padding: 32 }}>{t('loading')}</div>
       </div>
     )
@@ -699,20 +717,14 @@ export default function SharedPage() {
 
   if (!partnerEmail) {
     return (
-      <div className="ledgernest-page">
-        <div className="ledgernest-page-header">
-          <h1 className="ledgernest-page-title">{t('title')}</h1>
-        </div>
+      <div className="ledgernest-gap-5">
         <NoPairState myEmail={myEmail} onPaired={(email) => { setPartnerEmail(email); loadData() }} />
       </div>
     )
   }
 
   return (
-    <div className="ledgernest-page">
-      <div className="ledgernest-page-header">
-        <h1 className="ledgernest-page-title">{t('title')}</h1>
-      </div>
+    <div className="ledgernest-gap-5">
 
       <BalanceCard
         balance={balance}
@@ -724,6 +736,45 @@ export default function SharedPage() {
       />
 
       <div style={{ ...cardStyle, marginTop: 20 }}>
+        {/* Month selector row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+          <button
+            onClick={() => {
+              if (filterMonth === 'all') return
+              const idx = availableMonths.indexOf(filterMonth)
+              if (idx < availableMonths.length - 1) setFilterMonth(availableMonths[idx + 1])
+            }}
+            disabled={filterMonth === 'all' || availableMonths.indexOf(filterMonth) >= availableMonths.length - 1}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', color: 'var(--text-secondary)', fontSize: 18, lineHeight: 1, opacity: (filterMonth === 'all' || availableMonths.indexOf(filterMonth) >= availableMonths.length - 1) ? 0.3 : 1 }}
+          >‹</button>
+
+          <div style={{ flex: 1, display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }}>
+            {[...availableMonths].reverse().map((m) => {
+              const d = new Date(m + '-01T12:00:00')
+              const label = d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+              const isActive = filterMonth === m
+              return (
+                <button key={m} onClick={() => setFilterMonth(m)} style={{
+                  flexShrink: 0, padding: '7px 14px', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none',
+                  background: isActive ? 'var(--accent)' : 'var(--bg-elevated)',
+                  color: isActive ? 'var(--text-on-accent)' : 'var(--text-secondary)',
+                  transition: 'all .15s',
+                }}>{label}</button>
+              )
+            })}
+          </div>
+
+          <button
+            onClick={() => {
+              if (filterMonth === 'all') return
+              const idx = availableMonths.indexOf(filterMonth)
+              if (idx > 0) setFilterMonth(availableMonths[idx - 1])
+            }}
+            disabled={filterMonth === 'all' || availableMonths.indexOf(filterMonth) <= 0}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', color: 'var(--text-secondary)', fontSize: 18, lineHeight: 1, opacity: (filterMonth === 'all' || availableMonths.indexOf(filterMonth) <= 0) ? 0.3 : 1 }}
+          >›</button>
+        </div>
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
           <div style={{ fontSize: 14, fontWeight: 700 }}>{t('expensesCount', { count: filteredExpenses.length })}</div>
           <div style={{ display: 'flex', gap: 6 }}>

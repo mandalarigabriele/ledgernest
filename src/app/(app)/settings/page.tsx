@@ -1660,7 +1660,19 @@ export default function ImpostazioniPage() {
 
             {sharingMsg && <div style={{ marginTop: 12, color: 'var(--success)', fontSize: 13 }}>{sharingMsg}</div>}
 
-            <div style={{ marginTop: 32, padding: '16px 20px', background: 'var(--bg-elevated)', borderRadius: 12, border: '1px solid var(--border-subtle)' }}>
+            <div style={{ marginTop: 28 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: 4 }}>
+                Notifications
+              </div>
+              <SettingRow label="Email on shared expense" desc="Receive an email recap when a shared expense is added or marked as shared.">
+                <Toggle
+                  checked={settings.sharedExpenseEmailEnabled !== false}
+                  onChange={(v) => updateSettings({ sharedExpenseEmailEnabled: v })}
+                />
+              </SettingRow>
+            </div>
+
+            <div style={{ marginTop: 28, padding: '16px 20px', background: 'var(--bg-elevated)', borderRadius: 12, border: '1px solid var(--border-subtle)' }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>How it works</div>
               <ul style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, paddingLeft: 20, margin: 0 }}>
                 <li>Add your partner&apos;s Google email to <code>ALLOWED_EMAILS</code> in your <code>.env</code> file so they can log in</li>

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getDb } from '@/lib/db/schema'
 import { randomUUID } from 'crypto'
+import { sendSharedExpenseNotification } from '@/lib/email'
 
 interface SharingGroupRow { id: string; member1_email: string; member2_email: string }
 
@@ -72,6 +73,59 @@ export async function POST(req: NextRequest) {
   `).run(id, group.id, payer, amount, description.trim(), category ?? null, date, otherShare, notes ?? null, sourceTxId ?? null)
 
   const expense = db.prepare('SELECT * FROM shared_expenses WHERE id = ?').get(id)
+
+  // Derive partner email from group members
+  const partnerEmail = group.member1_email === session.user.email
+    ? group.member2_email
+    : group.member1_email
+
+  // Compute running balance for the email (from session user's perspective)
+  const { partnerOwesMe } = db.prepare(`
+    SELECT COALESCE(SUM(amount * other_share), 0) AS partnerOwesMe
+    FROM shared_expenses WHERE group_id = ? AND payer_email = ?
+  `).get(group.id, session.user.email) as { partnerOwesMe: number }
+
+  const { iOwePartner } = db.prepare(`
+    SELECT COALESCE(SUM(amount * other_share), 0) AS iOwePartner
+    FROM shared_expenses WHERE group_id = ? AND payer_email = ?
+  `).get(group.id, partnerEmail) as { iOwePartner: number }
+
+  const { received } = db.prepare(`
+    SELECT COALESCE(SUM(amount), 0) AS received FROM settlements WHERE group_id = ? AND to_email = ?
+  `).get(group.id, session.user.email) as { received: number }
+
+  const { paid } = db.prepare(`
+    SELECT COALESCE(SUM(amount), 0) AS paid FROM settlements WHERE group_id = ? AND from_email = ?
+  `).get(group.id, session.user.email) as { paid: number }
+
+  const runningBalance = Math.round((partnerOwesMe - iOwePartner - received + paid) * 100) / 100
+
+  // Read each user's email preference from user_data
+  function emailEnabled(email: string): boolean {
+    const row = db.prepare(
+      `SELECT data FROM user_data WHERE user_email = ? AND key = 'settings' LIMIT 1`
+    ).get(email) as { data: string } | undefined
+    if (!row) return true // default on
+    try { return JSON.parse(row.data)?.settings?.sharedExpenseEmailEnabled !== false }
+    catch { return true }
+  }
+
+  // Send email notifications — fire and forget, respects per-user preference
+  sendSharedExpenseNotification({
+    myEmail: session.user.email,
+    partnerEmail,
+    amount,
+    description: description.trim(),
+    category: category ?? null,
+    date,
+    payerEmail: payer,
+    otherShare,
+    notes: notes ?? null,
+    runningBalance,
+    sendToMe: emailEnabled(session.user.email),
+    sendToPartner: emailEnabled(partnerEmail),
+  }).catch(() => {})
+
   return NextResponse.json({ expense }, { status: 201 })
 }
 

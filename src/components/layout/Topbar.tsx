@@ -63,6 +63,7 @@ export default function Topbar() {
     "/finance/goals":          { title: tn("obiettivi"),     sub: tb("subObiettivi") },
     "/finance/recurring":      { title: tn("ricorrenti"),    sub: tb("subRicorrenti") },
     "/finance/report":         { title: tn("report"),        sub: tb("subReport") },
+    "/finance/shared":         { title: tn("condivisione"),  sub: tb("subCondivisione") },
     "/settings":               { title: tn("impostazioni"),  sub: tb("subImpostazioni") },
   };
 

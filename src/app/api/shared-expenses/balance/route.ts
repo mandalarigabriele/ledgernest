@@ -54,7 +54,9 @@ export async function GET() {
   `).get(group.id) as { totalShared: number }
 
   // Positive = partner owes me; negative = I owe partner
-  const balance = partnerOwesMe - iOwePartner + received - paid
+  // received = partner paid me (reduces their debt) → subtract
+  // paid = I paid partner (reduces my debt) → add
+  const balance = partnerOwesMe - iOwePartner - received + paid
 
   return NextResponse.json({
     balance: Math.round(balance * 100) / 100,
