@@ -32,6 +32,7 @@ interface SharedExpenseRow {
   date: string
   other_share: number
   notes: string | null
+  source_tx_id: string | null
 }
 
 interface SharingGroupRow { id: string; member1_email: string; member2_email: string }
@@ -129,5 +130,5 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
     sendToPartner: emailEnabled(db, partnerEmail),
   }).catch(() => {})
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, sourceTxId: expense.source_tx_id ?? null })
 }

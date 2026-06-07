@@ -59,14 +59,20 @@ function resolveName(email: string, myEmail: string, partnerEmail: string, myNam
   return shortEmail(email)
 }
 
-const LOGO_B64 = 'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iOCIgZmlsbD0iIzViYzhkMCIvPjxyZWN0IHg9IjQiIHk9IjQiIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgcng9IjUiIGZpbGw9IiMwYjBmMTIiLz48cGF0aCBkPSJNOCAyMmw2LTggNCA1IDMtNCA1IDciIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGZpbGw9Im5vbmUiLz48L3N2Zz4='
-
 function logoHtml(): string {
   return `
     <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
       <tr>
-        <td style="vertical-align:middle;padding-right:10px;">
-          <img src="data:image/svg+xml;base64,${LOGO_B64}" width="36" height="36" alt="LedgerNest" style="display:block;border-radius:9px;" />
+        <td style="padding-right:10px;vertical-align:middle;">
+          <table cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="background:#5bc8d0;border-radius:9px;width:36px;height:36px;text-align:center;vertical-align:middle;padding:4px;">
+                <div style="background:#0b0f12;border-radius:5px;width:28px;height:28px;text-align:center;line-height:28px;">
+                  <span style="color:#ffffff;font-size:11px;font-weight:900;font-family:Arial,sans-serif;letter-spacing:-0.5px;">LN</span>
+                </div>
+              </td>
+            </tr>
+          </table>
         </td>
         <td style="vertical-align:middle;font-size:21px;font-weight:800;color:#1f2328;letter-spacing:-0.3px;">LedgerNest</td>
       </tr>

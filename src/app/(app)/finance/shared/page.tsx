@@ -713,8 +713,12 @@ export default function SharedPage() {
   })
 
   async function handleDelete(id: string) {
-    await fetch(`/api/shared-expenses/${id}`, { method: 'DELETE' })
+    const res = await fetch(`/api/shared-expenses/${id}`, { method: 'DELETE' })
+    const data = await res.json() as { ok: boolean; sourceTxId?: string | null }
     setDeleteConfirm(null)
+    if (data.sourceTxId) {
+      useFinanceStore.getState().deleteTransaction(data.sourceTxId)
+    }
     loadData()
   }
 
