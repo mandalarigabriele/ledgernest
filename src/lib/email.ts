@@ -59,11 +59,15 @@ function resolveName(email: string, myEmail: string, partnerEmail: string, myNam
   return shortEmail(email)
 }
 
+const LOGO_B64 = 'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iOCIgZmlsbD0iIzViYzhkMCIvPjxyZWN0IHg9IjQiIHk9IjQiIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgcng9IjUiIGZpbGw9IiMwYjBmMTIiLz48cGF0aCBkPSJNOCAyMmw2LTggNCA1IDMtNCA1IDciIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGZpbGw9Im5vbmUiLz48L3N2Zz4='
+
 function logoHtml(): string {
   return `
     <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
       <tr>
-        <td style="vertical-align:middle;padding-right:7px;font-size:26px;line-height:1;">🪺</td>
+        <td style="vertical-align:middle;padding-right:10px;">
+          <img src="data:image/svg+xml;base64,${LOGO_B64}" width="36" height="36" alt="LedgerNest" style="display:block;border-radius:9px;" />
+        </td>
         <td style="vertical-align:middle;font-size:21px;font-weight:800;color:#1f2328;letter-spacing:-0.3px;">LedgerNest</td>
       </tr>
     </table>
@@ -186,8 +190,7 @@ function buildSharedExpenseHtml(p: SharedExpenseEmailParams, recipientEmail: str
                       <div style="width:44px;height:44px;border-radius:50%;background:#e4f7f6;margin-bottom:12px;text-align:center;line-height:44px;font-size:22px;">👤</div>
                       <div style="font-size:10px;font-weight:700;color:#3aa8b0;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Ha pagato</div>
                       <div style="font-size:14px;font-weight:700;color:#1f2328;margin-bottom:8px;">${payerName}</div>
-                      <div style="font-size:22px;font-weight:800;color:${C.success};margin-bottom:8px;">${fmtAmount(p.amount)}</div>
-                      <div style="font-size:12px;color:#636c76;">✅ Importo anticipato</div>
+                      <div style="font-size:22px;font-weight:800;color:${C.success};">${fmtAmount(p.amount)}</div>
                     </div>
                   </td>
                   <td width="4%"></td>
@@ -207,7 +210,7 @@ function buildSharedExpenseHtml(p: SharedExpenseEmailParams, recipientEmail: str
           <!-- Personal balance -->
           <tr>
             <td style="padding:16px 0 0;">
-              <div style="background:#e6f9f5;border-radius:14px;padding:20px 22px;">
+              <div style="background:#e6f9f5;border:1.5px solid #ade4df;border-radius:14px;padding:20px 22px;">
                 <div style="font-size:10px;font-weight:700;color:#3aa8b0;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">${iPaid ? 'Hai anticipato' : 'La tua quota'}</div>
                 <div style="font-size:32px;font-weight:800;color:${balanceColor};letter-spacing:-1px;margin-bottom:8px;">${balanceSign}${fmtAmount(balanceAmt)}</div>
                 <div style="font-size:13px;color:#636c76;">${balanceLabel}</div>
