@@ -59,7 +59,7 @@ function resolveName(email: string, myEmail: string, partnerEmail: string, myNam
   return shortEmail(email)
 }
 
-const APP_LOGO_URL = 'https://ledgernest.mandalarigabriele.com/favicon.svg'
+const APP_LOGO_URL = 'https://ledgernest.mandalarigabriele.com/api/email-logo'
 
 function logoHtml(): string {
   return `
