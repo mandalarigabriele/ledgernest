@@ -18,7 +18,7 @@ export default function PortfolioPerformanceChart({ filter = 'all', title, subti
   const { points, currentValue, totalInvested, gainAbs, gainPct, availableTimeframes } = usePortfolioChart(timeframe, filter)
 
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
-  const [mode, setMode] = useState<'abs' | 'pct'>('abs')
+  const [mode, setMode] = useState<'abs' | 'pct'>('pct')
   const svgRef = useRef<SVGSVGElement>(null)
 
   // Chart dimensions

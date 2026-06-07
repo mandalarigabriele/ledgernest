@@ -108,17 +108,22 @@ export function usePortfolioChart(timeframe: Timeframe, filter: AssetFilter = 'a
 
     // In demo mode the seeded snapshots already go up to the current hour —
     // injecting live prices would create a mismatch spike.
+    // Also skip injection if the live value matches the last snapshot (stale prices = markets closed / weekend).
     if (liveValue > 0 && !demoMode) {
-      const today = new Date().toISOString().slice(0, 10)
-      const nowPoint: ChartPoint = {
-        date: new Date().toISOString(),
-        value: liveValue,
-        invested: liveInvested,
-      }
-      if (points.length > 0 && points[points.length - 1].date.startsWith(today)) {
-        points[points.length - 1] = nowPoint
-      } else {
-        points.push(nowPoint)
+      const lastPoint = points.length > 0 ? points[points.length - 1] : null
+      const pricesStale = lastPoint && Math.abs(liveValue - lastPoint.value) < 0.50
+      if (!pricesStale) {
+        const today = new Date().toISOString().slice(0, 10)
+        const nowPoint: ChartPoint = {
+          date: new Date().toISOString(),
+          value: liveValue,
+          invested: liveInvested,
+        }
+        if (points.length > 0 && points[points.length - 1].date.startsWith(today)) {
+          points[points.length - 1] = nowPoint
+        } else {
+          points.push(nowPoint)
+        }
       }
     }
 

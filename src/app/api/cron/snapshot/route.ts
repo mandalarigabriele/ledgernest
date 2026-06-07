@@ -158,6 +158,12 @@ export async function POST(req: NextRequest) {
         commodityInvested: Math.round(byType.commodity.invested * 100) / 100,
       }
 
+      // Skip snapshot when prices haven't changed (markets closed / weekend)
+      if (existing.length > 0 && Math.abs(newSnap.value - existing[existing.length - 1].value) < 0.01) {
+        results.push(`${user_email}: skipped (no price change, markets likely closed)`)
+        continue
+      }
+
       const updated = downsample([...existing, newSnap])
 
       db.prepare(`INSERT OR REPLACE INTO user_data (user_email, key, data, updated_at) VALUES (?, ?, ?, datetime('now'))`)
