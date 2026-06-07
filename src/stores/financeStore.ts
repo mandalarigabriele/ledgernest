@@ -99,7 +99,7 @@ interface FinanceStore {
   normalizeMerchants: (normalizer: (m: string) => string) => void
 
   resetAll: () => void
-  hydrate: (data: Partial<Pick<FinanceStore, 'accounts' | 'transactions' | 'budgetCategories' | 'budgetGroups' | 'recurringItems' | 'goals' | 'liabilities' | 'netWorthSnapshots' | 'budgetPlans' | 'merchantAliases' | 'merchantLogos' | 'featuredGoalId'>>) => void
+  hydrate: (data: Partial<Pick<FinanceStore, 'accounts' | 'transactions' | 'budgetCategories' | 'budgetGroups' | 'recurringItems' | 'goals' | 'liabilities' | 'netWorthSnapshots' | 'budgetPlans' | 'merchantAliases' | 'merchantLogos' | 'featuredGoalId' | 'properties'>>) => void
 }
 
 const defaultBudgetGroups: BudgetGroup[] = [

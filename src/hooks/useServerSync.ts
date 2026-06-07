@@ -126,8 +126,8 @@ export function useServerSync() {
       if (!hydratedRef.current) return
       clearTimeout(timeout)
       timeout = setTimeout(() => {
-        const { accounts, transactions, budgetCategories, budgetGroups, recurringItems, goals, budgetPlans, liabilities, netWorthSnapshots, merchantAliases, merchantLogos, featuredGoalId } = state
-        syncPut('finance', { accounts, transactions, budgetCategories, budgetGroups, recurringItems, goals, budgetPlans, liabilities, netWorthSnapshots, merchantAliases, merchantLogos, featuredGoalId })
+        const { accounts, transactions, budgetCategories, budgetGroups, recurringItems, goals, budgetPlans, liabilities, netWorthSnapshots, merchantAliases, merchantLogos, featuredGoalId, properties } = state
+        syncPut('finance', { accounts, transactions, budgetCategories, budgetGroups, recurringItems, goals, budgetPlans, liabilities, netWorthSnapshots, merchantAliases, merchantLogos, featuredGoalId, properties })
       }, 1500)
     })
     return () => { unsub(); clearTimeout(timeout) }

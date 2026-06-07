@@ -59,20 +59,14 @@ function resolveName(email: string, myEmail: string, partnerEmail: string, myNam
   return shortEmail(email)
 }
 
+const APP_LOGO_URL = 'https://ledgernest.mandalarigabriele.com/favicon.svg'
+
 function logoHtml(): string {
   return `
     <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
       <tr>
         <td style="padding-right:10px;vertical-align:middle;">
-          <table cellpadding="0" cellspacing="0">
-            <tr>
-              <td style="background:#5bc8d0;border-radius:9px;width:36px;height:36px;text-align:center;vertical-align:middle;padding:4px;">
-                <div style="background:#0b0f12;border-radius:5px;width:28px;height:28px;text-align:center;line-height:28px;">
-                  <span style="color:#ffffff;font-size:11px;font-weight:900;font-family:Arial,sans-serif;letter-spacing:-0.5px;">LN</span>
-                </div>
-              </td>
-            </tr>
-          </table>
+          <img src="${APP_LOGO_URL}" width="36" height="36" alt="LedgerNest" style="display:block;" />
         </td>
         <td style="vertical-align:middle;font-size:21px;font-weight:800;color:#1f2328;letter-spacing:-0.3px;">LedgerNest</td>
       </tr>
