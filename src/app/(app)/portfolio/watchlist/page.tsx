@@ -474,18 +474,19 @@ export default function WatchlistPage() {
           </div>
         </div>
       ) : (
-        <div className="ledgernest-card" style={{ padding: 0, overflow: 'hidden' }}>
-          <table className="ledgernest-table" style={{ tableLayout: 'fixed' }}>
+        <div className="ledgernest-card" style={{ padding: 0, overflow: 'clip' }}>
+          <div style={{ overflowX: 'auto' }}>
+          <table className="ledgernest-table" style={{ minWidth: 720 }}>
             <thead>
               <tr>
-                <th style={{ width: '22%' }}>{tl('colTicker')}</th>
-                <th style={{ width: '10%', textAlign: 'right' }}>{tl('colPrice')}</th>
-                <th style={{ width: '9%',  textAlign: 'right' }}>{tl('colChange')}</th>
-                <th style={{ width: '12%', textAlign: 'center' }}>{tl('colTrend')}</th>
-                <th style={{ width: '22%', textAlign: 'center' }}>{tl('col52w')}</th>
-                <th style={{ width: '12%', textAlign: 'right' }}>{tl('colTarget')}</th>
-                <th style={{ width: '7%',  textAlign: 'center' }}>{tl('colAlert')}</th>
-                <th style={{ width: '6%' }} />
+                <th style={{ width: 160 }}>{tl('colTicker')}</th>
+                <th style={{ width: 90, textAlign: 'right' }}>{tl('colPrice')}</th>
+                <th style={{ width: 80, textAlign: 'right' }}>{tl('colChange')}</th>
+                <th style={{ width: 90, textAlign: 'center' }}>{tl('colTrend')}</th>
+                <th style={{ width: 150, textAlign: 'center' }}>{tl('col52w')}</th>
+                <th style={{ width: 90, textAlign: 'right' }}>{tl('colTarget')}</th>
+                <th style={{ width: 50, textAlign: 'center' }}>{tl('colAlert')}</th>
+                <th style={{ width: 40 }} />
               </tr>
             </thead>
             <tbody>
@@ -494,6 +495,7 @@ export default function WatchlistPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

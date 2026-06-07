@@ -605,8 +605,8 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Cashflow + Treemap side by side ── */}
-      <div style={{ display: 'flex', gap: 16, alignItems: 'stretch' }}>
-        <div className="ledgernest-card" style={{ flex: '3 1 0', minWidth: 0 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'stretch' }}>
+        <div className="ledgernest-card" style={{ flex: '3 1 280px', minWidth: 0 }}>
           <div className="ledgernest-card-head">
             <div>
               <div className="ledgernest-card-title">{t('incomeVsExpenses')}</div>
@@ -626,7 +626,7 @@ export default function DashboardPage() {
           <BarChart data={cashflowBars} paired formatValue={fmt} height={180} />
         </div>
 
-        <div className="ledgernest-card" style={{ flex: '2 1 0', minWidth: 0 }}>
+        <div className="ledgernest-card" style={{ flex: '2 1 280px', minWidth: 0 }}>
           <div className="ledgernest-card-head">
             <div>
               <div className="ledgernest-card-title">{t('positionsWeight')}</div>

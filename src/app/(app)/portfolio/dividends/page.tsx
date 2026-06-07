@@ -370,7 +370,7 @@ export default function DividendiPage() {
       )}
 
       {/* KPI strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: 5,
           background: 'color-mix(in oklch, var(--accent) 12%, var(--bg-surface))',
           border: '1px solid color-mix(in oklch, var(--accent) 35%, transparent)' }}>
@@ -408,7 +408,7 @@ export default function DividendiPage() {
       </div>
 
       {/* Bar chart + Calendar */}
-      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
         <div className="ledgernest-card" style={{ padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
             <div>
@@ -434,7 +434,7 @@ export default function DividendiPage() {
       </div>
 
       {/* Positions table + Upcoming panel */}
-      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
         {/* Table */}
         <div className="ledgernest-card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-subtle)' }}>

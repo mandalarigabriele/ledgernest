@@ -634,7 +634,7 @@ export default function ContiPage() {
     <div className="ledgernest-gap-5">
 
       {/* KPI strip — 4 cards */}
-      <div className="ledgernest-fin-kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px' }}>
+      <div className="ledgernest-fin-kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
 
         {/* Saldo totale */}
         <div className="ledgernest-kpi is-hl" style={{ padding: '18px 20px', gap: '6px' }}>
@@ -704,7 +704,7 @@ export default function ContiPage() {
       </div>
 
       {/* Charts row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
         {/* Balance trend */}
         <div className="ledgernest-card" style={{ padding: '18px 20px' }}>
           <div style={{ marginBottom: 12 }}>

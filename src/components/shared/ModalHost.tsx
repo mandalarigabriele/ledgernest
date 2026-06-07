@@ -24,6 +24,23 @@ export default function ModalHost() {
     return () => document.removeEventListener('keydown', handler)
   }, [activeModal, closeModal])
 
+  // iOS body scroll lock: prevents the page from shifting behind the overlay
+  useEffect(() => {
+    if (!activeModal) return
+    const scrollY = window.scrollY
+    document.body.style.position = 'fixed'
+    document.body.style.top = `-${scrollY}px`
+    document.body.style.width = '100%'
+    document.body.style.overflowY = 'scroll'
+    return () => {
+      document.body.style.position = ''
+      document.body.style.top = ''
+      document.body.style.width = ''
+      document.body.style.overflowY = ''
+      window.scrollTo(0, scrollY)
+    }
+  }, [activeModal])
+
   if (!activeModal) return null
 
   return (

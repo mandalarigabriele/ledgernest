@@ -532,27 +532,23 @@ function ExpenseRow({
   const partnerShare = expense.amount - myShare
 
   return (
-    <div style={{
-      display: 'grid', gridTemplateColumns: '90px 1fr auto auto', alignItems: 'center', gap: 12,
-      padding: '14px 0', borderBottom: '1px solid var(--border-subtle)',
-    }}>
-      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
-        {fmtDate(expense.date)}
-      </div>
-      <div>
-        <div style={{ fontSize: 14, fontWeight: 600 }}>{expense.description}</div>
-        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>
-          {expense.category ? `${expense.category} · ` : ''}
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '14px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {expense.description}
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 3, lineHeight: 1.5 }}>
+          <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtDate(expense.date)}</span>
+          {expense.category ? ` · ${expense.category}` : ''}
+          {' · '}
           <span style={{ color: iPaid ? 'var(--success)' : 'var(--text-tertiary)' }}>
             {iPaid ? t('paidByMe') : t('paidByPartner', { partner: partnerName })}
           </span>
-          {' · '}
-          <span style={{ fontWeight: 600 }}>{fmt(expense.amount)}</span>
-          {' '}{t('expenseTotal')}
+          {' · '}<span style={{ fontWeight: 600 }}>{fmt(expense.amount)}</span> {t('expenseTotal')}
         </div>
         {expense.notes && <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{expense.notes}</div>}
       </div>
-      <div style={{ textAlign: 'right', minWidth: 100 }}>
+      <div style={{ textAlign: 'right', flexShrink: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: iPaid ? 'var(--success)' : 'var(--danger)' }}>
           {iPaid ? '+' : '-'}{fmt(iPaid ? partnerShare : myShare)}
         </div>
@@ -560,7 +556,7 @@ function ExpenseRow({
           {t('yourShare', { amount: fmt(myShare) })}
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 6 }}>
+      <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
         <button className="ledgernest-icon-btn ledgernest-icon-btn--sm" onClick={() => onEdit(expense)} title="Edit">
           <Icon name="edit" size={14} />
         </button>
@@ -798,7 +794,7 @@ export default function SharedPage() {
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
           <div style={{ fontSize: 14, fontWeight: 700 }}>{t('expensesCount', { count: filteredExpenses.length })}</div>
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {(['all', 'me', 'partner'] as const).map((f) => (
               <button
                 key={f}
@@ -858,18 +854,21 @@ export default function SharedPage() {
               <div style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>{t('noExpenses')}</div>
             ) : (
               settlements.map((s) => (
-                <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '90px 1fr auto auto', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border-subtle)' }}>
-                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{fmtDate(s.date)}</div>
-                  <div style={{ fontSize: 13 }}>
-                    <span style={{ fontWeight: 600 }}>{s.from_email === myEmail ? t('fieldPaidByMe') : shortEmail(s.from_email)}</span>
-                    {' → '}
-                    <span style={{ fontWeight: 600 }}>{s.to_email === myEmail ? t('fieldPaidByMe') : shortEmail(s.to_email)}</span>
-                    {s.notes && <span style={{ color: 'var(--text-tertiary)', marginLeft: 6 }}>· {s.notes}</span>}
+                <div key={s.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13 }}>
+                      <span style={{ fontWeight: 600 }}>{s.from_email === myEmail ? t('fieldPaidByMe') : shortEmail(s.from_email)}</span>
+                      {' → '}
+                      <span style={{ fontWeight: 600 }}>{s.to_email === myEmail ? t('fieldPaidByMe') : shortEmail(s.to_email)}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
+                      {fmtDate(s.date)}{s.notes ? ` · ${s.notes}` : ''}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: s.to_email === myEmail ? 'var(--success)' : 'var(--danger)' }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, flexShrink: 0, color: s.to_email === myEmail ? 'var(--success)' : 'var(--danger)' }}>
                     {s.to_email === myEmail ? '+' : '-'}{fmt(s.amount)}
                   </div>
-                  <button className="ledgernest-icon-btn ledgernest-icon-btn--sm" onClick={() => handleDeleteSettlement(s.id)} style={{ color: 'var(--danger)' }} title="Delete">
+                  <button className="ledgernest-icon-btn ledgernest-icon-btn--sm" onClick={() => handleDeleteSettlement(s.id)} style={{ color: 'var(--danger)', flexShrink: 0 }} title="Delete">
                     <Icon name="trash" size={14} />
                   </button>
                 </div>
