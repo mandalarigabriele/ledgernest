@@ -18,6 +18,7 @@ export default function PortfolioPerformanceChart({ filter = 'all', title, subti
   const { points, currentValue, totalInvested, gainAbs, gainPct, availableTimeframes } = usePortfolioChart(timeframe, filter)
 
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
+  const [mode, setMode] = useState<'abs' | 'pct'>('abs')
   const svgRef = useRef<SVGSVGElement>(null)
 
   // Chart dimensions
@@ -32,11 +33,15 @@ export default function PortfolioPerformanceChart({ filter = 'all', title, subti
   const displayGain = displayValue - displayInvested
   const displayGainPct = displayInvested > 0 ? (displayGain / displayInvested) * 100 : 0
 
-  // Scale calculations
+  // % return per point (for pct mode)
+  const pctValues = useMemo(() =>
+    points.map(p => p.invested > 0 ? (p.value / p.invested - 1) * 100 : 0),
+    [points]
+  )
+
+  // Scale calculations — abs mode
   const allValues = useMemo(() => {
     if (points.length === 0) return [0, 1]
-    // Scale Y axis on value only — including invested would compress the
-    // visible variation to near-zero when cost basis is far below current value
     return points.map(p => p.value)
   }, [points])
 
@@ -47,9 +52,18 @@ export default function PortfolioPerformanceChart({ filter = 'all', title, subti
   const yMax = maxV + vRange * 0.08
   const yRange = yMax - yMin
 
+  // Scale calculations — pct mode
+  const pctMin = pctValues.length ? Math.min(...pctValues) : -1
+  const pctMax = pctValues.length ? Math.max(...pctValues) :  1
+  const pctVRange = pctMax - pctMin || 1
+  const pctYMin = pctMin - pctVRange * 0.15
+  const pctYMax = pctMax + pctVRange * 0.08
+  const pctYRange = pctYMax - pctYMin
+
   const n = points.length
-  const xScale = (i: number) => PAD.left + (i / Math.max(1, n - 1)) * (W - PAD.left - PAD.right)
-  const yScale = (v: number) => PAD.top + (1 - (v - yMin) / yRange) * (H - PAD.top - PAD.bottom)
+  const xScale  = (i: number) => PAD.left + (i / Math.max(1, n - 1)) * (W - PAD.left - PAD.right)
+  const yScale  = (v: number) => PAD.top + (1 - (v - yMin)    / yRange)    * (H - PAD.top - PAD.bottom)
+  const pScale  = (v: number) => PAD.top + (1 - (v - pctYMin) / pctYRange) * (H - PAD.top - PAD.bottom)
 
   // Build paths
   const buildSmoothPath = (pts: { x: number; y: number }[]): string => {
@@ -64,13 +78,17 @@ export default function PortfolioPerformanceChart({ filter = 'all', title, subti
   }
 
   const valuePoints = useMemo(() =>
-    points.map((p, i) => ({ x: xScale(i), y: yScale(p.value) })),
-    [points, n] // eslint-disable-line react-hooks/exhaustive-deps
+    mode === 'pct'
+      ? pctValues.map((pct, i) => ({ x: xScale(i), y: pScale(pct) }))
+      : points.map((p, i) => ({ x: xScale(i), y: yScale(p.value) })),
+    [points, n, mode] // eslint-disable-line react-hooks/exhaustive-deps
   )
 
   const investedPoints = useMemo(() =>
-    points.map((p, i) => ({ x: xScale(i), y: yScale(p.invested) })),
-    [points, n] // eslint-disable-line react-hooks/exhaustive-deps
+    mode === 'pct'
+      ? points.map((_, i) => ({ x: xScale(i), y: pScale(0) }))
+      : points.map((p, i) => ({ x: xScale(i), y: yScale(p.invested) })),
+    [points, n, mode] // eslint-disable-line react-hooks/exhaustive-deps
   )
 
   const valuePath = buildSmoothPath(valuePoints)
@@ -151,15 +169,46 @@ export default function PortfolioPerformanceChart({ filter = 'all', title, subti
       {/* ── Header ── */}
       <div className="pfchart-header">
         <div className="pfchart-value-section">
-          <div className="pfchart-title">{chartTitle}</div>
-          <div className="pfchart-subtitle">{t('pfSubtitle')} · {chartSubtitle}</div>
-          <div className="pfchart-value">{fmt(displayValue)}</div>
-          <div className="pfchart-metrics">
-            <span className={`pfchart-delta ${displayGain >= 0 ? 'is-up' : 'is-down'}`}>
-              {displayGain >= 0 ? '+' : ''}{fmt(displayGain)}
-              <span className="pfchart-delta-pct">({displayGainPct >= 0 ? '+' : ''}{displayGainPct.toFixed(2)}%)</span>
-            </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="pfchart-title">{chartTitle}</div>
+            <div style={{ display: 'flex', background: 'var(--bg-elevated)', borderRadius: 8, padding: 2, gap: 1 }}>
+              {(['abs', 'pct'] as const).map(m => (
+                <button
+                  key={m}
+                  onClick={() => setMode(m)}
+                  style={{
+                    fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                    background: mode === m ? 'var(--accent)' : 'transparent',
+                    color: mode === m ? 'var(--text-on-accent)' : 'var(--text-tertiary)',
+                    transition: 'all .15s',
+                  }}
+                >{m === 'abs' ? '€' : '%'}</button>
+              ))}
+            </div>
           </div>
+          <div className="pfchart-subtitle">{t('pfSubtitle')} · {chartSubtitle}</div>
+          {mode === 'abs' ? (
+            <>
+              <div className="pfchart-value">{fmt(displayValue)}</div>
+              <div className="pfchart-metrics">
+                <span className={`pfchart-delta ${displayGain >= 0 ? 'is-up' : 'is-down'}`}>
+                  {displayGain >= 0 ? '+' : ''}{fmt(displayGain)}
+                  <span className="pfchart-delta-pct">({displayGainPct >= 0 ? '+' : ''}{displayGainPct.toFixed(2)}%)</span>
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="pfchart-value">
+                {displayGainPct >= 0 ? '+' : ''}{displayGainPct.toFixed(2)}%
+              </div>
+              <div className="pfchart-metrics">
+                <span className={`pfchart-delta ${displayGain >= 0 ? 'is-up' : 'is-down'}`}>
+                  {displayGain >= 0 ? '+' : ''}{fmt(displayGain)}
+                </span>
+              </div>
+            </>
+          )}
         </div>
         <div className="pfchart-tabs">
           {ALL_TIMEFRAMES.map(tf => {
@@ -275,10 +324,10 @@ export default function PortfolioPerformanceChart({ filter = 'all', title, subti
             }}>
               <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 3 }}>{dateStr}</div>
               <div style={{ fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>
-                {fmt(p.value)}
+                {mode === 'pct' ? `${gPct >= 0 ? '+' : ''}${gPct.toFixed(2)}%` : fmt(p.value)}
               </div>
               <div style={{ fontSize: 12, fontWeight: 600, color: isUp ? 'var(--success)' : 'var(--danger)', marginTop: 1 }}>
-                {isUp ? '+' : ''}{fmt(g)} ({isUp ? '+' : ''}{gPct.toFixed(2)}%)
+                {isUp ? '+' : ''}{fmt(g)}{mode === 'abs' ? ` (${isUp ? '+' : ''}${gPct.toFixed(2)}%)` : ''}
               </div>
             </div>
           )
@@ -302,7 +351,7 @@ export default function PortfolioPerformanceChart({ filter = 'all', title, subti
         </span>
         <span className="pfchart-legend-item">
           <i className="pfchart-legend-line pfchart-legend-dashed" />
-          {t('invested')}
+          {mode === 'pct' ? '0%' : t('invested')}
         </span>
       </div>
     </div>
