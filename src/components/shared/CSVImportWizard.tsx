@@ -255,7 +255,7 @@ export default function CSVImportWizard({ onClose }: Props) {
   const { fmt } = useFormatters()
   const { accounts, transactions, addAccount, addTransaction, updateAccount } = useFinanceStore()
   const { positions, addPosition, addTrade } = usePortfolioStore()
-  const { settings, updateSettings } = useSettingsStore()
+  const { settings, updateSettings, addIgnoredImportIds } = useSettingsStore()
   const { refetch } = usePrices()
 
   const [step, setStep]         = useState<1 | 2 | 3>(1)
@@ -280,8 +280,8 @@ export default function CSVImportWizard({ onClose }: Props) {
   const [done, setDone]           = useState(false)
 
   // Sort state for step 3 tables
-  const [txSort, setTxSort]       = useState<{ col: 'date' | 'amount' | 'description' | null; dir: 'asc' | 'desc' }>({ col: null, dir: 'asc' })
-  const [tradeSort, setTradeSort] = useState<{ col: 'date' | 'ticker' | 'amount' | 'price' | null; dir: 'asc' | 'desc' }>({ col: null, dir: 'asc' })
+  const [txSort, setTxSort]       = useState<{ col: 'date' | 'amount' | 'description' | null; dir: 'asc' | 'desc' }>({ col: 'date', dir: 'desc' })
+  const [tradeSort, setTradeSort] = useState<{ col: 'date' | 'ticker' | 'amount' | 'price' | null; dir: 'asc' | 'desc' }>({ col: 'date', dir: 'desc' })
   const lastTxChecked    = useRef<number>(-1)
   const lastTradeChecked = useRef<number>(-1)
 
@@ -478,6 +478,10 @@ export default function CSVImportWizard({ onClose }: Props) {
 
   async function doImport() {
     if (!canImport) return
+    const manuallySkipped = rows
+      .filter((r) => !r.include && !(r as ParsedTransaction).isDuplicate)
+      .map((r) => r.sourceId)
+    if (manuallySkipped.length > 0) addIgnoredImportIds(manuallySkipped)
     setImporting(true)
 
     let resolvedAccountId = accountId
@@ -1243,14 +1247,21 @@ export default function CSVImportWizard({ onClose }: Props) {
             <>
               <button className="ledgernest-btn ledgernest-btn-ghost" onClick={() => setStep(1)}>← Indietro</button>
               {includedTrades.length === 0 ? (
-                <button
-                  className="ledgernest-btn"
-                  disabled={!canImport || importing}
-                  onClick={doImport}
-                  style={{ marginLeft: 'auto' }}
-                >
-                  {importing ? 'Importazione…' : 'Importa'}
-                </button>
+                <>
+                  {includedTx.length === 0 && (
+                    <span style={{ fontSize: 11.5, color: 'var(--text-tertiary)', marginLeft: 8 }}>
+                      Select at least one item
+                    </span>
+                  )}
+                  <button
+                    className="ledgernest-btn"
+                    disabled={!canImport || importing}
+                    onClick={doImport}
+                    style={{ marginLeft: 'auto', opacity: canImport ? 1 : 0.4, cursor: canImport ? 'pointer' : 'not-allowed' }}
+                  >
+                    {importing ? 'Importazione…' : 'Importa'}
+                  </button>
+                </>
               ) : (
                 <button
                   className="ledgernest-btn"
