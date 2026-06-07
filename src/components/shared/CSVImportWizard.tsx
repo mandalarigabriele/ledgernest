@@ -1,6 +1,6 @@
-'use client'
+﻿'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { useFinanceStore } from '@/stores/financeStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import {
@@ -279,6 +279,12 @@ export default function CSVImportWizard({ onClose }: Props) {
   const [importing, setImporting] = useState(false)
   const [done, setDone]           = useState(false)
 
+  // Sort state for step 3 tables
+  const [txSort, setTxSort]       = useState<{ col: 'date' | 'amount' | 'description' | null; dir: 'asc' | 'desc' }>({ col: null, dir: 'asc' })
+  const [tradeSort, setTradeSort] = useState<{ col: 'date' | 'ticker' | 'amount' | 'price' | null; dir: 'asc' | 'desc' }>({ col: null, dir: 'asc' })
+  const lastTxChecked    = useRef<number>(-1)
+  const lastTradeChecked = useRef<number>(-1)
+
   // Done screen state
   const [importedAccountId, setImportedAccountId] = useState('')
   const [balanceInput, setBalanceInput]           = useState('')
@@ -303,10 +309,33 @@ export default function CSVImportWizard({ onClose }: Props) {
   const includedTrades = tradeRows.filter((r) => r.include)
   const dupCount       = rows.filter((r) => (r as ParsedTransaction).isDuplicate).length
 
+  const sortedTxRows = useMemo(() => {
+    if (!txSort.col) return txRows
+    return [...txRows].sort((a, b) => {
+      let v = 0
+      if (txSort.col === 'date')             v = a.date.localeCompare(b.date)
+      else if (txSort.col === 'amount')      v = a.amount - b.amount
+      else if (txSort.col === 'description') v = (a.description ?? '').localeCompare(b.description ?? '')
+      return txSort.dir === 'asc' ? v : -v
+    })
+  }, [txRows, txSort])
+
+  const sortedTradeRows = useMemo(() => {
+    if (!tradeSort.col) return tradeRows
+    return [...tradeRows].sort((a, b) => {
+      let v = 0
+      if (tradeSort.col === 'date')        v = a.date.localeCompare(b.date)
+      else if (tradeSort.col === 'ticker') v = a.ticker.localeCompare(b.ticker)
+      else if (tradeSort.col === 'amount') v = a.amount - b.amount
+      else if (tradeSort.col === 'price')  v = a.price - b.price
+      return tradeSort.dir === 'asc' ? v : -v
+    })
+  }, [tradeRows, tradeSort])
+
   const canImport =
     (includedTx.length > 0 || includedTrades.length > 0) &&
     !!accountId &&
-    !includedTrades.some((t) => !t.isFreeReceipt && !t.ticker.trim())
+    !includedTrades.some((t) => !t.isFreeReceipt && (!t.ticker.trim() || !t.tickerConfirmed))
 
   // ── file handling ─────────────────────────────────────────────
 
@@ -430,6 +459,19 @@ export default function CSVImportWizard({ onClose }: Props) {
 
   function toggleAll(kind: 'transaction' | 'trade', checked: boolean) {
     setRows((prev) => prev.map((r) => r.kind === kind ? { ...r, include: checked } as ParsedRow : r))
+  }
+
+  function toggleTxSort(col: typeof txSort.col) {
+    setTxSort((s) => s.col === col ? { col, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { col, dir: 'asc' })
+  }
+
+  function toggleTradeSort(col: typeof tradeSort.col) {
+    setTradeSort((s) => s.col === col ? { col, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { col, dir: 'asc' })
+  }
+
+  function sortIcon(active: boolean, dir: 'asc' | 'desc') {
+    if (!active) return <span style={{ opacity: 0.3, fontSize: 9 }}> ⇅</span>
+    return <span style={{ fontSize: 9 }}>{dir === 'asc' ? ' ↑' : ' ↓'}</span>
   }
 
   // ── import execution ─────────────────────────────────────────
@@ -739,7 +781,7 @@ export default function CSVImportWizard({ onClose }: Props) {
             </div>
           )}
 
-          {/* ── STEP 2: Configura ─────────────────────────────── */}
+          {/* ── STEP 2: Revisione ────────────────────────────── */}
           {step === 2 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
@@ -838,84 +880,6 @@ export default function CSVImportWizard({ onClose }: Props) {
                 </div>
               )}
 
-              {/* Ticker mapping */}
-              {tradeRows.length > 0 && (
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>Mappa ticker</div>
-                  <div style={{ border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
-                      <thead>
-                        <tr style={{ background: 'var(--bg-elevated)' }}>
-                          {['Nome', 'ISIN / Symbol', 'Tipo', 'Qtà', 'Prezzo (nat.)', 'Comm. €', 'Totale €', 'Ticker'].map((h, i) => (
-                            <th key={h} style={{ padding: '8px 12px', textAlign: i >= 3 && i <= 6 ? 'right' : 'left', fontWeight: 600, color: 'var(--text-secondary)', fontSize: 11, borderBottom: '1px solid var(--border-subtle)' }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {tradeRows.map((trade) => {
-                          const idx = rows.indexOf(trade)
-                          return (
-                            <tr key={trade.sourceId} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                              <td style={{ padding: '8px 12px', fontWeight: 500 }}>{trade.name}</td>
-                              <td style={{ padding: '8px 12px', color: 'var(--text-tertiary)', fontFamily: 'monospace', fontSize: 11.5 }}>{trade.isin || '—'}</td>
-                              <td style={{ padding: '8px 12px' }}>
-                                <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 5, background: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
-                                  {ASSET_LABEL[trade.assetType] ?? trade.assetType}
-                                </span>
-                              </td>
-                              <td style={{ padding: '8px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontSize: 11.5, color: 'var(--text-secondary)' }}>
-                                {trade.quantity.toFixed(trade.assetType === 'crypto' ? 6 : 4)}
-                              </td>
-                              <td style={{ padding: '8px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontSize: 11.5 }}>
-                                {trade.price > 0 ? trade.price.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '—'}
-                              </td>
-                              <td style={{ padding: '8px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontSize: 11.5, color: 'var(--text-secondary)' }}>
-                                {trade.commission > 0 ? fmt(trade.commission) : '—'}
-                              </td>
-                              <td style={{ padding: '8px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontSize: 11.5, fontWeight: 600 }}>
-                                {trade.amount > 0 ? fmt(trade.amount) : '—'}
-                              </td>
-                              <td style={{ padding: '8px 12px' }}>
-                                <TickerSearchInput
-                                  value={trade.ticker}
-                                  assetType={trade.assetType}
-                                  isConfirmed={trade.tickerConfirmed}
-                                  required
-                                  extraCandidates={positions
-                                    .filter((p) => p.name.toLowerCase() === trade.name.toLowerCase() && p.ticker !== trade.ticker)
-                                    .map((p) => p.ticker)}
-                                  onChange={(ticker, result) => {
-                                    if (result) {
-                                      // Confirmed selection → bulk-confirm all rows with same name
-                                      const tradeName = trade.name
-                                      setRows((prev) => prev.map((r) => {
-                                        if (r.kind !== 'trade') return r
-                                        if (r === trade || (r as ParsedTrade).name === tradeName)
-                                          return { ...r, ticker, tickerConfirmed: true } as ParsedRow
-                                        return r
-                                      }))
-                                    } else {
-                                      // Typing → only current row, reset confirmed
-                                      patchRow(idx, { ticker, tickerConfirmed: false })
-                                    }
-                                  }}
-                                  onValidated={(confirmed) => patchRow(idx, { tickerConfirmed: confirmed })}
-                                />
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── STEP 3: Revisione ─────────────────────────────── */}
-          {step === 3 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
               {/* Transactions section */}
               {txRows.length > 0 && (
@@ -934,19 +898,50 @@ export default function CSVImportWizard({ onClose }: Props) {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                       <thead>
                         <tr style={{ background: 'var(--bg-elevated)' }}>
-                          {['', 'Data', 'Descrizione', 'Merchant', 'Importo', 'Tipo', 'Categoria'].map((h, i) => (
-                            <th key={i} style={{ padding: '6px 10px', textAlign: i >= 4 ? 'right' : 'left', fontWeight: 600, color: 'var(--text-tertiary)', fontSize: 11, borderBottom: '1px solid var(--border-subtle)' }}>{h}</th>
+                          <th style={{ padding: '6px 10px', borderBottom: '1px solid var(--border-subtle)', width: 28 }} />
+                          {([
+                            { label: 'Data',        col: 'date'        as const },
+                            { label: 'Descrizione', col: 'description' as const },
+                            { label: 'Merchant',    col: null },
+                            { label: 'Importo',     col: 'amount'      as const, right: true },
+                            { label: 'Tipo',        col: null,                   right: true },
+                            { label: 'Categoria',   col: null,                   right: true },
+                          ] as { label: string; col: typeof txSort.col; right?: boolean }[]).map((h) => (
+                            <th
+                              key={h.label}
+                              onClick={() => h.col && toggleTxSort(h.col)}
+                              style={{ padding: '6px 10px', textAlign: h.right ? 'right' : 'left', fontWeight: 600, color: 'var(--text-tertiary)', fontSize: 11, borderBottom: '1px solid var(--border-subtle)', cursor: h.col ? 'pointer' : undefined, userSelect: 'none', whiteSpace: 'nowrap' }}
+                            >
+                              {h.label}{h.col && sortIcon(txSort.col === h.col, txSort.dir)}
+                            </th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {txRows.map((tx) => {
+                        {sortedTxRows.map((tx, displayIdx) => {
                           const idx = rows.indexOf(tx)
                           const isDup = tx.isDuplicate
                           return (
                             <tr key={tx.sourceId} style={{ borderBottom: '1px solid var(--border-subtle)', background: isDup ? 'rgba(210,153,34,0.06)' : undefined, opacity: tx.include ? 1 : 0.45 }}>
                               <td style={{ padding: '6px 10px', width: 28 }}>
-                                <input type="checkbox" checked={tx.include} onChange={(e) => patchRow(idx, { include: e.target.checked })} style={{ accentColor: 'var(--accent)', width: 14, height: 14 }} />
+                                <input
+                                  type="checkbox"
+                                  checked={tx.include}
+                                  onChange={() => {}}
+                                  onClick={(e) => {
+                                    const next = !tx.include
+                                    if (e.shiftKey && lastTxChecked.current >= 0) {
+                                      const lo = Math.min(lastTxChecked.current, displayIdx)
+                                      const hi = Math.max(lastTxChecked.current, displayIdx)
+                                      const ids = new Set(sortedTxRows.slice(lo, hi + 1).map((r) => r.sourceId))
+                                      setRows((prev) => prev.map((r) => ids.has((r as ParsedTransaction).sourceId) ? { ...r, include: next } as ParsedRow : r))
+                                    } else {
+                                      patchRow(idx, { include: next })
+                                    }
+                                    lastTxChecked.current = displayIdx
+                                  }}
+                                  style={{ accentColor: 'var(--accent)', width: 14, height: 14, cursor: 'pointer' }}
+                                />
                               </td>
                               <td style={{ padding: '6px 10px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{fmtDate(tx.date)}</td>
                               <td style={{ padding: '6px 10px' }}>
@@ -1018,20 +1013,51 @@ export default function CSVImportWizard({ onClose }: Props) {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                       <thead>
                         <tr style={{ background: 'var(--bg-elevated)' }}>
-                          {['', 'Data', 'Ticker', 'Nome', 'Quantità', 'Prezzo (nat.)', 'Comm. €', 'Totale €'].map((h, i) => (
-                            <th key={i} style={{ padding: '6px 10px', textAlign: i >= 4 ? 'right' : 'left', fontWeight: 600, color: 'var(--text-tertiary)', fontSize: 11, borderBottom: '1px solid var(--border-subtle)' }}>{h}</th>
+                          <th style={{ padding: '6px 10px', borderBottom: '1px solid var(--border-subtle)', width: 28 }} />
+                          {([
+                            { label: 'Data',          col: 'date'   as const },
+                            { label: 'Ticker',        col: 'ticker' as const },
+                            { label: 'Nome',          col: null },
+                            { label: 'Quantità',      col: null,                 right: true },
+                            { label: 'Prezzo (nat.)', col: 'price'  as const,    right: true },
+                            { label: 'Comm. €',       col: null,                 right: true },
+                            { label: 'Totale €',      col: 'amount' as const,    right: true },
+                          ] as { label: string; col: typeof tradeSort.col; right?: boolean }[]).map((h) => (
+                            <th
+                              key={h.label}
+                              onClick={() => h.col && toggleTradeSort(h.col)}
+                              style={{ padding: '6px 10px', textAlign: h.right ? 'right' : 'left', fontWeight: 600, color: 'var(--text-tertiary)', fontSize: 11, borderBottom: '1px solid var(--border-subtle)', cursor: h.col ? 'pointer' : undefined, userSelect: 'none', whiteSpace: 'nowrap' }}
+                            >
+                              {h.label}{h.col && sortIcon(tradeSort.col === h.col, tradeSort.dir)}
+                            </th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {tradeRows.map((trade) => {
+                        {sortedTradeRows.map((trade, displayIdx) => {
                           const idx = rows.indexOf(trade)
-                          const isDup = false // trades don't track duplicate badge
                           const existingPos = positions.find((p) => p.ticker.toUpperCase() === trade.ticker.toUpperCase())
                           return (
                             <tr key={trade.sourceId} style={{ borderBottom: '1px solid var(--border-subtle)', opacity: trade.include ? 1 : 0.45 }}>
                               <td style={{ padding: '6px 10px', width: 28 }}>
-                                <input type="checkbox" checked={trade.include} onChange={(e) => patchRow(idx, { include: e.target.checked })} style={{ accentColor: 'var(--accent)', width: 14, height: 14 }} />
+                                <input
+                                  type="checkbox"
+                                  checked={trade.include}
+                                  onChange={() => {}}
+                                  onClick={(e) => {
+                                    const next = !trade.include
+                                    if (e.shiftKey && lastTradeChecked.current >= 0) {
+                                      const lo = Math.min(lastTradeChecked.current, displayIdx)
+                                      const hi = Math.max(lastTradeChecked.current, displayIdx)
+                                      const ids = new Set(sortedTradeRows.slice(lo, hi + 1).map((r) => r.sourceId))
+                                      setRows((prev) => prev.map((r) => ids.has((r as ParsedTrade).sourceId) ? { ...r, include: next } as ParsedRow : r))
+                                    } else {
+                                      patchRow(idx, { include: next })
+                                    }
+                                    lastTradeChecked.current = displayIdx
+                                  }}
+                                  style={{ accentColor: 'var(--accent)', width: 14, height: 14, cursor: 'pointer' }}
+                                />
                               </td>
                               <td style={{ padding: '6px 10px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{fmtDate(trade.date)}</td>
                               <td style={{ padding: '6px 10px', fontFamily: 'monospace', fontWeight: 700, fontSize: 12.5 }}>
@@ -1043,8 +1069,24 @@ export default function CSVImportWizard({ onClose }: Props) {
                                 <div title={trade.name} style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{trade.name}</div>
                               </td>
                               <td style={{ padding: '6px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{trade.quantity.toFixed(trade.assetType === 'crypto' ? 6 : 4)}</td>
-                              <td style={{ padding: '6px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                                {trade.price > 0 ? trade.price.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '—'}
+                              <td style={{ padding: '6px 10px', textAlign: 'right' }}>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.0001"
+                                  value={trade.price || ''}
+                                  onChange={(e) => {
+                                    const price = parseFloat(e.target.value) || 0
+                                    patchRow(idx, { price, amount: price * trade.quantity })
+                                  }}
+                                  style={{
+                                    width: 72, padding: '3px 6px', borderRadius: 5,
+                                    border: '1px solid var(--border-subtle)',
+                                    background: 'var(--bg-elevated)', color: 'var(--text-primary)',
+                                    fontSize: 11.5, textAlign: 'right', outline: 'none',
+                                    fontVariantNumeric: 'tabular-nums',
+                                  }}
+                                />
                               </td>
                               <td style={{ padding: '6px 10px', textAlign: 'right' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 3, justifyContent: 'flex-end' }}>
@@ -1065,13 +1107,114 @@ export default function CSVImportWizard({ onClose }: Props) {
                                   <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>€</span>
                                 </div>
                               </td>
-                              <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{trade.amount > 0 ? fmt(trade.amount) : '—'}</td>
+                              <td style={{ padding: '6px 10px', textAlign: 'right' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 3, justifyContent: 'flex-end' }}>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={trade.amount || ''}
+                                    onChange={(e) => patchRow(idx, { amount: parseFloat(e.target.value) || 0 })}
+                                    style={{
+                                      width: 72, padding: '3px 6px', borderRadius: 5,
+                                      border: '1px solid var(--border-subtle)',
+                                      background: 'var(--bg-elevated)', color: 'var(--text-primary)',
+                                      fontSize: 11.5, fontWeight: 600, textAlign: 'right', outline: 'none',
+                                      fontVariantNumeric: 'tabular-nums',
+                                    }}
+                                  />
+                                  <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>€</span>
+                                </div>
+                              </td>
                             </tr>
                           )
                         })}
                       </tbody>
                     </table>
                   )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── STEP 3: Mappa ticker ─────────────────────────── */}
+          {step === 3 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+              {includedTrades.length > 0 ? (
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Mappa ticker</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)', marginBottom: 12 }}>
+                    Solo le operazioni selezionate — {includedTrades.length} investiment{includedTrades.length === 1 ? 'o' : 'i'}.
+                  </div>
+                  <div style={{ border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+                      <thead>
+                        <tr style={{ background: 'var(--bg-elevated)' }}>
+                          {['Nome', 'ISIN / Symbol', 'Tipo', 'Qtà', 'Prezzo (nat.)', 'Comm. €', 'Totale €', 'Ticker'].map((h, i) => (
+                            <th key={h} style={{ padding: '8px 12px', textAlign: i >= 3 && i <= 6 ? 'right' : 'left', fontWeight: 600, color: 'var(--text-secondary)', fontSize: 11, borderBottom: '1px solid var(--border-subtle)' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {includedTrades.map((trade) => {
+                          const idx = rows.indexOf(trade)
+                          return (
+                            <tr key={trade.sourceId} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                              <td style={{ padding: '8px 12px', fontWeight: 500 }}>{trade.name}</td>
+                              <td style={{ padding: '8px 12px', color: 'var(--text-tertiary)', fontFamily: 'monospace', fontSize: 11.5 }}>{trade.isin || '—'}</td>
+                              <td style={{ padding: '8px 12px' }}>
+                                <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 5, background: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
+                                  {ASSET_LABEL[trade.assetType] ?? trade.assetType}
+                                </span>
+                              </td>
+                              <td style={{ padding: '8px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                                {trade.quantity.toFixed(trade.assetType === 'crypto' ? 6 : 4)}
+                              </td>
+                              <td style={{ padding: '8px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontSize: 11.5 }}>
+                                {trade.price > 0 ? trade.price.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '—'}
+                              </td>
+                              <td style={{ padding: '8px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                                {trade.commission > 0 ? fmt(trade.commission) : '—'}
+                              </td>
+                              <td style={{ padding: '8px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontSize: 11.5, fontWeight: 600 }}>
+                                {trade.amount > 0 ? fmt(trade.amount) : '—'}
+                              </td>
+                              <td style={{ padding: '8px 12px' }}>
+                                <TickerSearchInput
+                                  value={trade.ticker}
+                                  assetType={trade.assetType}
+                                  isConfirmed={trade.tickerConfirmed}
+                                  required
+                                  extraCandidates={positions
+                                    .filter((p) => p.name.toLowerCase() === trade.name.toLowerCase() && p.ticker !== trade.ticker)
+                                    .map((p) => p.ticker)}
+                                  onChange={(ticker, result) => {
+                                    if (result) {
+                                      const tradeName = trade.name
+                                      setRows((prev) => prev.map((r) => {
+                                        if (r.kind !== 'trade') return r
+                                        if (r === trade || (r as ParsedTrade).name === tradeName)
+                                          return { ...r, ticker, tickerConfirmed: true } as ParsedRow
+                                        return r
+                                      }))
+                                    } else {
+                                      patchRow(idx, { ticker, tickerConfirmed: false })
+                                    }
+                                  }}
+                                  onValidated={(confirmed) => patchRow(idx, { tickerConfirmed: confirmed })}
+                                />
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+                  Nessun investimento selezionato — tutto pronto per l&apos;importazione.
                 </div>
               )}
             </div>
@@ -1099,15 +1242,9 @@ export default function CSVImportWizard({ onClose }: Props) {
           {step === 2 && (
             <>
               <button className="ledgernest-btn ledgernest-btn-ghost" onClick={() => setStep(1)}>← Indietro</button>
-              {tradeRows.some((t) => !t.isFreeReceipt && (!t.ticker.trim() || !t.tickerConfirmed)) && (
-                <span style={{ fontSize: 11.5, color: '#f85149', marginLeft: 8 }}>Alcuni ticker non validati</span>
-              )}
               <button
                 className="ledgernest-btn"
-                disabled={
-                  (!accountId && !(creatingAccount && newName.trim())) ||
-                  tradeRows.some((t) => !t.isFreeReceipt && (!t.ticker.trim() || !t.tickerConfirmed))
-                }
+                disabled={!accountId && !(creatingAccount && newName.trim())}
                 onClick={goToStep3}
                 style={{ marginLeft: 'auto' }}
               >
@@ -1119,6 +1256,9 @@ export default function CSVImportWizard({ onClose }: Props) {
           {step === 3 && (
             <>
               <button className="ledgernest-btn ledgernest-btn-ghost" onClick={() => setStep(2)}>← Indietro</button>
+              {includedTrades.some((t) => !t.isFreeReceipt && (!t.ticker.trim() || !t.tickerConfirmed)) && (
+                <span style={{ fontSize: 11.5, color: '#f85149', marginLeft: 8 }}>Some tickers not validated</span>
+              )}
               <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
                   {includedTx.length} moviment{includedTx.length === 1 ? 'o' : 'i'} · {includedTrades.length} investiment{includedTrades.length === 1 ? 'o' : 'i'}

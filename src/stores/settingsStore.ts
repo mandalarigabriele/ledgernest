@@ -7,6 +7,7 @@ interface SettingsStore {
   updateSettings: (patch: Partial<AppSettings>) => void
   ignoredImportIds: string[]
   addIgnoredImportIds: (ids: string[]) => void
+  removeIgnoredImportIds: (ids: string[]) => void
   clearIgnoredImportIds: () => void
   hydrate: (data: Partial<Pick<SettingsStore, 'settings' | 'ignoredImportIds'>>) => void
 }
@@ -47,6 +48,11 @@ export const useSettingsStore = create<SettingsStore>()(
           const existing = new Set(state.ignoredImportIds)
           ids.forEach((id) => existing.add(id))
           return { ignoredImportIds: Array.from(existing) }
+        }),
+      removeIgnoredImportIds: (ids) =>
+        set((state) => {
+          const remove = new Set(ids)
+          return { ignoredImportIds: state.ignoredImportIds.filter((id) => !remove.has(id)) }
         }),
       clearIgnoredImportIds: () => set({ ignoredImportIds: [] }),
       hydrate: (data) => set(data),
