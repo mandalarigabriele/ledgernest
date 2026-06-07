@@ -23,19 +23,20 @@ export async function GET() {
             background: '#0b0f12',
             borderRadius: 10,
             display: 'flex',
-            alignItems: 'flex-end',
+            alignItems: 'center',
             justifyContent: 'center',
-            gap: 3,
-            paddingBottom: 10,
-            paddingLeft: 6,
-            paddingRight: 6,
           }}
         >
-          <div style={{ width: 5, height: 8,  background: '#5bc8d0', borderRadius: 2 }} />
-          <div style={{ width: 5, height: 14, background: '#5bc8d0', borderRadius: 2 }} />
-          <div style={{ width: 5, height: 10, background: '#5bc8d0', borderRadius: 2 }} />
-          <div style={{ width: 5, height: 18, background: '#5bc8d0', borderRadius: 2 }} />
-          <div style={{ width: 5, height: 24, background: '#5bc8d0', borderRadius: 2 }} />
+          <svg width="32" height="32" viewBox="0 0 32 32">
+            <path
+              d="M8 22l6-8 4 5 3-4 5 7"
+              stroke="white"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+          </svg>
         </div>
       </div>
     ),
