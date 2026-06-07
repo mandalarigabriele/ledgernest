@@ -1242,14 +1242,25 @@ export default function CSVImportWizard({ onClose }: Props) {
           {step === 2 && (
             <>
               <button className="ledgernest-btn ledgernest-btn-ghost" onClick={() => setStep(1)}>← Indietro</button>
-              <button
-                className="ledgernest-btn"
-                disabled={!accountId && !(creatingAccount && newName.trim())}
-                onClick={goToStep3}
-                style={{ marginLeft: 'auto' }}
-              >
-                Avanti →
-              </button>
+              {includedTrades.length === 0 ? (
+                <button
+                  className="ledgernest-btn"
+                  disabled={!canImport || importing}
+                  onClick={doImport}
+                  style={{ marginLeft: 'auto' }}
+                >
+                  {importing ? 'Importazione…' : 'Importa'}
+                </button>
+              ) : (
+                <button
+                  className="ledgernest-btn"
+                  disabled={!accountId && !(creatingAccount && newName.trim())}
+                  onClick={goToStep3}
+                  style={{ marginLeft: 'auto' }}
+                >
+                  Avanti →
+                </button>
+              )}
             </>
           )}
 
