@@ -610,7 +610,7 @@ export default function BudgetPage() {
         <div className="ledgernest-card ledgernest-budget-table-card" style={{ padding: 0, overflow: 'hidden', gridColumn: 1 }}>
 
           {/* ── Budget header ── */}
-          <div style={{ padding: '20px 22px', borderBottom: '1px solid var(--border-subtle)' }}>
+          <div className="ledgernest-budget-header" style={{ padding: '20px 22px', borderBottom: '1px solid var(--border-subtle)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
               <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', background: 'var(--accent)', color: 'var(--text-on-accent)', borderRadius: 20, padding: '3px 12px' }}>{tl('summaryTitle', { monthName })}</div>
               <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>

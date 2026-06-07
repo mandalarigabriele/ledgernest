@@ -3008,9 +3008,10 @@ ul, ol { list-style: none; }
   .ledgernest-budget-table-card > * {
     min-width: 600px;
   }
-  /* Toolbar and tab strip stay full-width, don't participate in scroll */
+  /* Toolbar, tab strip, and header stay full-width, don't participate in scroll */
   .ledgernest-budget-toolbar,
-  .ledgernest-budget-tab-strip {
+  .ledgernest-budget-tab-strip,
+  .ledgernest-budget-header {
     min-width: 0 !important;
   }
   /* Prevent category names from wrapping */

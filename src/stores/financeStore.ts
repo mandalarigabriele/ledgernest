@@ -261,6 +261,9 @@ export const useFinanceStore = create<FinanceStore>()(
             body: JSON.stringify({ ebId: tx.ebId, userDeleted: true }),
           }).catch(() => {/* best-effort */})
         }
+        // Remove linked shared expense if any (no-op server-side if none exists)
+        fetch(`/api/shared-expenses?sourceTxId=${encodeURIComponent(id)}`, { method: 'DELETE' })
+          .catch(() => {/* best-effort */})
         set((s) => ({ transactions: s.transactions.filter((t) => t.id !== id) }))
       },
 

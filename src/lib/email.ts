@@ -1,6 +1,6 @@
 import { Resend } from 'resend'
 
-const FROM = 'LedgerNest <onboarding@resend.dev>'
+const FROM = 'LedgerNest <noreply@ledgernest.mandalarigabriele.com>'
 
 function getResend(): Resend | null {
   if (!process.env.RESEND_API_KEY) return null
@@ -59,62 +59,77 @@ function resolveName(email: string, myEmail: string, partnerEmail: string, myNam
   return shortEmail(email)
 }
 
+function logoHtml(): string {
+  return `
+    <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
+      <tr>
+        <td style="vertical-align:middle;padding-right:7px;font-size:26px;line-height:1;">🪺</td>
+        <td style="vertical-align:middle;font-size:21px;font-weight:800;color:#1f2328;letter-spacing:-0.3px;">LedgerNest</td>
+      </tr>
+    </table>
+    <div style="font-size:12px;color:#8a9199;margin-top:5px;">Gestione spese condivise</div>`
+}
+
+function footerHtml(): string {
+  return `
+    <td align="center" style="padding:28px 0 0;">
+      ${logoHtml()}
+      <div style="height:1px;background:#dde1e5;margin:16px auto;max-width:260px;"></div>
+      <div style="font-size:11px;color:#adb5bd;">Questa email è stata inviata automaticamente, non rispondere.</div>
+    </td>`
+}
+
 function buildSharedExpenseHtml(p: SharedExpenseEmailParams, recipientEmail: string): string {
-  const myName      = p.myName      || shortEmail(p.myEmail)
-  const partnerName = p.partnerName || shortEmail(p.partnerEmail)
-  const payerName   = p.payerEmail === p.myEmail ? myName : partnerName
+  const myName       = p.myName      || shortEmail(p.myEmail)
+  const partnerName  = p.partnerName || shortEmail(p.partnerEmail)
+  const payerName    = p.payerEmail === p.myEmail ? myName : partnerName
   const nonPayerName = p.payerEmail === p.myEmail ? partnerName : myName
 
-  const iPaid       = p.payerEmail === recipientEmail
-  const recipientName = recipientEmail === p.myEmail ? myName : partnerName
-  const myShare     = iPaid ? p.amount * (1 - p.otherShare) : p.amount * p.otherShare
-  const theirShare  = p.amount - myShare
+  const iPaid         = p.payerEmail === recipientEmail
+  const nonPayerShare = Math.round(p.amount * p.otherShare * 100) / 100
+  const balanceAmt    = nonPayerShare
+  const balanceColor  = iPaid ? C.success : C.danger
+  const balanceSign   = iPaid ? '+' : '−'
+  const balanceLabel  = iPaid
+    ? `Hai coperto la quota di <strong style="color:${C.textMain};">${nonPayerName}</strong>`
+    : `Devi rimborsare <strong style="color:${C.textMain};">${payerName}</strong>`
 
-  const balanceAmt   = iPaid ? theirShare : myShare
-  const balanceColor = iPaid ? C.success : C.danger
-  const balanceSign  = iPaid ? '+' : '−'
-  const balanceLabel = iPaid
-    ? `Hai anticipato la quota di <strong>${nonPayerName}</strong>`
-    : `Devi a <strong>${payerName}</strong> la tua quota`
-
-  let runningSection = ''
+  let runningSectionHtml = ''
   if (p.runningBalance !== undefined) {
     const recipientBalance = recipientEmail === p.myEmail ? p.runningBalance : -p.runningBalance
     const otherName = recipientEmail === p.myEmail ? partnerName : myName
     const isOwed  = recipientBalance > 0.005
     const isOwing = recipientBalance < -0.005
-    const absTotal = Math.abs(recipientBalance)
-    const totalColor = isOwed ? C.success : isOwing ? C.danger : C.textMuted
+    const totalColor = isOwed ? C.success : isOwing ? C.danger : '#3aa8b0'
     const totalLabel = isOwed
-      ? `<strong>${otherName}</strong> ti deve in totale`
+      ? `${otherName} ti deve`
       : isOwing
-      ? `Devi in totale a <strong>${otherName}</strong>`
-      : 'Siete in pari ✓'
-    const totalValue = (isOwed || isOwing) ? fmtAmount(absTotal) : ''
+      ? `Devi a ${otherName}`
+      : 'Siete in pari'
+    const totalValue = (isOwed || isOwing) ? fmtAmount(Math.abs(recipientBalance)) : '✓'
 
-    runningSection = `
-      <tr>
-        <td style="padding:20px 28px 24px;">
-          <div style="background:${C.bgInner};border:1px solid ${C.border};border-radius:10px;padding:16px 18px;">
-            <div style="font-size:10px;font-weight:700;color:${C.textMuted};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">
-              Saldo complessivo aggiornato
-            </div>
-            <div style="font-size:13px;color:${C.textMuted};margin-bottom:6px;">${totalLabel}</div>
-            ${totalValue ? `<div style="font-size:24px;font-weight:800;color:${totalColor};letter-spacing:-0.5px;">${totalValue}</div>` : `<div style="font-size:16px;font-weight:700;color:${totalColor};">${totalLabel}</div>`}
-          </div>
-        </td>
-      </tr>`
+    runningSectionHtml = `
+          <!-- Running balance -->
+          <tr>
+            <td style="padding:16px 0 0;">
+              <div style="background:#f0fbfa;border:1.5px solid #ade4df;border-radius:14px;padding:22px 24px;text-align:center;">
+                <div style="font-size:11px;font-weight:700;color:#3aa8b0;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">Saldo aggiornato</div>
+                <div style="font-size:15px;color:${C.textMain};margin-bottom:10px;">${totalLabel}</div>
+                <div style="font-size:36px;font-weight:800;color:${totalColor};letter-spacing:-1.5px;line-height:1;">${totalValue}</div>
+              </div>
+            </td>
+          </tr>`
   }
 
-  const notesSection = p.notes ? `
-      <tr>
-        <td style="padding:0 28px 20px;">
-          <div style="background:${C.bgInner};border:1px solid ${C.border};border-radius:10px;padding:12px 16px;">
-            <div style="font-size:10px;font-weight:700;color:${C.textMuted};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Note</div>
-            <div style="font-size:13px;color:${C.textMain};">${p.notes}</div>
-          </div>
-        </td>
-      </tr>` : ''
+  const notesHtml = p.notes ? `
+          <tr>
+            <td style="padding:16px 0 0;">
+              <div style="background:#f6f8fa;border:1px solid #d0d7de;border-radius:10px;padding:14px 16px;">
+                <div style="font-size:10px;font-weight:700;color:#636c76;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Note</div>
+                <div style="font-size:13px;color:${C.textMain};">${p.notes}</div>
+              </div>
+            </td>
+          </tr>` : ''
 
   return `<!DOCTYPE html>
 <html lang="it">
@@ -123,96 +138,90 @@ function buildSharedExpenseHtml(p: SharedExpenseEmailParams, recipientEmail: str
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Nuova spesa condivisa · LedgerNest</title>
 </head>
-<body style="margin:0;padding:0;background:${C.bgPage};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:${C.bgPage};padding:40px 16px;">
+<body style="margin:0;padding:0;background:#f0f2f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f2f5;padding:32px 16px;">
     <tr>
       <td align="center">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:540px;">
 
-          <!-- Logo -->
+          <!-- Top logo -->
           <tr>
-            <td style="padding-bottom:24px;text-align:center;">
-              <span style="font-size:22px;font-weight:800;color:${C.textMain};letter-spacing:-0.5px;">
-                Ledger<span style="color:${C.accent};">Nest</span>
-              </span>
+            <td align="center" style="padding-bottom:22px;">
+              ${logoHtml()}
             </td>
           </tr>
 
-          <!-- Card -->
+          <!-- Hero gradient card -->
           <tr>
-            <td style="background:${C.bgCard};border:1px solid ${C.border};border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-              <table width="100%" cellpadding="0" cellspacing="0">
-
-                <!-- Header band -->
+            <td style="background:linear-gradient(135deg,#5bc8d0 0%,#33b49a 100%);border-radius:18px;padding:26px 28px 26px;overflow:hidden;">
+              <!-- Badge -->
+              <table cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
                 <tr>
-                  <td style="background:${C.accent};padding:20px 28px;">
-                    <div style="font-size:11px;font-weight:700;color:rgba(0,0,0,0.5);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Nuova spesa condivisa</div>
-                    <div style="font-size:30px;font-weight:800;color:${C.textMain};letter-spacing:-1px;">${fmtAmount(p.amount)}</div>
+                  <td style="background:rgba(0,0,0,0.18);border-radius:20px;padding:5px 14px;">
+                    <span style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.95);text-transform:uppercase;letter-spacing:0.08em;">🧾 Nuova spesa condivisa</span>
                   </td>
                 </tr>
-
-                <!-- Description + date -->
+              </table>
+              <!-- Amount -->
+              <div style="font-size:40px;font-weight:800;color:#ffffff;letter-spacing:-2px;line-height:1;margin-bottom:10px;">${fmtAmount(p.amount)}</div>
+              <!-- Description -->
+              <div style="font-size:18px;font-weight:700;color:rgba(255,255,255,0.95);margin-bottom:16px;">${p.description}</div>
+              <!-- Category + date -->
+              <table cellpadding="0" cellspacing="0">
                 <tr>
-                  <td style="padding:24px 28px 0;">
-                    <div style="font-size:19px;font-weight:700;color:${C.textMain};margin-bottom:6px;">${p.description}</div>
-                    <div style="font-size:13px;color:${C.textMuted};">
-                      ${p.category ? `<span style="display:inline-block;background:${C.bgInner};border:1px solid ${C.border};border-radius:20px;padding:2px 10px;font-size:12px;margin-right:8px;">${p.category}</span>` : ''}
-                      ${fmtDate(p.date)}
-                    </div>
-                  </td>
+                  ${p.category ? `<td style="padding-right:10px;"><span style="background:rgba(255,255,255,0.22);border-radius:20px;padding:4px 12px;font-size:12px;color:rgba(255,255,255,0.92);">🏷 ${p.category}</span></td><td style="padding-right:10px;color:rgba(255,255,255,0.4);font-size:16px;">|</td>` : ''}
+                  <td><span style="font-size:13px;color:rgba(255,255,255,0.85);">📅 ${fmtDate(p.date)}</span></td>
                 </tr>
-
-                <!-- Divider -->
-                <tr><td style="padding:20px 28px 0;"><div style="height:1px;background:${C.border};"></div></td></tr>
-
-                <!-- Split table -->
-                <tr>
-                  <td style="padding:20px 28px 0;">
-                    <table width="100%" cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td width="50%" style="padding-right:6px;vertical-align:top;">
-                          <div style="background:${C.bgInner};border:1px solid ${C.border};border-radius:10px;padding:14px 16px;">
-                            <div style="font-size:10px;font-weight:700;color:${C.textMuted};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">${payerName} · ha pagato</div>
-                            <div style="font-size:18px;font-weight:800;color:${C.success};">${fmtAmount(p.amount)}</div>
-                          </div>
-                        </td>
-                        <td width="50%" style="padding-left:6px;vertical-align:top;">
-                          <div style="background:${C.bgInner};border:1px solid ${C.border};border-radius:10px;padding:14px 16px;">
-                            <div style="font-size:10px;font-weight:700;color:${C.textMuted};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">${nonPayerName} · quota</div>
-                            <div style="font-size:18px;font-weight:800;color:${C.danger};">${fmtAmount(p.payerEmail === p.myEmail ? theirShare : myShare)}</div>
-                          </div>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-
-                <!-- Per-recipient balance row -->
-                <tr>
-                  <td style="padding:16px 28px 0;">
-                    <div style="background:${C.bgInner};border:1px solid ${C.border};border-radius:10px;padding:14px 18px;">
-                      <div style="font-size:10px;font-weight:700;color:${C.textMuted};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">La tua quota, ${recipientName}</div>
-                      <div style="font-size:26px;font-weight:800;color:${balanceColor};letter-spacing:-0.5px;margin-bottom:4px;">${balanceSign}${fmtAmount(balanceAmt)}</div>
-                      <div style="font-size:13px;color:${C.textMuted};">${balanceLabel}</div>
-                    </div>
-                  </td>
-                </tr>
-
-                ${notesSection}
-
-                ${runningSection}
-
               </table>
             </td>
           </tr>
 
-          <!-- Footer -->
+          <!-- Two person cards -->
           <tr>
-            <td style="padding:20px 0 0;text-align:center;">
-              <div style="font-size:12px;color:${C.textMuted};">
-                Inviato da <strong style="color:${C.textMain};">LedgerNest</strong> · Gestione spese condivise
+            <td style="padding:16px 0 0;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td width="48%" style="vertical-align:top;">
+                    <div style="background:#ffffff;border:1px solid #e2e6ea;border-radius:14px;padding:18px 16px;">
+                      <div style="width:44px;height:44px;border-radius:50%;background:#e4f7f6;margin-bottom:12px;text-align:center;line-height:44px;font-size:22px;">👤</div>
+                      <div style="font-size:10px;font-weight:700;color:#3aa8b0;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Ha pagato</div>
+                      <div style="font-size:14px;font-weight:700;color:#1f2328;margin-bottom:8px;">${payerName}</div>
+                      <div style="font-size:22px;font-weight:800;color:${C.success};margin-bottom:8px;">${fmtAmount(p.amount)}</div>
+                      <div style="font-size:12px;color:#636c76;">✅ Importo anticipato</div>
+                    </div>
+                  </td>
+                  <td width="4%"></td>
+                  <td width="48%" style="vertical-align:top;">
+                    <div style="background:#ffffff;border:1px solid #e2e6ea;border-radius:14px;padding:18px 16px;">
+                      <div style="width:44px;height:44px;border-radius:50%;background:#e8f0fb;margin-bottom:12px;text-align:center;line-height:44px;font-size:22px;">👥</div>
+                      <div style="font-size:10px;font-weight:700;color:#6c88c4;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Quota di</div>
+                      <div style="font-size:14px;font-weight:700;color:#1f2328;margin-bottom:8px;">${nonPayerName}</div>
+                      <div style="font-size:22px;font-weight:800;color:${C.danger};">${fmtAmount(nonPayerShare)}</div>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Personal balance -->
+          <tr>
+            <td style="padding:16px 0 0;">
+              <div style="background:#e6f9f5;border-radius:14px;padding:20px 22px;">
+                <div style="font-size:10px;font-weight:700;color:#3aa8b0;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">${iPaid ? 'Hai anticipato' : 'La tua quota'}</div>
+                <div style="font-size:32px;font-weight:800;color:${balanceColor};letter-spacing:-1px;margin-bottom:8px;">${balanceSign}${fmtAmount(balanceAmt)}</div>
+                <div style="font-size:13px;color:#636c76;">${balanceLabel}</div>
               </div>
             </td>
+          </tr>
+
+          ${notesHtml}
+
+          ${runningSectionHtml}
+
+          <!-- Footer -->
+          <tr>
+            ${footerHtml()}
           </tr>
 
         </table>
@@ -239,9 +248,9 @@ export interface SharedExpenseRemovalEmailParams {
   sendToPartner?: boolean
 }
 
-function buildRemovalHtml(p: SharedExpenseRemovalEmailParams, recipientEmail: string): string {
-  const myName      = p.myName      || shortEmail(p.myEmail)
-  const partnerName = p.partnerName || shortEmail(p.partnerEmail)
+function buildRemovalHtml(p: SharedExpenseRemovalEmailParams, _recipientEmail: string): string {
+  const myName        = p.myName      || shortEmail(p.myEmail)
+  const partnerName   = p.partnerName || shortEmail(p.partnerEmail)
   const removedByName = resolveName(p.removedByEmail, p.myEmail, p.partnerEmail, myName, partnerName)
 
   return `<!DOCTYPE html>
@@ -251,59 +260,56 @@ function buildRemovalHtml(p: SharedExpenseRemovalEmailParams, recipientEmail: st
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Spesa condivisa rimossa · LedgerNest</title>
 </head>
-<body style="margin:0;padding:0;background:${C.bgPage};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:${C.bgPage};padding:40px 16px;">
+<body style="margin:0;padding:0;background:#f0f2f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f2f5;padding:32px 16px;">
     <tr>
       <td align="center">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:540px;">
 
-          <!-- Logo -->
+          <!-- Top logo -->
           <tr>
-            <td style="padding-bottom:24px;text-align:center;">
-              <span style="font-size:22px;font-weight:800;color:${C.textMain};letter-spacing:-0.5px;">
-                Ledger<span style="color:${C.accent};">Nest</span>
-              </span>
+            <td align="center" style="padding-bottom:22px;">
+              ${logoHtml()}
             </td>
           </tr>
 
-          <!-- Card -->
+          <!-- Hero gradient card (red) -->
           <tr>
-            <td style="background:${C.bgCard};border:1px solid ${C.border};border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-              <table width="100%" cellpadding="0" cellspacing="0">
-
-                <!-- Header band -->
+            <td style="background:linear-gradient(135deg,#e57373 0%,#c0392b 100%);border-radius:18px;padding:26px 28px;overflow:hidden;">
+              <table cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
                 <tr>
-                  <td style="background:#ffd8d8;border-bottom:1px solid #f5c6c6;padding:20px 28px;">
-                    <div style="font-size:11px;font-weight:700;color:rgba(0,0,0,0.45);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Spesa condivisa rimossa</div>
-                    <div style="font-size:30px;font-weight:800;color:${C.danger};letter-spacing:-1px;">${fmtAmount(p.amount)}</div>
+                  <td style="background:rgba(0,0,0,0.18);border-radius:20px;padding:5px 14px;">
+                    <span style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.95);text-transform:uppercase;letter-spacing:0.08em;">🗑 Spesa condivisa rimossa</span>
                   </td>
                 </tr>
-
-                <!-- Body -->
-                <tr>
-                  <td style="padding:24px 28px;">
-                    <div style="font-size:18px;font-weight:700;color:${C.textMain};margin-bottom:6px;">${p.description}</div>
-                    <div style="font-size:13px;color:${C.textMuted};margin-bottom:20px;">
-                      ${p.category ? `<span style="display:inline-block;background:${C.bgInner};border:1px solid ${C.border};border-radius:20px;padding:2px 10px;font-size:12px;margin-right:8px;">${p.category}</span>` : ''}
-                      ${fmtDate(p.date)}
-                    </div>
-                    <div style="background:${C.bgInner};border:1px solid ${C.border};border-radius:10px;padding:14px 18px;font-size:13px;color:${C.textMuted};">
-                      Rimossa da <strong style="color:${C.textMain};">${removedByName}</strong>. Questa spesa non contribuisce più al saldo.
-                    </div>
-                  </td>
-                </tr>
-
               </table>
+              <div style="font-size:40px;font-weight:800;color:#ffffff;letter-spacing:-2px;line-height:1;margin-bottom:10px;">${fmtAmount(p.amount)}</div>
+              <div style="font-size:18px;font-weight:700;color:rgba(255,255,255,0.95);margin-bottom:16px;">${p.description}</div>
+              <table cellpadding="0" cellspacing="0">
+                <tr>
+                  ${p.category ? `<td style="padding-right:10px;"><span style="background:rgba(255,255,255,0.22);border-radius:20px;padding:4px 12px;font-size:12px;color:rgba(255,255,255,0.92);">🏷 ${p.category}</span></td><td style="padding-right:10px;color:rgba(255,255,255,0.4);font-size:16px;">|</td>` : ''}
+                  <td><span style="font-size:13px;color:rgba(255,255,255,0.85);">📅 ${fmtDate(p.date)}</span></td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Info box -->
+          <tr>
+            <td style="padding:16px 0 0;">
+              <div style="background:#fff5f5;border:1.5px solid #f5c6c6;border-radius:14px;padding:20px 22px;">
+                <div style="font-size:10px;font-weight:700;color:#c0392b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">❌ Spesa rimossa</div>
+                <div style="font-size:14px;color:#636c76;">
+                  Rimossa da <strong style="color:#1f2328;">${removedByName}</strong>.
+                  Questa spesa non contribuisce più al saldo complessivo.
+                </div>
+              </div>
             </td>
           </tr>
 
           <!-- Footer -->
           <tr>
-            <td style="padding:20px 0 0;text-align:center;">
-              <div style="font-size:12px;color:${C.textMuted};">
-                Inviato da <strong style="color:${C.textMain};">LedgerNest</strong> · Gestione spese condivise
-              </div>
-            </td>
+            ${footerHtml()}
           </tr>
 
         </table>
@@ -325,7 +331,7 @@ export async function sendSharedExpenseNotification(p: SharedExpenseEmailParams)
   if (!sendToMe && !sendToPartner) return
 
   const payerName = resolveName(p.payerEmail, p.myEmail, p.partnerEmail, p.myName, p.partnerName)
-  const subject   = `🤝 ${payerName} ha aggiunto una spesa condivisa · ${fmtAmount(p.amount)}`
+  const subject   = `🤝 ${fmtAmount(p.amount)} · ${payerName} ha aggiunto una spesa condivisa`
 
   const sends: Promise<unknown>[] = []
   if (sendToMe)
@@ -346,7 +352,7 @@ export async function sendSharedExpenseRemovalNotification(p: SharedExpenseRemov
   if (!sendToMe && !sendToPartner) return
 
   const removedByName = resolveName(p.removedByEmail, p.myEmail, p.partnerEmail, p.myName, p.partnerName)
-  const subject = `🗑 ${removedByName} ha rimosso una spesa condivisa · ${fmtAmount(p.amount)}`
+  const subject = `🗑 ${fmtAmount(p.amount)} · ${removedByName} ha rimosso una spesa condivisa`
 
   const sends: Promise<unknown>[] = []
   if (sendToMe)

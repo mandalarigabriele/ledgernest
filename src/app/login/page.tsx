@@ -59,10 +59,12 @@ function LoginContent() {
               width: '44px', height: '44px',
               background: '#5bc8d0',
               borderRadius: '12px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              display: 'grid', placeItems: 'center',
               flexShrink: 0,
+              boxShadow: '0 8px 24px -8px rgba(91,200,208,0.7)',
             }}>
-              <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+              <svg width="30" height="30" viewBox="0 0 32 32" fill="none">
+                <rect width="32" height="32" rx="8" fill="#0b0f12"/>
                 <path d="M8 22l6-8 4 5 3-4 5 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
