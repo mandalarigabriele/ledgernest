@@ -1614,6 +1614,7 @@ html:has(.ledgernest-modal-overlay) .ledgernest-page {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0; /* prevent iOS date/number inputs from expanding beyond the flex container */
 }
 
 .ledgernest-label {
