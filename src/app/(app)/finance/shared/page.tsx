@@ -790,18 +790,19 @@ export default function SharedPage() {
           >›</button>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
-          <div style={{ fontSize: 14, fontWeight: 700 }}>{t('expensesCount', { count: filteredExpenses.length })}</div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>{t('expensesCount', { count: filteredExpenses.length })}</div>
+          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
             {(['all', 'me', 'partner'] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilterPayer(f)}
                 style={{
-                  padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  flexShrink: 0, padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
                   border: `1.5px solid ${filterPayer === f ? 'var(--accent)' : 'var(--border-subtle)'}`,
                   background: filterPayer === f ? 'color-mix(in oklch, var(--accent) 12%, transparent)' : 'transparent',
                   color: filterPayer === f ? 'var(--accent)' : 'var(--text-secondary)',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 {f === 'all' ? t('filterAll') : f === 'me' ? t('filterMe') : t('filterPartner', { partner: effectivePartnerName(partnerEmail) })}

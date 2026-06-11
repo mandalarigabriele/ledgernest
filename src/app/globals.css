@@ -1571,6 +1571,14 @@ ul, ol { list-style: none; }
   color: var(--text-primary);
 }
 
+/* Form direct child of modal — make it a proper flex item so body can scroll */
+.ledgernest-modal > form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 .ledgernest-modal-body {
   padding: 20px;
   display: flex;
@@ -1580,6 +1588,7 @@ ul, ol { list-style: none; }
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
   min-height: 0;
 }
 

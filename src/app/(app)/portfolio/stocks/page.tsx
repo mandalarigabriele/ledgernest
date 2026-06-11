@@ -516,7 +516,7 @@ export default function AzioniPage() {
       </div>
 
       {/* Top widgets */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
         {/* Top rendimento (best unrealized P&L%) */}
         <div className="ledgernest-card" style={{ padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>

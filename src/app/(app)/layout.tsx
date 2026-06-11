@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
 import { useFinanceStore } from '@/stores/financeStore'
@@ -21,11 +22,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { searchOpen, sidebarOpen, setSearchOpen, openModal } = useUIStore()
   const { accounts } = useFinanceStore()
   const [mounted, setMounted] = useState(false)
+  const pathname = usePathname()
+  const mainRef = useRef<HTMLElement>(null)
   useServerSync()
   usePortfolioSnapshot()
   usePriceAlerts()
 
   useEffect(() => { setMounted(true) }, [])
+
+  // Scroll the page container to top on every route change
+  useEffect(() => { mainRef.current?.scrollTo(0, 0) }, [pathname])
 
   // Auto-clear stale demoMode flag if the demo cookie is absent
   useEffect(() => {
@@ -111,7 +117,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="ledgernest-main">
         <Topbar />
         {mounted && settings.demoMode && <DemoBanner />}
-        <main className="ledgernest-page ledgernest-animate-in">
+        <main ref={mainRef} className="ledgernest-page ledgernest-animate-in">
           {mounted && children}
         </main>
       </div>
