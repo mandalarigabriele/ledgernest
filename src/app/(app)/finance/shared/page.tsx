@@ -158,7 +158,7 @@ function AddExpenseModal({
           <button className="ledgernest-modal-close" onClick={onClose}><Icon name="close" size={16} /></button>
         </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); handleSave() }}>
+        <form onSubmit={(e) => { e.preventDefault(); handleSave() }} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
           <div className="ledgernest-modal-body">
 
             {/* Type toggle — only for new expenses */}
@@ -349,14 +349,14 @@ function SettleUpModal({
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, padding: '28px 32px', width: 420, maxWidth: 'calc(100vw - 32px)', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 16, fontWeight: 700 }}>{t('settleModalTitle')}</div>
-          <button className="ledgernest-icon-btn" onClick={onClose}><Icon name="close" size={16} /></button>
+    <div className="ledgernest-modal-overlay">
+      <div className="ledgernest-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="ledgernest-modal-header">
+          <span className="ledgernest-modal-title">{t('settleModalTitle')}</span>
+          <button className="ledgernest-modal-close" onClick={onClose}><Icon name="close" size={16} /></button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div className="ledgernest-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <div style={labelStyle}>{t('fieldDirection')}</div>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -414,11 +414,11 @@ function SettleUpModal({
           )}
         </div>
 
-        {error && <div style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</div>}
+        {error && <div style={{ padding: '0 24px 4px', color: 'var(--danger)', fontSize: 13 }}>{error}</div>}
 
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+        <div className="ledgernest-modal-footer">
           <button className="ledgernest-btn ledgernest-btn-ghost" onClick={onClose}>{t('cancel')}</button>
-          <button className="ledgernest-btn" onClick={handleSave} disabled={saving}>
+          <button className="ledgernest-btn ledgernest-btn-primary" onClick={handleSave} disabled={saving}>
             {saving ? t('saving') : t('recordSettlement')}
           </button>
         </div>
