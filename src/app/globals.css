@@ -1514,20 +1514,20 @@ ul, ol { list-style: none; }
   width: 100%;
   max-width: 480px;
   max-height: 90vh;
-  overflow-y: auto;
-  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   animation: ledgernest-modal-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   box-shadow: var(--shadow-xl);
   position: relative;
-  touch-action: pan-y;                  /* vertical scroll only, no horizontal drift on iOS */
-  -webkit-overflow-scrolling: touch;   /* smooth momentum scroll on iOS */
-  overscroll-behavior-y: contain;      /* don't propagate scroll to body */
+  touch-action: pan-y;
+  overscroll-behavior-y: contain;
 }
 
 @media (min-width: 640px) {
   .ledgernest-modal {
     border-radius: var(--radius-xl);
-    max-height: 80vh;
+    max-height: 85vh;
   }
 }
 
@@ -1541,6 +1541,7 @@ ul, ol { list-style: none; }
   align-items: flex-start;
   gap: 12px;
   padding: 20px 56px 0 20px;
+  flex-shrink: 0;
 }
 
 .ledgernest-modal-title {
@@ -1575,13 +1576,20 @@ ul, ol { list-style: none; }
   display: flex;
   flex-direction: column;
   gap: 16px;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
 }
 
 .ledgernest-modal-footer {
-  padding: 0 20px 20px;
+  padding: 12px 20px 20px;
   display: flex;
   gap: 10px;
   justify-content: flex-end;
+  flex-shrink: 0;
+  border-top: 1px solid var(--border-subtle);
 }
 
 /* ============================================================
@@ -3630,12 +3638,15 @@ ul, ol { list-style: none; }
 
 /* ── Modal mobile fixes ───────────────────────────────────── */
 @media (max-width: 640px) {
+  /* Push modal overlay above the bottom nav bar */
+  .ledgernest-modal-overlay {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+  }
   .ledgernest-modal {
     width: 100% !important;
     max-width: 100% !important;
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    max-height: 92dvh;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    max-height: calc(92dvh - 56px - env(safe-area-inset-bottom, 0px));
   }
   /* Drag handle above modal content */
   .ledgernest-modal::before {

@@ -72,20 +72,22 @@ export function CategoryPicker({
 
   function handleOpen() {
     setSearch('')
-    if (containerRef?.current) {
-      // Side panel: appear to the right of the modal container
+    const isMobile = window.innerWidth <= 640
+    if (containerRef?.current && !isMobile) {
+      // Desktop: side panel to the right of the modal container
       const r = containerRef.current.getBoundingClientRect()
       const panelW = 280
-      // Prefer right side; fall back to left if no space
       const spaceRight = window.innerWidth - r.right
       const left = spaceRight >= panelW + 12 ? r.right + 12 : r.left - panelW - 12
       setPanelPos({ top: r.top, left, width: panelW, height: r.height })
     } else {
-      // Fallback: dropdown below trigger
+      // Mobile or no container: dropdown below (or above) trigger, clamped to viewport
       const r = triggerRef.current!.getBoundingClientRect()
-      const panelH = 360
+      const panelH = 320
+      const panelW = Math.min(Math.max(r.width, 280), window.innerWidth - 24)
       const top = window.innerHeight - r.bottom >= panelH ? r.bottom + 4 : r.top - panelH - 4
-      setPanelPos({ top, left: r.left, width: Math.max(r.width, 260), height: panelH })
+      const left = Math.max(12, Math.min(r.left, window.innerWidth - panelW - 12))
+      setPanelPos({ top, left, width: panelW, height: panelH })
     }
     setOpen((v) => !v)
   }
