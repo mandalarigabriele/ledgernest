@@ -1611,6 +1611,7 @@ ul, ol { list-style: none; }
 
 .ledgernest-input {
   width: 100%;
+  box-sizing: border-box;
   padding: 9px 12px;
   border-radius: var(--radius-md);
   background: var(--bg-elevated);

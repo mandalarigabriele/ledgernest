@@ -158,7 +158,7 @@ function AddExpenseModal({
           <button className="ledgernest-modal-close" onClick={onClose}><Icon name="close" size={16} /></button>
         </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); handleSave() }} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        <form onSubmit={(e) => { e.preventDefault(); handleSave() }} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'clip' }}>
           <div className="ledgernest-modal-body">
 
             {/* Type toggle — only for new expenses */}
