@@ -3759,3 +3759,12 @@ input[type="range"]::-moz-range-track {
   border-radius: 2px;
   background: var(--bg-elevated);
 }
+
+/* Prevent iOS Safari auto-zoom on input focus (triggers when font-size < 16px) */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
