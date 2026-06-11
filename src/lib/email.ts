@@ -171,12 +171,8 @@ export function buildSharedExpenseEmailHtml(p: SharedExpenseEmailParams, recipie
               <!-- Description -->
               <div style="font-size:18px;font-weight:700;color:rgba(255,255,255,0.95);margin-bottom:16px;">${p.description}</div>
               <!-- Category + date -->
-              <table cellpadding="0" cellspacing="0">
-                <tr>
-                  ${p.category ? `<td style="padding-right:10px;"><span style="background:rgba(255,255,255,0.22);border-radius:20px;padding:4px 12px;font-size:12px;color:rgba(255,255,255,0.92);">🏷 ${p.category}</span></td><td style="padding-right:10px;color:rgba(255,255,255,0.4);font-size:16px;">|</td>` : ''}
-                  <td><span style="font-size:13px;color:rgba(255,255,255,0.85);">📅 ${fmtDate(p.date)}</span></td>
-                </tr>
-              </table>
+              ${p.category ? `<div style="margin-bottom:8px;"><span style="background:rgba(255,255,255,0.22);border-radius:20px;padding:4px 12px;font-size:12px;color:rgba(255,255,255,0.92);">🏷 ${p.category}</span></div>` : ''}
+              <div style="font-size:13px;color:rgba(255,255,255,0.85);">📅 ${fmtDate(p.date)}</div>
             </td>
           </tr>
 
@@ -185,22 +181,18 @@ export function buildSharedExpenseEmailHtml(p: SharedExpenseEmailParams, recipie
             <td style="padding:16px 0 0;">
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td width="48%" style="vertical-align:top;">
-                    <div style="background:#ffffff;border:1px solid #e2e6ea;border-radius:14px;padding:18px 16px;">
-                      <div style="width:44px;height:44px;border-radius:50%;background:#e4f7f6;margin-bottom:12px;text-align:center;line-height:44px;font-size:22px;">👤</div>
-                      <div style="font-size:10px;font-weight:700;color:#3aa8b0;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Ha pagato</div>
-                      <div style="font-size:14px;font-weight:700;color:#1f2328;margin-bottom:8px;">${payerName}</div>
-                      <div style="font-size:22px;font-weight:800;color:${C.success};">${fmtAmount(p.amount)}</div>
-                    </div>
+                  <td width="48%" valign="top" style="background:#ffffff;border:1px solid #e2e6ea;border-radius:14px;padding:18px 16px;">
+                    <div style="width:44px;height:44px;border-radius:50%;background:#e4f7f6;margin-bottom:12px;text-align:center;line-height:44px;font-size:22px;">👤</div>
+                    <div style="font-size:10px;font-weight:700;color:#3aa8b0;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Ha pagato</div>
+                    <div style="font-size:14px;font-weight:700;color:#1f2328;margin-bottom:8px;">${payerName}</div>
+                    <div style="font-size:22px;font-weight:800;color:${C.success};">${fmtAmount(p.amount)}</div>
                   </td>
                   <td width="4%"></td>
-                  <td width="48%" style="vertical-align:top;">
-                    <div style="background:#ffffff;border:1px solid #e2e6ea;border-radius:14px;padding:18px 16px;">
-                      <div style="width:44px;height:44px;border-radius:50%;background:#e8f0fb;margin-bottom:12px;text-align:center;line-height:44px;font-size:22px;">👥</div>
-                      <div style="font-size:10px;font-weight:700;color:#6c88c4;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Quota di</div>
-                      <div style="font-size:14px;font-weight:700;color:#1f2328;margin-bottom:8px;">${nonPayerName}</div>
-                      <div style="font-size:22px;font-weight:800;color:${C.danger};">${fmtAmount(nonPayerShare)}</div>
-                    </div>
+                  <td width="48%" valign="top" style="background:#ffffff;border:1px solid #e2e6ea;border-radius:14px;padding:18px 16px;">
+                    <div style="width:44px;height:44px;border-radius:50%;background:#e8f0fb;margin-bottom:12px;text-align:center;line-height:44px;font-size:22px;">👥</div>
+                    <div style="font-size:10px;font-weight:700;color:#6c88c4;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Quota di</div>
+                    <div style="font-size:14px;font-weight:700;color:#1f2328;margin-bottom:8px;">${nonPayerName}</div>
+                    <div style="font-size:22px;font-weight:800;color:${C.danger};">${fmtAmount(nonPayerShare)}</div>
                   </td>
                 </tr>
               </table>
@@ -288,12 +280,8 @@ export function buildSharedExpenseRemovalEmailHtml(p: SharedExpenseRemovalEmailP
               </table>
               <div style="font-size:40px;font-weight:800;color:#ffffff;letter-spacing:-2px;line-height:1;margin-bottom:10px;">${fmtAmount(p.amount)}</div>
               <div style="font-size:18px;font-weight:700;color:rgba(255,255,255,0.95);margin-bottom:16px;">${p.description}</div>
-              <table cellpadding="0" cellspacing="0">
-                <tr>
-                  ${p.category ? `<td style="padding-right:10px;"><span style="background:rgba(255,255,255,0.22);border-radius:20px;padding:4px 12px;font-size:12px;color:rgba(255,255,255,0.92);">🏷 ${p.category}</span></td><td style="padding-right:10px;color:rgba(255,255,255,0.4);font-size:16px;">|</td>` : ''}
-                  <td><span style="font-size:13px;color:rgba(255,255,255,0.85);">📅 ${fmtDate(p.date)}</span></td>
-                </tr>
-              </table>
+              ${p.category ? `<div style="margin-bottom:8px;"><span style="background:rgba(255,255,255,0.22);border-radius:20px;padding:4px 12px;font-size:12px;color:rgba(255,255,255,0.92);">🏷 ${p.category}</span></div>` : ''}
+              <div style="font-size:13px;color:rgba(255,255,255,0.85);">📅 ${fmtDate(p.date)}</div>
             </td>
           </tr>
 

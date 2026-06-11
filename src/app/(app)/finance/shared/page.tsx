@@ -158,8 +158,7 @@ function AddExpenseModal({
           <button className="ledgernest-modal-close" onClick={onClose}><Icon name="close" size={16} /></button>
         </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); handleSave() }} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'clip' }}>
-          <div className="ledgernest-modal-body">
+        <div className="ledgernest-modal-body">
 
             {/* Type toggle — only for new expenses */}
             {!expense && (
@@ -177,14 +176,14 @@ function AddExpenseModal({
             <div className="ledgernest-field">
               <label className="ledgernest-label">{tm('amount')}</label>
               <input className="ledgernest-input" type="number" step="0.01" min="0" placeholder="0,00"
-                value={amount} onChange={(e) => setAmount(e.target.value)} autoFocus={!expense} required />
+                value={amount} onChange={(e) => setAmount(e.target.value)} autoFocus={!expense} />
             </div>
 
             {/* Description */}
             <div className="ledgernest-field">
               <label className="ledgernest-label">{tm('description')}</label>
               <input className="ledgernest-input" type="text" placeholder={tm('descriptionPlaceholder')}
-                value={description} onChange={(e) => setDescription(e.target.value)} required />
+                value={description} onChange={(e) => setDescription(e.target.value)} />
             </div>
 
             {/* Merchant — only for new */}
@@ -272,11 +271,10 @@ function AddExpenseModal({
 
           <div className="ledgernest-modal-footer">
             <button type="button" className="ledgernest-btn ledgernest-btn-ghost" onClick={onClose}>{tc('cancel')}</button>
-            <button type="submit" className="ledgernest-btn ledgernest-btn-primary" disabled={saving}>
+            <button type="button" className="ledgernest-btn ledgernest-btn-primary" disabled={saving} onClick={handleSave}>
               {saving ? '…' : tc('save')}
             </button>
           </div>
-        </form>
       </div>
     </div>
   )
