@@ -53,7 +53,7 @@ interface Balance {
 const inputStyle: React.CSSProperties = {
   padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border-subtle)',
   background: 'var(--bg-elevated)', color: 'var(--text-primary)', width: '100%',
-  boxSizing: 'border-box', fontSize: 13,
+  minWidth: 0, boxSizing: 'border-box', fontSize: 13,
 }
 const labelStyle: React.CSSProperties = {
   fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase',

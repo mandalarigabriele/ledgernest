@@ -1571,12 +1571,21 @@ ul, ol { list-style: none; }
   color: var(--text-primary);
 }
 
-/* Form direct child of modal — make it a proper flex item so body can scroll */
+/* Form direct child of modal — make it a proper flex item so body can scroll.
+   height: 0 is required on iOS Safari: without an explicit height, nested flex
+   children don't get a definite size and overflow-y: scroll won't activate. */
 .ledgernest-modal > form {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  height: 0;
+}
+
+/* Lock the page scroll container whenever any modal is open (iOS Safari ignores
+   touch-action: none on the overlay alone). Pure-CSS, no JS needed. */
+html:has(.ledgernest-modal-overlay) .ledgernest-page {
+  overflow-y: hidden;
 }
 
 .ledgernest-modal-body {
@@ -1585,7 +1594,7 @@ ul, ol { list-style: none; }
   flex-direction: column;
   gap: 16px;
   flex: 1;
-  overflow-y: auto;
+  overflow-y: scroll; /* 'scroll' activates on iOS where 'auto' sometimes does not */
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
@@ -1620,6 +1629,7 @@ ul, ol { list-style: none; }
 
 .ledgernest-input {
   width: 100%;
+  min-width: 0; /* override iOS Safari's intrinsic min-width on date/number inputs */
   box-sizing: border-box;
   padding: 9px 12px;
   border-radius: var(--radius-md);
