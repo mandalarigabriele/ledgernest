@@ -6,7 +6,7 @@
     "clean": "rimraf .next",
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "node server.js",
     "build:clean": "npm run clean && npm run build",
     "lint": "next lint",
     "db:migrate": "tsx src/lib/db/migrate.ts",
