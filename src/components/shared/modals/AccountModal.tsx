@@ -15,6 +15,7 @@ const OB_BANKS = [
   { name: 'Banco BPM',                  country: 'IT' },
   { name: 'BPER Banca',                 country: 'IT' },
   { name: 'Credit Agricole Cariparma',  country: 'IT' },
+  { name: 'Hello Bank!',                country: 'IT' },
   { name: 'N26',                        country: 'IT' },
   { name: 'Revolut',                    country: 'IT' },
   { name: 'UniCredit',                  country: 'IT' },
