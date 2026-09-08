@@ -91,7 +91,7 @@ function AttesoPill({ planned, received }: { planned: number; received: number }
   )
 }
 
-function LeafCategoryRow({ cat, budget, spent, note, onBudgetChange, onNoteChange, income = 0, sharedAdj }: {
+function LeafCategoryRow({ cat, budget, spent, note, onBudgetChange, onNoteChange, income = 0, sharedAdj, isExpanded, onToggleExpand, connectedItems = [], monthName = '' }: {
   cat: BudgetCategory
   budget: number
   spent: number
@@ -100,6 +100,10 @@ function LeafCategoryRow({ cat, budget, spent, note, onBudgetChange, onNoteChang
   onNoteChange: (v: string) => void
   income?: number
   sharedAdj?: number
+  isExpanded?: boolean
+  onToggleExpand?: () => void
+  connectedItems?: ConnectedItem[]
+  monthName?: string
 }) {
   const { fmt } = useFormatters()
   const [noteOpen, setNoteOpen] = useState(false)
@@ -110,18 +114,23 @@ function LeafCategoryRow({ cat, budget, spent, note, onBudgetChange, onNoteChang
   const hasNote  = !!note
 
   return (
-    <div style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background .1s' }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-elevated)')}
-      onMouseLeave={(e) => (e.currentTarget.style.background = '')}
+    <div style={{
+      borderBottom: '1px solid var(--border-subtle)',
+      transition: 'all .15s',
+      background: isExpanded ? 'color-mix(in oklch, var(--accent) 10%, var(--bg-surface))' : undefined,
+      borderLeft: isExpanded ? '3px solid var(--accent)' : '3px solid transparent',
+    }}
+      onMouseEnter={(e) => { if (!isExpanded) e.currentTarget.style.background = 'var(--bg-elevated)' }}
+      onMouseLeave={(e) => { if (!isExpanded) e.currentTarget.style.background = '' }}
     >
       <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 140px 110px 90px', padding: '9px 20px', alignItems: 'center' }}>
         <div />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={onToggleExpand} title="Clicca per evidenziare e vedere le spese connesse">
           <div style={{ width: 28, height: 28, borderRadius: 7, background: `${cat.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>
             {cat.emoji}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-            <span className="ledgernest-budget-cat-name" style={{ fontWeight: 600, fontSize: 13 }}>{cat.name}</span>
+            <span className="ledgernest-budget-cat-name" style={{ fontWeight: isExpanded ? 700 : 600, fontSize: 13, color: isExpanded ? 'var(--accent)' : 'var(--text-primary)' }}>{cat.name}</span>
             {sharedAdj !== undefined && Math.abs(sharedAdj) > 0.001 && (
               <span
                 style={{
@@ -137,7 +146,7 @@ function LeafCategoryRow({ cat, budget, spent, note, onBudgetChange, onNoteChang
               </span>
             )}
             <button
-              onClick={() => setNoteOpen(v => !v)}
+              onClick={(e) => { e.stopPropagation(); setNoteOpen(v => !v) }}
               title={hasNote ? note : 'Aggiungi nota'}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px',
@@ -161,9 +170,14 @@ function LeafCategoryRow({ cat, budget, spent, note, onBudgetChange, onNoteChang
           </div>
           {incPct !== null && <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{incPct}%</span>}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <span style={{ fontSize: 13, color: isOver ? 'var(--danger)' : 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(spent)}</span>
+        <div
+          onClick={onToggleExpand}
+          style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', borderRadius: 6, padding: '2px 6px', transition: 'background .15s' }}
+          title="Clicca per evidenziare e vedere le spese connesse"
+        >
+          <span style={{ fontSize: 13, color: isOver ? 'var(--danger)' : isExpanded ? 'var(--accent)' : 'var(--text-secondary)', fontWeight: isExpanded ? 700 : 500, fontVariantNumeric: 'tabular-nums' }}>{fmt(spent)}</span>
           {spentPct !== null && <span style={{ fontSize: 10, color: isOver ? 'var(--danger)' : 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{spentPct}%</span>}
+          <span style={{ fontSize: 10, opacity: isExpanded ? 1 : 0.4, color: isExpanded ? 'var(--accent)' : 'var(--text-tertiary)' }}>🔍</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           {budget > 0
@@ -199,6 +213,96 @@ function LeafCategoryRow({ cat, budget, spent, note, onBudgetChange, onNoteChang
           )}
         </div>
       )}
+      {/* Connected Transactions Panel */}
+      {isExpanded && onToggleExpand && (
+        <ConnectedTransactionsPanel
+          catName={cat.name}
+          catColor={cat.color}
+          catEmoji={cat.emoji}
+          items={connectedItems}
+          monthName={monthName}
+          onClose={onToggleExpand}
+        />
+      )}
+    </div>
+  )
+}
+
+function IncomeCategoryRow({
+  cat,
+  planned,
+  received,
+  incomeTotal,
+  isExpanded,
+  onToggleExpand,
+  connectedItems = [],
+  monthName = '',
+  onPlannedChange,
+  isChild = false,
+}: {
+  cat: BudgetCategory
+  planned: number
+  received: number
+  incomeTotal: number
+  isExpanded?: boolean
+  onToggleExpand?: () => void
+  connectedItems?: ConnectedItem[]
+  monthName?: string
+  onPlannedChange: (v: number) => void
+  isChild?: boolean
+}) {
+  const { fmt } = useFormatters()
+  const sharePct = incomeTotal > 0 && planned > 0 ? Math.round((planned / incomeTotal) * 100) : null
+
+  return (
+    <div
+      style={{
+        borderBottom: '1px solid var(--border-subtle)',
+        transition: 'all .15s',
+        background: isExpanded ? 'color-mix(in oklch, var(--success) 10%, var(--bg-surface))' : undefined,
+        borderLeft: isExpanded ? '3px solid var(--success)' : '3px solid transparent',
+      }}
+      onMouseEnter={(e) => { if (!isExpanded) e.currentTarget.style.background = 'var(--bg-elevated)' }}
+      onMouseLeave={(e) => { if (!isExpanded) e.currentTarget.style.background = '' }}
+    >
+      <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 140px 110px 90px', padding: '9px 20px', paddingLeft: isChild ? 44 : 20, alignItems: 'center' }}>
+        <div />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={onToggleExpand} title="Clicca per evidenziare e vedere le entrate connesse">
+          <div style={{ width: 26, height: 26, borderRadius: 7, background: `${cat.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, flexShrink: 0 }}>{cat.emoji}</div>
+          <span className="ledgernest-budget-cat-name" style={{ fontWeight: isExpanded ? 700 : 600, fontSize: 13, color: isExpanded ? 'var(--success)' : 'var(--text-primary)' }}>{cat.name}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg-elevated)', borderRadius: 8, padding: '3px 8px', border: '1px solid var(--border-subtle)' }}>
+            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>€</span>
+            <input
+              type="number" value={planned} min={0} step={10}
+              onChange={(e) => onPlannedChange(parseFloat(e.target.value) || 0)}
+              style={{ width: 58, background: 'transparent', border: 'none', outline: 'none', fontSize: 13, fontWeight: 700, textAlign: 'right', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}
+            />
+          </div>
+          {sharePct !== null && <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>{sharePct}%</span>}
+        </div>
+        <div
+          onClick={onToggleExpand}
+          style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', borderRadius: 6, padding: '2px 6px', transition: 'background .15s' }}
+          title="Clicca per evidenziare e vedere le entrate connesse"
+        >
+          <span style={{ fontSize: 13, color: isExpanded ? 'var(--success)' : 'var(--text-secondary)', fontWeight: isExpanded ? 700 : 500, fontVariantNumeric: 'tabular-nums' }}>{fmt(received)}</span>
+          <span style={{ fontSize: 10, opacity: isExpanded ? 1 : 0.4, color: isExpanded ? 'var(--success)' : 'var(--text-tertiary)' }}>🔍</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}><AttesoPill planned={planned} received={received} /></div>
+      </div>
+      {/* Connected Transactions Panel */}
+      {isExpanded && onToggleExpand && (
+        <ConnectedTransactionsPanel
+          catName={cat.name}
+          catColor={cat.color}
+          catEmoji={cat.emoji}
+          items={connectedItems}
+          monthName={monthName}
+          onClose={onToggleExpand}
+        />
+      )}
     </div>
   )
 }
@@ -225,7 +329,7 @@ export default function BudgetPage() {
   const toggleSection = (key: string) => setCollapsed((p) => { const n = new Set(p); n.has(key) ? n.delete(key) : n.add(key); return n })
 
   const {
-    budgetCategories, budgetGroups, transactions, goals, updateGoal, recurringItems,
+    accounts, budgetCategories, budgetGroups, transactions, goals, updateGoal, recurringItems,
     budgetPlans, setMonthPlanIncome, setMonthPlanCategory, setGroupBudget, setMonthPlanCategoryNote,
     setMonthPlanAssetAllocation, setMonthPlanIncomeSources, setMonthPlanInvestConfig, resetMonthPlan,
   } = useFinanceStore()
@@ -265,6 +369,7 @@ export default function BudgetPage() {
 
   const [sharedExpenses, setSharedExpenses] = useState<SharedExpense[]>([])
   const [includeSharedExpenses, setIncludeSharedExpenses] = useState(true)
+  const [expandedCatId, setExpandedCatId] = useState<string | null>(null)
 
   useEffect(() => {
     let mounted = true
@@ -276,6 +381,106 @@ export default function BudgetPage() {
       .catch(() => {})
     return () => { mounted = false }
   }, [])
+
+  // ── connected items breakdown for a category / subcategory ──────────────
+  const getConnectedItems = useCallback((catOrSubId: string): ConnectedItem[] => {
+    const matchingCats = budgetCategories.filter(
+      (c) => c.id === catOrSubId || c.parentId === catOrSubId || c.group === catOrSubId
+    )
+    const catKeys = new Set<string>()
+    matchingCats.forEach((c) => {
+      catKeys.add(c.id.toLowerCase().trim())
+      catKeys.add(c.name.toLowerCase().trim())
+    })
+    catKeys.add(catOrSubId.toLowerCase().trim())
+
+    const items: ConnectedItem[] = []
+
+    // 1. Local transactions
+    const monthTxs = transactions.filter((t) => t.date && t.date.startsWith(month))
+    for (const tx of monthTxs) {
+      if (!tx.category) continue
+      const txCatKey = tx.category.toLowerCase().trim()
+      const isMatch = catKeys.has(txCatKey) || matchingCats.some((c) => c.id === tx.category || c.name === tx.category || c.name.toLowerCase() === txCatKey)
+
+      if (isMatch) {
+        const acct = accounts.find((a) => a.id === tx.accountId)
+        let isShared = false
+        let sharedDetails: ConnectedItem['sharedDetails'] = undefined
+
+        if (includeSharedExpenses && myEmail && sharedExpenses.length > 0) {
+          const exp = sharedExpenses.find(
+            (e) => (e.source_tx_id && e.source_tx_id === tx.id) ||
+              (e.date === tx.date && Math.abs(e.amount - tx.amount) < 0.01)
+          )
+          if (exp) {
+            isShared = true
+            const iPaid = exp.payer_email === myEmail
+            sharedDetails = {
+              iPaid,
+              totalAmount: exp.amount,
+              myShare: iPaid ? exp.amount * (1 - exp.other_share) : exp.amount * exp.other_share,
+              partnerShare: iPaid ? exp.amount * exp.other_share : exp.amount * (1 - exp.other_share),
+            }
+          }
+        }
+
+        items.push({
+          id: tx.id,
+          date: tx.date,
+          description: tx.description,
+          merchant: tx.merchant,
+          accountName: acct?.name,
+          amount: tx.amount,
+          type: tx.type,
+          note: tx.note,
+          isShared,
+          sharedDetails,
+        })
+      }
+    }
+
+    // 2. Shared expenses paid by partner (not in local transactions)
+    if (includeSharedExpenses && myEmail && sharedExpenses.length > 0) {
+      const monthTxIds = new Set(monthTxs.map((t) => t.id))
+      const monthSharedExps = sharedExpenses.filter((e) => e.date && e.date.startsWith(month))
+
+      for (const exp of monthSharedExps) {
+        if (!exp.category) continue
+        const expCatKey = exp.category.toLowerCase().trim()
+        const isMatch = catKeys.has(expCatKey) || matchingCats.some((c) => c.id === exp.category || c.name === exp.category || c.name.toLowerCase() === expCatKey)
+
+        if (isMatch) {
+          const hasLocalTx = exp.source_tx_id
+            ? monthTxIds.has(exp.source_tx_id)
+            : monthTxIds.has(exp.id) || monthTxs.some((t) => t.date === exp.date && Math.abs(t.amount - exp.amount) < 0.01)
+
+          if (!hasLocalTx) {
+            const iPaid = exp.payer_email === myEmail
+            const myShare = iPaid ? exp.amount * (1 - exp.other_share) : exp.amount * exp.other_share
+            items.push({
+              id: exp.id,
+              date: exp.date,
+              description: exp.description,
+              accountName: iPaid ? 'Pagato da te (no tx)' : 'Pagato da partner',
+              amount: myShare,
+              type: 'expense',
+              note: exp.notes ?? undefined,
+              isShared: true,
+              sharedDetails: {
+                iPaid,
+                totalAmount: exp.amount,
+                myShare,
+                partnerShare: exp.amount - myShare,
+              },
+            })
+          }
+        }
+      }
+    }
+
+    return items.sort((a, b) => b.date.localeCompare(a.date))
+  }, [transactions, sharedExpenses, budgetCategories, month, accounts, includeSharedExpenses, myEmail])
 
   // ── leaf expense categories (no subcategory headers) ──────
   const leafExpenseCats = useMemo(
@@ -965,37 +1170,23 @@ export default function BudgetPage() {
                       {leaves.map((cat) => {
                         const planned  = planIncomeSources[cat.id] ?? 0
                         const received = receivedByCategory[cat.id] ?? 0
-                        const sharePct = income > 0 && planned > 0 ? Math.round((planned / income) * 100) : null
                         return (
-                          <div key={cat.id}
-                            style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background .1s' }}
-                            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-elevated)')}
-                            onMouseLeave={(e) => (e.currentTarget.style.background = '')}
-                          >
-                            <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 140px 110px 90px', padding: '9px 20px', paddingLeft: 44, alignItems: 'center' }}>
-                              <div />
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <div style={{ width: 26, height: 26, borderRadius: 7, background: `${cat.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, flexShrink: 0 }}>{cat.emoji}</div>
-                                <span className="ledgernest-budget-cat-name" style={{ fontWeight: 600, fontSize: 13 }}>{cat.name}</span>
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg-elevated)', borderRadius: 8, padding: '3px 8px', border: '1px solid var(--border-subtle)' }}>
-                                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>€</span>
-                                  <input
-                                    type="number" value={planned} min={0} step={10}
-                                    onChange={(e) => {
-                                      const updated = { ...planIncomeSources, [cat.id]: parseFloat(e.target.value) || 0 }
-                                      setMonthPlanIncomeSources(month, updated)
-                                    }}
-                                    style={{ width: 58, background: 'transparent', border: 'none', outline: 'none', fontSize: 13, fontWeight: 700, textAlign: 'right', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}
-                                  />
-                                </div>
-                                {sharePct !== null && <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>{sharePct}%</span>}
-                              </div>
-                              <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(received)}</div>
-                              <div style={{ display: 'flex', justifyContent: 'flex-end' }}><AttesoPill planned={planned} received={received} /></div>
-                            </div>
-                          </div>
+                          <IncomeCategoryRow
+                            key={cat.id}
+                            cat={cat}
+                            planned={planned}
+                            received={received}
+                            incomeTotal={income}
+                            isExpanded={expandedCatId === cat.id}
+                            onToggleExpand={() => setExpandedCatId(expandedCatId === cat.id ? null : cat.id)}
+                            connectedItems={getConnectedItems(cat.id)}
+                            monthName={monthName}
+                            onPlannedChange={(v) => {
+                              const updated = { ...planIncomeSources, [cat.id]: v }
+                              setMonthPlanIncomeSources(month, updated)
+                            }}
+                            isChild={true}
+                          />
                         )
                       })}
                     </div>
@@ -1005,37 +1196,23 @@ export default function BudgetPage() {
                 {incomeDirectCats.map((cat) => {
                   const planned  = planIncomeSources[cat.id] ?? 0
                   const received = receivedByCategory[cat.id] ?? 0
-                  const sharePct = income > 0 && planned > 0 ? Math.round((planned / income) * 100) : null
                   return (
-                    <div key={cat.id}
-                      style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background .1s' }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-elevated)')}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = '')}
-                    >
-                      <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 140px 110px 90px', padding: '9px 20px', alignItems: 'center' }}>
-                        <div />
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ width: 28, height: 28, borderRadius: 7, background: `${cat.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>{cat.emoji}</div>
-                          <span className="ledgernest-budget-cat-name" style={{ fontWeight: 600, fontSize: 13 }}>{cat.name}</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg-elevated)', borderRadius: 8, padding: '3px 8px', border: '1px solid var(--border-subtle)' }}>
-                            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>€</span>
-                            <input
-                              type="number" value={planned} min={0} step={10}
-                              onChange={(e) => {
-                                const updated = { ...planIncomeSources, [cat.id]: parseFloat(e.target.value) || 0 }
-                                setMonthPlanIncomeSources(month, updated)
-                              }}
-                              style={{ width: 58, background: 'transparent', border: 'none', outline: 'none', fontSize: 13, fontWeight: 700, textAlign: 'right', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}
-                            />
-                          </div>
-                          {sharePct !== null && <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>{sharePct}%</span>}
-                        </div>
-                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(received)}</div>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}><AttesoPill planned={planned} received={received} /></div>
-                      </div>
-                    </div>
+                    <IncomeCategoryRow
+                      key={cat.id}
+                      cat={cat}
+                      planned={planned}
+                      received={received}
+                      incomeTotal={income}
+                      isExpanded={expandedCatId === cat.id}
+                      onToggleExpand={() => setExpandedCatId(expandedCatId === cat.id ? null : cat.id)}
+                      connectedItems={getConnectedItems(cat.id)}
+                      monthName={monthName}
+                      onPlannedChange={(v) => {
+                        const updated = { ...planIncomeSources, [cat.id]: v }
+                        setMonthPlanIncomeSources(month, updated)
+                      }}
+                      isChild={false}
+                    />
                   )
                 })}
               </>
@@ -1097,24 +1274,74 @@ export default function BudgetPage() {
                 {/* Subcats → leaves */}
                 {subcats.map((sub) => {
                   const subLeaves = allLeaves.filter((c) => c.parentId === sub.id)
+                  const isSubExpanded = expandedCatId === sub.id
                   return (
                     <div key={sub.id}>
                       {/* Subcategory divider — grid-aligned with leaf rows */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 140px 110px 90px', padding: '6px 20px', background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-subtle)', alignItems: 'center' }}>
+                      <div
+                        onClick={() => setExpandedCatId(isSubExpanded ? null : sub.id)}
+                        style={{
+                          display: 'grid', gridTemplateColumns: '36px 1fr 140px 110px 90px', padding: '6px 20px',
+                          background: isSubExpanded ? 'color-mix(in oklch, var(--accent) 12%, var(--bg-surface))' : 'var(--bg-surface)',
+                          borderBottom: '1px solid var(--border-subtle)', alignItems: 'center', cursor: 'pointer',
+                          transition: 'background .15s',
+                        }}
+                        title="Clicca per evidenziare e vedere le spese connesse della sottocategoria"
+                      >
                         <div style={{ width: 28, height: 28, borderRadius: 8, background: `${sub.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, justifySelf: 'center' }}>
                           {sub.emoji}
                         </div>
-                        <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--text-tertiary)', paddingLeft: 8 }}>{sub.name}</span>
+                        <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.09em', textTransform: 'uppercase', color: isSubExpanded ? 'var(--accent)' : 'var(--text-tertiary)', paddingLeft: 8 }}>
+                          {sub.name} <span style={{ fontSize: 9, opacity: 0.6, textTransform: 'none' }}>🔍</span>
+                        </span>
                         <div /><div /><div />
                       </div>
+                      {isSubExpanded && (
+                        <ConnectedTransactionsPanel
+                          catName={sub.name}
+                          catColor={sub.color}
+                          catEmoji={sub.emoji}
+                          items={getConnectedItems(sub.id)}
+                          monthName={monthName}
+                          onClose={() => setExpandedCatId(null)}
+                        />
+                      )}
                       {subLeaves.map((cat) => (
-                        <LeafCategoryRow key={cat.id} cat={cat} budget={getCatBudget(cat.id)} spent={spentByCategory[cat.id] ?? 0} note={plan.categoryNotes?.[cat.id]} onBudgetChange={(v) => setMonthPlanCategory(month, cat.id, v)} onNoteChange={(v) => setMonthPlanCategoryNote(month, cat.id, v)} income={income} sharedAdj={catSharedAdj[cat.id]} />
+                        <LeafCategoryRow
+                          key={cat.id}
+                          cat={cat}
+                          budget={getCatBudget(cat.id)}
+                          spent={spentByCategory[cat.id] ?? 0}
+                          note={plan.categoryNotes?.[cat.id]}
+                          onBudgetChange={(v) => setMonthPlanCategory(month, cat.id, v)}
+                          onNoteChange={(v) => setMonthPlanCategoryNote(month, cat.id, v)}
+                          income={income}
+                          sharedAdj={catSharedAdj[cat.id]}
+                          isExpanded={expandedCatId === cat.id}
+                          onToggleExpand={() => setExpandedCatId(expandedCatId === cat.id ? null : cat.id)}
+                          connectedItems={getConnectedItems(cat.id)}
+                          monthName={monthName}
+                        />
                       ))}
                     </div>
                   )
                 })}
                 {directLeaves.map((cat) => (
-                  <LeafCategoryRow key={cat.id} cat={cat} budget={getCatBudget(cat.id)} spent={spentByCategory[cat.id] ?? 0} onBudgetChange={(v) => setMonthPlanCategory(month, cat.id, v)} onNoteChange={(v) => setMonthPlanCategoryNote(month, cat.id, v)} income={income} sharedAdj={catSharedAdj[cat.id]} />
+                  <LeafCategoryRow
+                    key={cat.id}
+                    cat={cat}
+                    budget={getCatBudget(cat.id)}
+                    spent={spentByCategory[cat.id] ?? 0}
+                    note={plan.categoryNotes?.[cat.id]}
+                    onBudgetChange={(v) => setMonthPlanCategory(month, cat.id, v)}
+                    onNoteChange={(v) => setMonthPlanCategoryNote(month, cat.id, v)}
+                    income={income}
+                    sharedAdj={catSharedAdj[cat.id]}
+                    isExpanded={expandedCatId === cat.id}
+                    onToggleExpand={() => setExpandedCatId(expandedCatId === cat.id ? null : cat.id)}
+                    connectedItems={getConnectedItems(cat.id)}
+                    monthName={monthName}
+                  />
                 ))}
 
                 </>)}
