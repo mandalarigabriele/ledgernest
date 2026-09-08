@@ -214,9 +214,33 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
     acctPositions.reduce((sum, p) => sum + p.avgPrice * p.quantity, 0),
     [acctPositions])
   const [syncing, setSyncing]         = useState(false)
+  const [relinking, setRelinking]     = useState(false)
   const [syncMsg, setSyncMsg]         = useState<{ text: string; ok: boolean } | null>(null)
   const [rateLimited, setRateLimited] = useState(false)
   const [syncMenuOpen, setSyncMenuOpen] = useState(false)
+
+  const handleRelink = useCallback(async () => {
+    setRelinking(true)
+    setSyncMenuOpen(false)
+    try {
+      const bankName = account.broker || account.name || 'Credit Agricole Cariparma'
+      const res = await fetch('/api/banking/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bankName }),
+      })
+      const data = await res.json() as { url?: string; error?: string }
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        setSyncMsg({ text: data.error ?? 'Errore connessione', ok: false })
+        setRelinking(false)
+      }
+    } catch {
+      setSyncMsg({ text: 'Errore di rete', ok: false })
+      setRelinking(false)
+    }
+  }, [account.broker, account.name])
 
   const handleObSync = useCallback(async (mode: 'delta' | 'force' | 'hard-reset' = 'delta') => {
     if (!account.bankingUid) return
@@ -427,7 +451,7 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
                   position: 'absolute', bottom: '100%', right: 0, marginBottom: 4,
                   background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
                   borderRadius: 10, padding: '4px', display: 'flex', flexDirection: 'column',
-                  gap: 2, zIndex: 50, minWidth: 190, boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                  gap: 2, zIndex: 50, minWidth: 200, boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
                 }}>
                   {([
                     { mode: 'delta' as const,     label: 'Delta',      desc: 'Solo nuovi, rispetta eliminati' },
@@ -444,6 +468,18 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
                       <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 400 }}>{desc}</span>
                     </button>
                   ))}
+                  <div style={{ height: 1, background: 'var(--border-subtle)', margin: '2px 0' }} />
+                  <button
+                    className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm"
+                    style={{ justifyContent: 'flex-start', flexDirection: 'column', alignItems: 'flex-start', padding: '6px 10px', gap: 1 }}
+                    onClick={handleRelink}
+                    disabled={relinking}
+                  >
+                    <span style={{ fontWeight: 600, fontSize: 12, color: '#2dd4bf' }}>
+                      {relinking ? 'Reindirizzamento…' : '🔗 Ricollega banca'}
+                    </span>
+                    <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 400 }}>Rinnova autorizzazione PSD2</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -461,13 +497,28 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
         </div>
         {syncMsg && (
           <div style={{
-            fontSize: 11, textAlign: 'center', padding: '3px 8px',
+            fontSize: 11, textAlign: 'center', padding: '4px 8px',
             borderRadius: 6, fontWeight: 500,
             color: syncMsg.ok ? '#2dd4bf' : 'var(--danger)',
             background: syncMsg.ok ? 'rgba(45,212,191,.1)' : 'color-mix(in oklch, var(--danger) 12%, transparent)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flexWrap: 'wrap',
           }}>
-            {syncMsg.text}
+            <span>{syncMsg.text}</span>
+            {!syncMsg.ok && account.bankingUid && (
+              <button
+                onClick={handleRelink}
+                disabled={relinking}
+                style={{
+                  border: 'none', background: 'var(--danger)', color: '#fff',
+                  fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4, cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                {relinking ? '…' : 'Ricollega'}
+              </button>
+            )}
           </div>
+        )}
         )}
       </div>
     </div>

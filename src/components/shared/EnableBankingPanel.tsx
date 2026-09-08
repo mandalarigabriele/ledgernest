@@ -46,11 +46,11 @@ export default function EnableBankingPanel() {
     setSessions(data.sessions ?? [])
     setEbAccounts(data.accounts ?? [])
 
-    // Backfill bankingUid on local accounts that were created before the field existed
+    // Sync bankingUid on local accounts if it changed or was missing
     for (const acct of data.accounts ?? []) {
       if (!acct.finance_account_id || !acct.uid) continue
       const local = useFinanceStore.getState().accounts.find((a) => a.id === acct.finance_account_id)
-      if (local && !local.bankingUid) {
+      if (local && local.bankingUid !== acct.uid) {
         useFinanceStore.getState().updateAccount(acct.finance_account_id, { bankingUid: acct.uid })
       }
     }
