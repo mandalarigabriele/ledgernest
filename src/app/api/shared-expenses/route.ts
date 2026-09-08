@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
 
   if (!amount || amount <= 0) return NextResponse.json({ error: 'amount must be positive' }, { status: 400 })
   if (!description?.trim()) return NextResponse.json({ error: 'description is required' }, { status: 400 })
+  if (!category?.trim()) return NextResponse.json({ error: 'category is required' }, { status: 400 })
   if (!date) return NextResponse.json({ error: 'date is required' }, { status: 400 })
 
   // payer must be a member of the group

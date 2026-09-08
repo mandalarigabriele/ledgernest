@@ -35,6 +35,7 @@ export default function MovementModal() {
   const [shared,       setShared]       = useState(false)
   const [payerEmail,   setPayerEmail]   = useState('')
   const [otherShare,   setOtherShare]   = useState('50')
+  const [error,        setError]        = useState('')
 
   useEffect(() => {
     fetch('/api/sharing-group')
@@ -52,11 +53,18 @@ export default function MovementModal() {
   function handleTypeChange(next: 'income' | 'expense') {
     setType(next)
     setCategory('')
+    setError('')
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!description || !amount || !accountId) return
+
+    if (shared && (!category || !category.trim())) {
+      setError(ts('errorCategory'))
+      return
+    }
+    setError('')
 
     const txId = addTransaction({
       description,
@@ -136,8 +144,10 @@ export default function MovementModal() {
 
             {/* Category */}
             <div className="ledgernest-field">
-              <label className="ledgernest-label">{t('category')}</label>
-              <CategoryPicker value={category} onChange={setCategory} typeFilter={type} containerRef={modalRef} />
+              <label className="ledgernest-label">
+                {t('category')} {shared && <span style={{ color: 'var(--danger)' }}>*</span>}
+              </label>
+              <CategoryPicker value={category} onChange={(cat) => { setCategory(cat); setError('') }} typeFilter={type} containerRef={modalRef} />
             </div>
 
             {/* Account */}
@@ -240,6 +250,8 @@ export default function MovementModal() {
             )}
 
           </div>
+
+          {error && <div style={{ padding: '0 24px 4px', color: 'var(--danger)', fontSize: 13 }}>{error}</div>}
 
           <div className="ledgernest-modal-footer">
             <button type="button" className="ledgernest-btn ledgernest-btn-ghost" onClick={closeModal}>{tc('cancel')}</button>

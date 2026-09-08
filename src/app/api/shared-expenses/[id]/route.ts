@@ -71,6 +71,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: 'payerEmail is not a group member' }, { status: 400 })
   }
 
+  if (body.category !== undefined && (!body.category || !body.category.trim())) {
+    return NextResponse.json({ error: 'category is required' }, { status: 400 })
+  }
+
   db.prepare(`
     UPDATE shared_expenses SET
       amount = COALESCE(?, amount),

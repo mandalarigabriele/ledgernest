@@ -118,6 +118,7 @@ function AddExpenseModal({
     if (!description.trim()) { setError(t('errorDescription')); return }
     const amt = parseFloat(amount)
     if (isNaN(amt) || amt <= 0) { setError(t('errorAmount')); return }
+    if (!category || !category.trim()) { setError(t('errorCategory')); return }
     setSaving(true); setError('')
 
     const share = Math.min(1, Math.max(0, parseFloat(otherShare) / 100))
@@ -198,7 +199,9 @@ function AddExpenseModal({
 
             {/* Category */}
             <div className="ledgernest-field">
-              <label className="ledgernest-label">{tm('category')}</label>
+              <label className="ledgernest-label">
+                {t('fieldCategory')} <span style={{ color: 'var(--danger)' }}>*</span>
+              </label>
               <CategoryPicker value={category} onChange={setCategory} typeFilter={expense ? 'expense' : type} containerRef={modalRef} />
             </div>
 

@@ -347,10 +347,14 @@ function AddAsRecurringModal({ tx, onClose }: { tx: TxSnap; onClose: () => void 
 function MarkAsSharedModal({ tx, onClose, onShared }: { tx: Transaction; onClose: () => void; onShared: (txId: string) => void }) {
   const tl = useTranslations('movimenti')
   const tc = useTranslations('common')
+  const ts = useTranslations('condivisione')
+  const { updateTransaction } = useFinanceStore()
+  const [category, setCategory] = useState(tx.category || '')
   const [otherShare, setOtherShare] = useState('50')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
+  const modalRef = useRef<HTMLDivElement>(null)
 
   const inputSt: React.CSSProperties = {
     padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border-subtle)',
@@ -363,7 +367,14 @@ function MarkAsSharedModal({ tx, onClose, onShared }: { tx: Transaction; onClose
   }
 
   async function handleAdd() {
+    if (!category || !category.trim()) {
+      setError(ts('errorCategory'))
+      return
+    }
     setSaving(true); setError('')
+    if (category !== tx.category) {
+      updateTransaction(tx.id, { category })
+    }
     const share = Math.min(1, Math.max(0, parseFloat(otherShare) / 100))
     const res = await fetch('/api/shared-expenses', {
       method: 'POST',
@@ -371,7 +382,7 @@ function MarkAsSharedModal({ tx, onClose, onShared }: { tx: Transaction; onClose
       body: JSON.stringify({
         amount: tx.amount,
         description: tx.description,
-        category: tx.category,
+        category: category.trim(),
         date: tx.date,
         otherShare: share,
         sourceTxId: tx.id,
@@ -391,7 +402,7 @@ function MarkAsSharedModal({ tx, onClose, onShared }: { tx: Transaction; onClose
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, padding: '28px 32px', width: 420, display: 'flex', flexDirection: 'column', gap: 18, boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
+      <div ref={modalRef} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, padding: '28px 32px', width: 420, display: 'flex', flexDirection: 'column', gap: 18, boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontSize: 16, fontWeight: 700 }}>{tl('markSharedTitle')}</div>
           <button className="ledgernest-icon-btn" onClick={onClose}><Icon name="close" size={16} /></button>
@@ -401,7 +412,7 @@ function MarkAsSharedModal({ tx, onClose, onShared }: { tx: Transaction; onClose
         <div style={{ background: 'var(--bg-elevated)', borderRadius: 12, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <div style={{ fontWeight: 600, fontSize: 14 }}>{tx.description}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{tx.date} · {tx.category}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{tx.date}</div>
           </div>
           <div style={{ fontSize: 16, fontWeight: 700, color: tx.type === 'expense' ? 'var(--danger)' : 'var(--success)' }}>
             {new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR' }).format(tx.amount)}
@@ -409,6 +420,12 @@ function MarkAsSharedModal({ tx, onClose, onShared }: { tx: Transaction; onClose
         </div>
 
         <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{tl('markSharedDesc')}</div>
+
+        {/* Category selection */}
+        <div>
+          <div style={labelSt}>{ts('fieldCategory')} <span style={{ color: 'var(--danger)' }}>*</span></div>
+          <CategoryPicker value={category} onChange={(cat) => { setCategory(cat); setError('') }} typeFilter={tx.type === 'expense' ? 'expense' : 'income'} containerRef={modalRef} />
+        </div>
 
         <div>
           <div style={labelSt}>{tl('markSharedSplit', { pct: otherShare })}</div>
