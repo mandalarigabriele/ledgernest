@@ -91,6 +91,141 @@ function AttesoPill({ planned, received }: { planned: number; received: number }
   )
 }
 
+interface ConnectedItem {
+  id: string
+  date: string
+  description: string
+  merchant?: string
+  accountName?: string
+  amount: number
+  type: 'income' | 'expense' | 'transfer'
+  note?: string
+  isShared?: boolean
+  sharedDetails?: {
+    iPaid: boolean
+    totalAmount: number
+    myShare: number
+    partnerShare: number
+  }
+}
+
+function ConnectedTransactionsPanel({
+  catName,
+  catColor,
+  catEmoji,
+  items,
+  monthName,
+  onClose,
+}: {
+  catName: string
+  catColor: string
+  catEmoji: string
+  items: ConnectedItem[]
+  monthName: string
+  onClose: () => void
+}) {
+  const { fmt } = useFormatters()
+  const totalAmount = items.reduce((s, i) => s + i.amount, 0)
+
+  return (
+    <div
+      style={{
+        margin: '8px 20px 12px 64px',
+        padding: '12px 16px',
+        background: 'var(--bg-surface)',
+        border: '1px solid var(--border-subtle)',
+        borderLeft: `4px solid ${catColor || 'var(--accent)'}`,
+        borderRadius: 12,
+        boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 16 }}>{catEmoji}</span>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)' }}>
+              Movimenti connessi: {catName} ({monthName})
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 1 }}>
+              {items.length} {items.length === 1 ? 'movimento' : 'movimenti'} · Totale: <strong style={{ color: 'var(--text-primary)' }}>{fmt(totalAmount)}</strong>
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={onClose}
+          style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: 6,
+            padding: '3px 10px',
+            fontSize: 11,
+            fontWeight: 600,
+            cursor: 'pointer',
+            color: 'var(--text-secondary)',
+          }}
+        >
+          ✕ Chiudi
+        </button>
+      </div>
+
+      {items.length === 0 ? (
+        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontStyle: 'italic', padding: '6px 0' }}>
+          Nessuna transazione registrata per questa categoria nel mese.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 260, overflowY: 'auto', paddingRight: 2 }}>
+          {items.map((item) => (
+            <div
+              key={item.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '8px 12px',
+                borderRadius: 8,
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border-subtle)',
+                fontSize: 12,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0, fontWeight: 600 }}>
+                  {new Date(item.date + 'T12:00:00').toLocaleDateString(undefined, { day: '2-digit', month: 'short' })}
+                </span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-primary)' }}>
+                    {item.merchant ? `${item.merchant} · ` : ''}{item.description}
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 8, marginTop: 1 }}>
+                    {item.accountName && <span>💳 {item.accountName}</span>}
+                    {item.note && <span>✎ {item.note}</span>}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
+                <div style={{
+                  fontWeight: 700,
+                  fontVariantNumeric: 'tabular-nums',
+                  color: item.type === 'income' ? 'var(--success)' : 'var(--text-primary)',
+                  fontSize: 13,
+                }}>
+                  {item.type === 'income' ? '+' : '−'}{fmt(item.amount)}
+                </div>
+                {item.isShared && item.sharedDetails && (
+                  <div style={{ fontSize: 10, color: '#2dd4bf', fontWeight: 600, marginTop: 1 }}>
+                    🤝 {item.sharedDetails.iPaid ? `Spesa tot. ${fmt(item.sharedDetails.totalAmount)}` : `Quota partner`}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function LeafCategoryRow({ cat, budget, spent, note, onBudgetChange, onNoteChange, income = 0, sharedAdj, isExpanded, onToggleExpand, connectedItems = [], monthName = '' }: {
   cat: BudgetCategory
   budget: number
