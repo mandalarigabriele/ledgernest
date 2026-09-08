@@ -45,7 +45,17 @@ async function apiFetch<T>(path: string, opts: RequestInit = {}): Promise<T> {
     const body = await res.text()
     throw new Error(`Enable Banking API ${res.status}: ${body}`)
   }
-  return res.json() as Promise<T>
+  const contentType = res.headers.get('content-type') || ''
+  if (!contentType.includes('application/json')) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`Enable Banking API returned non-JSON response (${res.status}): ${text.slice(0, 100)}`)
+  }
+  try {
+    return await res.json() as T
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    throw new Error(`Enable Banking API JSON parse error: ${msg}`)
+  }
 }
 
 // ---- Step 1: POST /auth — initiate PSU authorization -----------
@@ -139,15 +149,15 @@ export interface EBTransaction {
   bookingDate?: string
   value_date?: string
   valueDate?: string
-  transaction_amount?: { amount: string; currency: string }
-  transactionAmount?: { amount: string; currency: string }
+  transaction_amount?: { amount: string | number; currency?: string }
+  transactionAmount?: { amount: string | number; currency?: string }
   credit_debit_indicator?: 'CRDT' | 'DBIT'
   creditDebitIndicator?: 'CRDT' | 'DBIT'
   creditor_name?: string
-  creditor?: { name?: string }
+  creditor?: { name?: string } | string
   debtor_name?: string
-  debtor?: { name?: string }
-  remittance_information?: string[]
+  debtor?: { name?: string } | string
+  remittance_information?: string | string[] | { unstructured?: string | string[]; structured?: string } | Array<{ unstructured?: string; structured?: string } | string>
 }
 
 export async function getTransactions(
@@ -178,24 +188,67 @@ export function resolveIban(acct: EBSessionAccount): string | null {
 
 export function resolveTransactionAmount(tx: EBTransaction): number {
   const amt = tx.transaction_amount ?? tx.transactionAmount
-  if (!amt) return 0
-  const value = parseFloat(amt.amount)
+  if (!amt || amt.amount == null) return 0
+  const value = typeof amt.amount === 'number' ? amt.amount : parseFloat(String(amt.amount))
+  if (isNaN(value)) return 0
   const indicator = tx.credit_debit_indicator ?? tx.creditDebitIndicator
   return indicator === 'DBIT' ? -value : value
 }
 
 export function resolveTransactionDate(tx: EBTransaction): string {
-  return tx.booking_date ?? tx.bookingDate ?? tx.value_date ?? tx.valueDate ?? new Date().toISOString().slice(0, 10)
+  const dateStr = tx.booking_date ?? tx.bookingDate ?? tx.value_date ?? tx.valueDate
+  if (typeof dateStr === 'string' && dateStr.length >= 10) return dateStr.slice(0, 10)
+  return new Date().toISOString().slice(0, 10)
 }
 
 export function resolveTransactionId(tx: EBTransaction): string {
-  return tx.entry_reference ?? tx.entryReference ?? tx.transaction_id ?? ''
+  const id = tx.entry_reference ?? tx.entryReference ?? tx.transaction_id
+  return id != null ? String(id) : ''
 }
 
 export function resolveCreditor(tx: EBTransaction): string | undefined {
-  return tx.creditor_name ?? tx.creditor?.name ?? undefined
+  if (tx.creditor_name) return String(tx.creditor_name)
+  if (typeof tx.creditor === 'string') return tx.creditor
+  if (tx.creditor && typeof tx.creditor === 'object' && 'name' in tx.creditor && tx.creditor.name) {
+    return String(tx.creditor.name)
+  }
+  return undefined
 }
 
 export function resolveDebtor(tx: EBTransaction): string | undefined {
-  return tx.debtor_name ?? tx.debtor?.name ?? undefined
+  if (tx.debtor_name) return String(tx.debtor_name)
+  if (typeof tx.debtor === 'string') return tx.debtor
+  if (tx.debtor && typeof tx.debtor === 'object' && 'name' in tx.debtor && tx.debtor.name) {
+    return String(tx.debtor.name)
+  }
+  return undefined
+}
+
+export function resolveRemittance(tx: EBTransaction): string {
+  const rem = tx.remittance_information
+  if (!rem) return ''
+  if (typeof rem === 'string') return rem.trim()
+  if (Array.isArray(rem)) {
+    return rem
+      .map((r) => {
+        if (typeof r === 'string') return r
+        if (r && typeof r === 'object') {
+          const obj = r as Record<string, unknown>
+          if (typeof obj.unstructured === 'string') return obj.unstructured
+          if (typeof obj.structured === 'string') return obj.structured
+        }
+        return ''
+      })
+      .filter(Boolean)
+      .join(' ')
+      .trim()
+  }
+  if (typeof rem === 'object') {
+    const obj = rem as Record<string, unknown>
+    if (typeof obj.unstructured === 'string') return obj.unstructured.trim()
+    if (Array.isArray(obj.unstructured)) return obj.unstructured.join(' ').trim()
+    if (typeof obj.structured === 'string') return obj.structured.trim()
+  }
+  return ''
+}
 }

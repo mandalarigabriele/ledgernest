@@ -5,7 +5,7 @@ import { getDb } from '@/lib/db/schema'
 import {
   getTransactions, getBalances, getClosingBalance,
   resolveTransactionAmount, resolveTransactionDate, resolveTransactionId,
-  resolveCreditor, resolveDebtor,
+  resolveCreditor, resolveDebtor, resolveRemittance,
   type EBTransaction,
 } from '@/lib/services/enableBanking'
 import { cleanMerchant, guessCategory } from '@/lib/utils/csvImport'
@@ -29,7 +29,7 @@ function mapTransaction(
   const rawCounterparty = amount < 0 ? resolveCreditor(eb) : resolveDebtor(eb)
 
   // Remittance info as fallback description
-  const remittance = eb.remittance_information?.join(' ').trim() || ''
+  const remittance = resolveRemittance(eb)
 
   // Clean the best available raw string using the same rules as CSV import
   const rawForClean = rawCounterparty || remittance
@@ -64,45 +64,51 @@ function mapTransaction(
 //   force      — clear dedup for non-deleted rows, reimport all except user-deleted
 //   hard-reset — clear entire dedup including user-deleted, reimport everything
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const body = await req.json() as {
-    accountUid: string
-    dateFrom?: string
-    dateTo?: string
-    mode?: 'delta' | 'force' | 'hard-reset'
-    financeAccountId?: string
-  }
-  const { accountUid, mode = 'delta' } = body
-  if (!accountUid) return NextResponse.json({ error: 'Missing accountUid' }, { status: 400 })
-
-  const dateTo   = body.dateTo   ?? new Date().toISOString().slice(0, 10)
-  const dateFrom = body.dateFrom ?? new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-
-  const db = getDb()
-  const acctRow = db.prepare(
-    `SELECT uid, session_id, finance_account_id, currency FROM banking_accounts WHERE uid = ? AND user_email = ?`
-  ).get(accountUid, session.user.email) as BankingAccountRow | undefined
-
-  if (!acctRow) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
-
-  // Allow caller to override finance_account_id (e.g. after re-link)
-  const financeAccountId = body.financeAccountId ?? acctRow.finance_account_id
-  if (!financeAccountId) return NextResponse.json({ error: 'Account not linked to a local account' }, { status: 400 })
-
-  // Persist the link if caller supplied an override
-  if (body.financeAccountId && body.financeAccountId !== acctRow.finance_account_id) {
-    db.prepare(`UPDATE banking_accounts SET finance_account_id = ? WHERE uid = ?`).run(body.financeAccountId, accountUid)
-  }
-
-  const sessionRow = db.prepare(
-    `SELECT id FROM banking_sessions WHERE id = ? AND status = 'active'`
-  ).get(acctRow.session_id) as { id: string } | undefined
-
-  if (!sessionRow) return NextResponse.json({ error: 'Banking session not active' }, { status: 400 })
-
   try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    let body: {
+      accountUid?: string
+      dateFrom?: string
+      dateTo?: string
+      mode?: 'delta' | 'force' | 'hard-reset'
+      financeAccountId?: string
+    }
+    try {
+      body = await req.json()
+    } catch {
+      return NextResponse.json({ error: 'Body JSON non valido' }, { status: 400 })
+    }
+
+    const { accountUid, mode = 'delta' } = body
+    if (!accountUid) return NextResponse.json({ error: 'Missing accountUid' }, { status: 400 })
+
+    const dateTo   = body.dateTo   ?? new Date().toISOString().slice(0, 10)
+    const dateFrom = body.dateFrom ?? new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+
+    const db = getDb()
+    const acctRow = db.prepare(
+      `SELECT uid, session_id, finance_account_id, currency FROM banking_accounts WHERE uid = ? AND user_email = ?`
+    ).get(accountUid, session.user.email) as BankingAccountRow | undefined
+
+    if (!acctRow) return NextResponse.json({ error: 'Conto bancario non trovato' }, { status: 404 })
+
+    // Allow caller to override finance_account_id (e.g. after re-link)
+    const financeAccountId = body.financeAccountId ?? acctRow.finance_account_id
+    if (!financeAccountId) return NextResponse.json({ error: 'Conto non collegato a un conto locale' }, { status: 400 })
+
+    // Persist the link if caller supplied an override
+    if (body.financeAccountId && body.financeAccountId !== acctRow.finance_account_id) {
+      db.prepare(`UPDATE banking_accounts SET finance_account_id = ? WHERE uid = ?`).run(body.financeAccountId, accountUid)
+    }
+
+    const sessionRow = db.prepare(
+      `SELECT id FROM banking_sessions WHERE id = ? AND status = 'active'`
+    ).get(acctRow.session_id) as { id: string } | undefined
+
+    if (!sessionRow) return NextResponse.json({ error: 'Sessione Open Banking scaduta o non attiva. Ricollega il conto.' }, { status: 400 })
+
     // Update balance
     const balances   = await getBalances(accountUid)
     const newBalance = getClosingBalance(balances)
@@ -155,9 +161,20 @@ export async function POST(req: NextRequest) {
     })
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Sync error'
-    const isRateLimit = msg.includes('429') || msg.includes('RATE_LIMIT') || msg.includes('multiplicity')
+    const isRateLimit = msg.includes('429') || msg.includes('RATE_LIMIT') || msg.includes('multiplicity') || msg.includes('rate limit')
+    const isSessionExpired = msg.includes('401') || msg.includes('403') || msg.includes('SESSION_EXPIRED') || msg.includes('invalid_grant') || msg.includes('session')
+    
+    let userMsg = msg
+    if (isRateLimit) {
+      userMsg = 'Limite giornaliero raggiunto: la banca consente massimo 4 sync al giorno (PSD2). Riprova domani.'
+    } else if (isSessionExpired) {
+      userMsg = 'La sessione con la banca è scaduta o non valida. Ricollega il conto nelle Impostazioni Open Banking.'
+    } else if (msg.includes('non-JSON') || msg.includes('<!DOCTYPE')) {
+      userMsg = 'La banca (Credit Agricole) o il servizio Open Banking ha restituito una risposta non valida. Riprova più tardi.'
+    }
+
     return NextResponse.json(
-      { error: isRateLimit ? 'Limite giornaliero raggiunto: la banca consente massimo 4 sync al giorno (PSD2). Riprova domani.' : msg },
+      { error: userMsg },
       { status: isRateLimit ? 429 : 502 }
     )
   }

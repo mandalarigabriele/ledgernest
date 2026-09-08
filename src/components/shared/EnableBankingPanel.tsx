@@ -141,6 +141,11 @@ export default function EnableBankingPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountUid: acct.uid, financeAccountId: acct.finance_account_id, mode }),
       })
+      const contentType = res.headers.get('content-type') || ''
+      if (!contentType.includes('application/json')) {
+        showFlash(`Risposta non valida dal server (HTTP ${res.status})`)
+        return
+      }
       const data = await res.json() as SyncResult
       if (!res.ok) { showFlash(data.error ?? 'Errore sync'); return }
 

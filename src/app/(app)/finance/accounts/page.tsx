@@ -229,6 +229,11 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountUid: account.bankingUid, financeAccountId: account.id, mode }),
       })
+      const contentType = res.headers.get('content-type') || ''
+      if (!contentType.includes('application/json')) {
+        setSyncMsg({ text: `Risposta non valida dal server (HTTP ${res.status})`, ok: false })
+        return
+      }
       const data = await res.json() as { newBalance?: number; newTransactions?: Array<Record<string, unknown>>; imported?: number; total?: number; error?: string }
       if (!res.ok) {
         if (res.status === 429) setRateLimited(true)
@@ -267,7 +272,7 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
       const msg = [added > 0 && `+${added} movimenti`, fixed > 0 && `${fixed} corretti`].filter(Boolean).join(', ')
       setSyncMsg({ text: msg || 'Nessun nuovo movimento', ok: true })
     } catch (e) {
-      setSyncMsg({ text: e instanceof Error ? e.message : 'Errore di rete', ok: false })
+      setSyncMsg({ text: e instanceof Error ? e.message : 'Errore di connessione', ok: false })
     } finally {
       setSyncing(false)
       setTimeout(() => setSyncMsg(null), 5000)
