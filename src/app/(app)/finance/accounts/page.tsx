@@ -519,7 +519,6 @@ function AccountCard({ account, totalAssets, onEdit, onDelete, onClearTx }: { ac
             )}
           </div>
         )}
-        )}
       </div>
     </div>
   )
