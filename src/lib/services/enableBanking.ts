@@ -251,4 +251,3 @@ export function resolveRemittance(tx: EBTransaction): string {
   }
   return ''
 }
-}
