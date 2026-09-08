@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSession } from 'next-auth/react'
 import { useFinanceStore } from '@/stores/financeStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { usePricesStore } from '@/stores/pricesStore'
@@ -9,6 +10,23 @@ import { useFormatters } from '@/hooks/useFormatters'
 import Icon from '@/components/shared/Icon'
 import { useTranslations } from 'next-intl'
 import type { BudgetCategory } from '@/types'
+
+// ── types ─────────────────────────────────────────────────────
+
+interface SharedExpense {
+  id: string
+  group_id: string
+  payer_email: string
+  amount: number
+  currency: string
+  description: string
+  category: string | null
+  date: string
+  other_share: number
+  notes: string | null
+  source_tx_id: string | null
+  created_at: string
+}
 
 // ── helpers ───────────────────────────────────────────────────
 
@@ -73,7 +91,7 @@ function AttesoPill({ planned, received }: { planned: number; received: number }
   )
 }
 
-function LeafCategoryRow({ cat, budget, spent, note, onBudgetChange, onNoteChange, income = 0 }: {
+function LeafCategoryRow({ cat, budget, spent, note, onBudgetChange, onNoteChange, income = 0, sharedAdj }: {
   cat: BudgetCategory
   budget: number
   spent: number
@@ -81,6 +99,7 @@ function LeafCategoryRow({ cat, budget, spent, note, onBudgetChange, onNoteChang
   onBudgetChange: (v: number) => void
   onNoteChange: (v: string) => void
   income?: number
+  sharedAdj?: number
 }) {
   const { fmt } = useFormatters()
   const [noteOpen, setNoteOpen] = useState(false)
@@ -103,6 +122,20 @@ function LeafCategoryRow({ cat, budget, spent, note, onBudgetChange, onNoteChang
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
             <span className="ledgernest-budget-cat-name" style={{ fontWeight: 600, fontSize: 13 }}>{cat.name}</span>
+            {sharedAdj !== undefined && Math.abs(sharedAdj) > 0.001 && (
+              <span
+                style={{
+                  fontSize: 10, fontWeight: 600, color: '#2dd4bf', background: 'rgba(45,212,191,0.12)',
+                  padding: '1px 5px', borderRadius: 4, fontVariantNumeric: 'tabular-nums', flexShrink: 0,
+                  cursor: 'help',
+                }}
+                title={sharedAdj < 0
+                  ? `Spesa condivisa: quota partner -${fmt(Math.abs(sharedAdj))} detratta dal totale`
+                  : `Spesa condivisa: tua quota +${fmt(Math.abs(sharedAdj))} aggiunta dal partner`}
+              >
+                🤝 {sharedAdj < 0 ? '−' : '+'}{fmt(Math.abs(sharedAdj))}
+              </span>
+            )}
             <button
               onClick={() => setNoteOpen(v => !v)}
               title={hasNote ? note : 'Aggiungi nota'}
@@ -227,6 +260,23 @@ export default function BudgetPage() {
     ? Object.values(planIncomeSources).reduce((s, v) => s + v, 0)
     : plan.income
 
+  const { data: session } = useSession()
+  const myEmail = session?.user?.email ?? ''
+
+  const [sharedExpenses, setSharedExpenses] = useState<SharedExpense[]>([])
+  const [includeSharedExpenses, setIncludeSharedExpenses] = useState(true)
+
+  useEffect(() => {
+    let mounted = true
+    fetch('/api/shared-expenses')
+      .then((res) => res.ok ? res.json() : { expenses: [] })
+      .then((d) => {
+        if (mounted) setSharedExpenses(d.expenses ?? [])
+      })
+      .catch(() => {})
+    return () => { mounted = false }
+  }, [])
+
   // ── leaf expense categories (no subcategory headers) ──────
   const leafExpenseCats = useMemo(
     () => budgetCategories.filter((c) => c.type === 'expense' && !parentCatIds.has(c.id)),
@@ -242,13 +292,16 @@ export default function BudgetPage() {
     for (const key of Object.keys(budgetPlans ?? {})) {
       candidates.push(key)
     }
+    for (const exp of sharedExpenses) {
+      if (exp.date) candidates.push(exp.date.slice(0, 7))
+    }
     const earliest = candidates.reduce((a, b) => a < b ? a : b)
     // Never go back more than 24 months
     const cap = new Date(currentMonthKey + '-01T12:00:00')
     cap.setMonth(cap.getMonth() - 24)
     const capKey = cap.toISOString().slice(0, 7)
     return earliest < capKey ? capKey : earliest
-  }, [transactions, budgetPlans, currentMonthKey])
+  }, [transactions, budgetPlans, sharedExpenses, currentMonthKey])
 
   // ── planning months: from firstDataMonth to +5 future ────────
   const planningMonths = useMemo(() => {
@@ -269,11 +322,13 @@ export default function BudgetPage() {
   function getCatBudget(catId: string): number { return plan.categories[catId] ?? 0 }
   function getGroupBudget(key: string): number  { return plan.groupBudgets?.[key] ?? 0 }
 
-  // ── spent by category (goal-allocated portions excluded) ──
-  const spentByCategory = useMemo(() => {
+  // ── spent by category for any given month (net of shared expenses if enabled) ──
+  const computeSpentByCategoryForMonth = useCallback((m: string) => {
     const map: Record<string, number> = {}
+
+    // Base personal transactions
     for (const tx of transactions) {
-      if (tx.type === 'expense' && tx.date.startsWith(month)) {
+      if (tx.type === 'expense' && tx.date.startsWith(m)) {
         const allocatedTotal = tx.goalAllocations?.reduce((s, a) => s + a.amount, 0) ?? 0
         const effective = tx.amount - allocatedTotal
         if (effective <= 0) continue
@@ -284,8 +339,115 @@ export default function BudgetPage() {
         map[key] = (map[key] ?? 0) + effective
       }
     }
+
+    // Apply shared expense net adjustment if enabled
+    if (includeSharedExpenses && myEmail && sharedExpenses.length > 0) {
+      const monthTxs = transactions.filter((t) => t.type === 'expense' && t.date.startsWith(m))
+      const monthTxIds = new Set(monthTxs.map((t) => t.id))
+
+      for (const exp of sharedExpenses) {
+        if (!exp.date || !exp.date.startsWith(m)) continue
+
+        const cat = budgetCategories.find(
+          (c) => c.id === exp.category || c.name === exp.category || (exp.category && c.name.toLowerCase() === exp.category.toLowerCase())
+        )
+        const catKey = cat?.id ?? exp.category ?? 'cat-spesep'
+        const iPaid = exp.payer_email === myEmail
+
+        if (iPaid) {
+          const hasTx = exp.source_tx_id
+            ? monthTxIds.has(exp.source_tx_id)
+            : monthTxs.some((t) => t.date === exp.date && Math.abs(t.amount - exp.amount) < 0.01)
+
+          if (hasTx) {
+            // Local tx already added full exp.amount. Subtract partner's share!
+            map[catKey] = (map[catKey] ?? 0) - (exp.amount * exp.other_share)
+          } else {
+            // No local tx in store, add my net share
+            map[catKey] = (map[catKey] ?? 0) + (exp.amount * (1 - exp.other_share))
+          }
+        } else {
+          // Partner paid. Add my share!
+          map[catKey] = (map[catKey] ?? 0) + (exp.amount * exp.other_share)
+        }
+      }
+    }
+
+    for (const k of Object.keys(map)) {
+      if (map[k] < 0) map[k] = 0
+    }
+
     return map
-  }, [transactions, month, budgetCategories])
+  }, [transactions, budgetCategories, includeSharedExpenses, myEmail, sharedExpenses])
+
+  const spentByCategory = useMemo(
+    () => computeSpentByCategoryForMonth(month),
+    [computeSpentByCategoryForMonth, month]
+  )
+
+  const catSharedAdj = useMemo(() => {
+    if (!includeSharedExpenses || !myEmail || sharedExpenses.length === 0) return {}
+    const monthExps = sharedExpenses.filter((e) => e.date && e.date.startsWith(month))
+    if (monthExps.length === 0) return {}
+
+    const monthTxs = transactions.filter((t) => t.type === 'expense' && t.date.startsWith(month))
+    const monthTxIds = new Set(monthTxs.map((t) => t.id))
+    const adjMap: Record<string, number> = {}
+
+    for (const exp of monthExps) {
+      const cat = budgetCategories.find(
+        (c) => c.id === exp.category || c.name === exp.category || (exp.category && c.name.toLowerCase() === exp.category.toLowerCase())
+      )
+      const catKey = cat?.id ?? exp.category ?? 'cat-spesep'
+      const iPaid = exp.payer_email === myEmail
+
+      if (iPaid) {
+        const hasTx = exp.source_tx_id
+          ? monthTxIds.has(exp.source_tx_id)
+          : monthTxs.some((t) => t.date === exp.date && Math.abs(t.amount - exp.amount) < 0.01)
+
+        if (hasTx) {
+          adjMap[catKey] = (adjMap[catKey] ?? 0) - (exp.amount * exp.other_share)
+        } else {
+          adjMap[catKey] = (adjMap[catKey] ?? 0) + (exp.amount * (1 - exp.other_share))
+        }
+      } else {
+        adjMap[catKey] = (adjMap[catKey] ?? 0) + (exp.amount * exp.other_share)
+      }
+    }
+
+    return adjMap
+  }, [includeSharedExpenses, myEmail, sharedExpenses, month, transactions, budgetCategories])
+
+  const sharedStatsThisMonth = useMemo(() => {
+    if (!myEmail || sharedExpenses.length === 0) return { total: 0, myNetShare: 0, adjustment: 0, count: 0 }
+    const monthExps = sharedExpenses.filter((e) => e.date && e.date.startsWith(month))
+    if (monthExps.length === 0) return { total: 0, myNetShare: 0, adjustment: 0, count: 0 }
+
+    let total = 0
+    let myNetShare = 0
+    let baseTxShare = 0
+
+    const monthTxs = transactions.filter((t) => t.type === 'expense' && t.date.startsWith(month))
+    const monthTxIds = new Set(monthTxs.map((t) => t.id))
+
+    for (const exp of monthExps) {
+      total += exp.amount
+      const iPaid = exp.payer_email === myEmail
+      if (iPaid) {
+        myNetShare += exp.amount * (1 - exp.other_share)
+        const hasTx = exp.source_tx_id
+          ? monthTxIds.has(exp.source_tx_id)
+          : monthTxs.some((t) => t.date === exp.date && Math.abs(t.amount - exp.amount) < 0.01)
+        if (hasTx) baseTxShare += exp.amount
+      } else {
+        myNetShare += exp.amount * exp.other_share
+      }
+    }
+
+    const adjustment = myNetShare - baseTxShare
+    return { total, myNetShare, adjustment, count: monthExps.length }
+  }, [sharedExpenses, myEmail, month, transactions])
 
   // ── actual goal contributions this month (from allocations) ─
   const goalAllocatedThisMonth = useMemo(() => {
@@ -332,8 +494,9 @@ export default function BudgetPage() {
     const pd = new Date(month + '-01T12:00:00')
     pd.setMonth(pd.getMonth() - 1)
     const pm = pd.toISOString().slice(0, 7)
-    return transactions.filter((t) => t.type === 'expense' && t.date.startsWith(pm)).reduce((s, t) => s + t.amount, 0)
-  }, [transactions, month])
+    const pmMap = computeSpentByCategoryForMonth(pm)
+    return Object.values(pmMap).reduce((s, v) => s + v, 0)
+  }, [computeSpentByCategoryForMonth, month])
 
   // ── portfolio value per asset type ────────────────────────
   const portfolioByType = useMemo(() => {
@@ -501,16 +664,15 @@ export default function BudgetPage() {
     const result: Record<string, Record<string, number>> = {}
     for (const m of last6Months) {
       result[m] = {}
-      for (const tx of transactions) {
-        if (tx.type === 'expense' && tx.date.startsWith(m)) {
-          const cat = budgetCategories.find((c) => c.id === tx.category || c.name === tx.category)
-          const g = cat?.group ?? 'other'
-          result[m][g] = (result[m][g] ?? 0) + tx.amount
-        }
+      const spentForM = computeSpentByCategoryForMonth(m)
+      for (const cat of leafExpenseCats) {
+        const s = spentForM[cat.id] ?? 0
+        const g = cat.group ?? 'other'
+        result[m][g] = (result[m][g] ?? 0) + s
       }
     }
     return result
-  }, [transactions, last6Months, budgetCategories])
+  }, [last6Months, computeSpentByCategoryForMonth, leafExpenseCats])
 
   const prevSpentByGroup = useMemo(() => spentByGroupByMonth[last6Months[4]] ?? {}, [spentByGroupByMonth, last6Months])
 
@@ -668,6 +830,19 @@ export default function BudgetPage() {
                   </span>
                 </div>
               ))}
+              {includeSharedExpenses && sharedStatsThisMonth.count > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, background: 'rgba(45,212,191,0.1)', border: '1px solid rgba(45,212,191,0.25)' }}>
+                  <span style={{ fontSize: 13 }}>🤝</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#2dd4bf', fontVariantNumeric: 'tabular-nums' }}>
+                    {sharedStatsThisMonth.count} {sharedStatsThisMonth.count === 1 ? 'spesa condivisa' : 'spese condivise'} nel mese · Quota netta: {fmt(sharedStatsThisMonth.myNetShare)}
+                    {Math.abs(sharedStatsThisMonth.adjustment) > 0.01 && (
+                      <span style={{ opacity: 0.85, marginLeft: 6, fontWeight: 500 }}>
+                        ({sharedStatsThisMonth.adjustment < 0 ? '' : '+'}{fmt(sharedStatsThisMonth.adjustment)} vs transazioni)
+                      </span>
+                    )}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -680,6 +855,20 @@ export default function BudgetPage() {
               </div>
             </div>
             <div className="ledgernest-budget-toolbar-btns" style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+              <button
+                className="ledgernest-btn ledgernest-btn-sm"
+                onClick={() => setIncludeSharedExpenses((v) => !v)}
+                title={includeSharedExpenses ? 'Disattiva il calcolo della quota netta per le spese condivise' : 'Attiva il calcolo della quota netta per le spese condivise'}
+                style={{
+                  gap: 5,
+                  background: includeSharedExpenses ? 'rgba(45,212,191,0.15)' : 'transparent',
+                  color: includeSharedExpenses ? '#2dd4bf' : 'var(--text-secondary)',
+                  border: `1px solid ${includeSharedExpenses ? '#2dd4bf' : 'var(--border-subtle)'}`,
+                  fontWeight: 600,
+                }}
+              >
+                🤝 {tl('sharedToggleLabel')}
+              </button>
               <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" onClick={copyPrevMonth} disabled={!hasPrevPlan}>{tl('toolbarCopyPrev')}</button>
               <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" onClick={initFromRecurring} disabled={recurringItems.filter((r) => r.active !== false && r.type === 'expense').length === 0}>{tl('toolbarFromRecurring')}</button>
               <button className="ledgernest-btn ledgernest-btn-ghost ledgernest-btn-sm" onClick={() => resetMonthPlan(month)}>{tl('toolbarReset')}</button>
@@ -919,13 +1108,13 @@ export default function BudgetPage() {
                         <div /><div /><div />
                       </div>
                       {subLeaves.map((cat) => (
-                        <LeafCategoryRow key={cat.id} cat={cat} budget={getCatBudget(cat.id)} spent={spentByCategory[cat.id] ?? 0} note={plan.categoryNotes?.[cat.id]} onBudgetChange={(v) => setMonthPlanCategory(month, cat.id, v)} onNoteChange={(v) => setMonthPlanCategoryNote(month, cat.id, v)} income={income} />
+                        <LeafCategoryRow key={cat.id} cat={cat} budget={getCatBudget(cat.id)} spent={spentByCategory[cat.id] ?? 0} note={plan.categoryNotes?.[cat.id]} onBudgetChange={(v) => setMonthPlanCategory(month, cat.id, v)} onNoteChange={(v) => setMonthPlanCategoryNote(month, cat.id, v)} income={income} sharedAdj={catSharedAdj[cat.id]} />
                       ))}
                     </div>
                   )
                 })}
                 {directLeaves.map((cat) => (
-                  <LeafCategoryRow key={cat.id} cat={cat} budget={getCatBudget(cat.id)} spent={spentByCategory[cat.id] ?? 0} onBudgetChange={(v) => setMonthPlanCategory(month, cat.id, v)} income={income} />
+                  <LeafCategoryRow key={cat.id} cat={cat} budget={getCatBudget(cat.id)} spent={spentByCategory[cat.id] ?? 0} onBudgetChange={(v) => setMonthPlanCategory(month, cat.id, v)} onNoteChange={(v) => setMonthPlanCategoryNote(month, cat.id, v)} income={income} sharedAdj={catSharedAdj[cat.id]} />
                 ))}
 
                 </>)}

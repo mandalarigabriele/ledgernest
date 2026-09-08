@@ -889,6 +889,7 @@
     "toolbarReset": "Reset",
     "toolbarCollapseAll": "Collapse all",
     "toolbarExpandAll": "Expand all",
+    "sharedToggleLabel": "Shared expenses (net share)",
     "incomeGroup": "Income",
     "incomeGroupDesc": "Monthly income sources",
     "colPlanned": "PLANNED",
