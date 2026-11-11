@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { getDb } from './schema'
 
-const DB_PATH = path.join(process.cwd(), 'ledgernest.db')
+const DB_PATH = path.join(process.env.DATA_DIR || process.cwd(), 'ledgernest.db')
 
 if (fs.existsSync(DB_PATH)) {
   fs.unlinkSync(DB_PATH)

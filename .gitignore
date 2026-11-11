@@ -29,3 +29,6 @@ dev.log
 .DS_Store
 Thumbs.db
 
+
+# Deploy backups (deploy.sh)
+backups/

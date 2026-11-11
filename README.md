@@ -4,7 +4,7 @@
 
 **Personal finance dashboard — portfolio, budget, net worth and cashflow in one place.**
 
-![Version](https://img.shields.io/badge/version-0.5.52-blue)
+![Version](https://img.shields.io/badge/version-0.5.53-blue)
 ![Next.js](https://img.shields.io/badge/Next.js-14-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.5-blue)
 ![License](https://img.shields.io/badge/license-private-lightgrey)
@@ -319,111 +319,132 @@ JWT authentication uses RS256 (RSA) or ES256 (EC) depending on the key type, det
 
 ---
 
-## 🖥 Deploy on a Linux server (Proxmox / LXC / VPS)
+## 🖥 Deploy with Docker (Proxmox / LXC / VPS)
 
-> **Prerequisites:** Node.js ≥ 20, PM2 (`npm install -g pm2`)
+LedgerNest runs as a Docker container. In production it lives on **dockerdmz**, the shared Docker host (Proxmox LXC) in the DMZ VLAN that hosts the publicly exposed apps, each in its own folder under `/opt/<app>` with its own `docker-compose.yml`. Cloudflare Tunnel sends traffic straight to the published port:
 
-### First install (manual)
+```
+Browser → Cloudflare Tunnel → <dockerdmz-ip>:3001 → ledgernest container (:3000)
+```
+
+The tunnel points at an IP address, so the host must keep a static IP. If the app moves, update the **Service URL in Cloudflare** (Zero Trust → Networks → Tunnels → the tunnel → Published applications).
+
+| Service | What it does |
+|---|---|
+| `ledgernest` | The Next.js app (`node server.js`). The SQLite database lives in the `ledgernest-data` volume (`/data`). `.env.local` is mounted read-only and read by Next.js at startup. |
+| `snapshot` | Calls `POST /api/cron/snapshot` every `SNAPSHOT_INTERVAL` minutes (default 10) with `CRON_SECRET`, replacing the old PM2 cron. |
+
+> **Prerequisites:** Docker with the compose plugin (`curl -fsSL https://get.docker.com | sh`). In a Proxmox LXC enable **Options → Features → nesting=1, keyctl=1**. Host port **3001** is used because 3000 belongs to Intake on the same host; override it with `HOST_PORT=<port>` in a `.env` file next to `docker-compose.yml`.
+
+### First install
 
 ```bash
-# 1. Clone on the server
-git clone https://github.com/mandalarigabriele/ledgernest.git
-cd ledgernest
+# 1. Clone on the server (the repository is public, HTTPS needs no key)
+git clone https://github.com/mandalarigabriele/ledgernest.git /opt/ledgernest
+cd /opt/ledgernest
 
-# 2. Configure environment
-cp .env.example .env.local
-nano .env.local   # fill in your real values
-
-# 3. First deploy
+# 2. Create .env.local with generated NEXTAUTH_SECRET and CRON_SECRET, then fill in the rest
 bash deploy.sh --init
+nano .env.local
+
+# 3. Build and start
+bash deploy.sh
 ```
+
+Add `<NEXTAUTH_URL>/api/auth/callback/google` to the Google OAuth client's redirect URIs (see [Configuring Google OAuth](#configuring-google-oauth)).
 
 ### `deploy.sh` — automated deploy script
 
-The repo ships a `deploy.sh` script that handles the full deploy lifecycle.  
-Run it from the repo root on the server.
-
 | Command | When to use |
 |---|---|
-| `bash deploy.sh` | Update to latest version |
-| `bash deploy.sh --init` | First install (same flow, flag is informational) |
+| `bash deploy.sh` | Update to the latest version |
+| `bash deploy.sh --init` | First install: checks Docker and creates `.env.local` |
 
 **What the script does, in order:**
 
-1. `git fetch + reset --hard origin/main` — pulls the latest code, discarding any local changes
-2. `rm -rf .next node_modules/.cache` — cleans stale build artefacts
-3. `npm install` — installs/updates all dependencies
-4. `npm run db:migrate` — applies any pending database migrations (safe to re-run)
-5. `npm run build` — builds the Next.js production bundle
-6. PM2 restart or start — restarts the app if already running, starts it fresh otherwise; calls `pm2 save`
+1. checks Docker and the required `.env.local` values;
+2. backs up the database with SQLite's online backup to `backups/ledgernest-<date>.db.gz` (the last 10 are kept);
+3. `git fetch` + `reset --hard origin/main`. The server is deploy-only: `.env.local`, `backups/` and the data volume are untracked and untouched;
+4. `docker compose build --pull` and `up -d`, then waits for `GET /api/health` and prints the logs if the app does not come up;
+5. removes unused images.
 
-The script exits immediately on any error (`set -euo pipefail`) and prints the server IP at the end.
+The database schema is created and migrated by the app itself on first access, so there is no separate migration step. Set `DEPLOY_BRANCH=<branch>` to deploy another branch for a test.
 
-> **Note:** before the first run, create `.env.local` manually (see [Environment variables](#-environment-variables)).  
-> The script never touches `.env.local`.
+To restore a backup:
 
 ```bash
-# Enable PM2 auto-start on server reboot (run once after first deploy)
-pm2 startup
+docker compose stop ledgernest
+gunzip -c backups/<file>.db.gz > /tmp/ledgernest.db
+docker run --rm -v ledgernest_ledgernest-data:/data -v /tmp/ledgernest.db:/restore.db:ro alpine \
+  sh -c 'rm -f /data/ledgernest.db-wal /data/ledgernest.db-shm && cp /restore.db /data/ledgernest.db && chown 1000:1000 /data/ledgernest.db'
+docker compose start ledgernest
 ```
+
+`GET /api/health` returns `{"status":"ok"}` (no login needed) once the app answers and the database opens. Docker uses it as the container health check.
+
+### Moving from the PM2 install to Docker
+
+The steps used to move LedgerNest from its old dedicated LXC (PM2) to the Docker host. Downtime is a few minutes, between steps 3 and 5.
+
+1. **New host**: `git clone` into `/opt/ledgernest` and copy `.env.local` from the old host (`scp`), then `chmod 600 .env.local`.
+2. **New host**, still no downtime: `docker compose build && docker compose up --no-start` (builds the image and creates the `ledgernest_ledgernest-data` volume).
+3. **Old host**: stop the app and its cron so the database is quiet: `pm2 stop ledgernest ledgernest-snapshot`, then copy `ledgernest.db` together with `ledgernest.db-wal` and `ledgernest.db-shm` if present to the new host.
+4. **New host**: import into the volume and start:
+   ```bash
+   docker run --rm -v ledgernest_ledgernest-data:/data -v /root/ledgernest-migr:/src:ro alpine \
+     sh -c 'cp /src/ledgernest.db* /data/ && chown -R 1000:1000 /data'
+   docker compose up -d
+   docker compose exec ledgernest node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>r.text()).then(console.log)"
+   ```
+5. **Cloudflare**: point the tunnel's Service URL to `http://<dockerdmz-ip>:3001` and check the public URL, login included.
+6. **Runner**: shut down the old host, force-remove its runner in GitHub, set up a new one on the Docker host (see below) and start the Deploy workflow by hand to check it.
+
+To roll back before step 6, point Cloudflare back to the old host and run `pm2 start ledgernest ledgernest-snapshot` there.
 
 ### Automatic deploy (GitHub Actions)
 
 Every push to `main` deploys by itself:
 
-1. **CI** (`.github/workflows/ci.yml`, GitHub-hosted) runs `npm ci` + `npm run build` on every pull request and every push to `main`.
-2. **Deploy** (`.github/workflows/deploy.yml`) starts when CI succeeds on a push to `main` and runs on a **self-hosted runner inside the LXC container**. It calls `sudo -n /usr/bin/bash /opt/ledgernest/deploy.sh`, so the deploy is exactly the manual one (pull, install, migrate, build, PM2 restart, health check). It can also be started by hand from the Actions tab (*Run workflow*).
+1. **CI** (`.github/workflows/ci.yml`, GitHub-hosted) runs `npm ci` + `npm run build`, and builds the Docker image and checks that it answers on `/api/health`, on every pull request and every push to `main`.
+2. **Deploy** (`.github/workflows/deploy.yml`) starts when CI succeeds on a push to `main` and runs on a **self-hosted runner on the Docker host** (label `ledgernest`). It calls `sudo -n /usr/bin/bash /opt/ledgernest/deploy.sh`, so the deploy is exactly the manual one. It can also be started by hand from the Actions tab (*Run workflow*).
 
-If the app is not in `/opt/ledgernest`, set the repository variable `DEPLOY_DIR` (Settings → Secrets and variables → Actions → Variables) and use the same path in the sudoers rule below. The script runs as root, so PM2 must be the root PM2 instance that already runs the app.
+If the app is not in `/opt/ledgernest`, set the repository variable `DEPLOY_DIR` (Settings → Secrets and variables → Actions → Variables) and use the same path in the sudoers rule below.
 
 The runner only makes outbound connections to GitHub: no port is opened. **This repository is public**: in Settings → Actions → General → *Approval for running fork pull request workflows from contributors*, choose **Require approval for all external contributors**, so no fork pull request can run code on the runner without your approval.
 
-#### Runner setup (once, on the container, as root)
+#### Runner setup (once, on the Docker host, as root)
+
+A runner registered on a personal repository serves that repository only, so the shared host runs one runner per app, all as the same `github-runner` user, each in its own folder.
 
 ```sh
 # 1. A dedicated user without a password, allowed to run only deploy.sh as root
+#    (skip useradd if another app's runner already created the user)
 useradd --create-home --shell /bin/bash github-runner
 echo 'github-runner ALL=(root) NOPASSWD: /usr/bin/bash /opt/ledgernest/deploy.sh' > /etc/sudoers.d/ledgernest-deploy
 chmod 440 /etc/sudoers.d/ledgernest-deploy
 visudo -cf /etc/sudoers.d/ledgernest-deploy        # expected: "parsed OK"
 
-# 2. Download the runner (take the current version from the GitHub page in step 3)
+# 2. Download the runner (take the current version and checksum from the GitHub page in step 3)
 su - github-runner
-mkdir actions-runner && cd actions-runner
+mkdir actions-runner-ledgernest && cd actions-runner-ledgernest
 curl -fsSLo runner.tar.gz https://github.com/actions/runner/releases/download/v<VERSION>/actions-runner-linux-x64-<VERSION>.tar.gz
 tar xzf runner.tar.gz
 
 # 3. Register it: GitHub → repository → Settings → Actions → Runners → New self-hosted runner (Linux x64)
-#    shows a one-time token. Paste it only here, on the server.
-./config.sh --url https://github.com/mandalarigabriele/ledgernest --labels ledgernest --name ledgernest-lxc --unattended --token <TOKEN>
+#    shows a one-time token. Paste it only here, on the server. --unattended skips the questions,
+#    so the label and the default work folder (_work) cannot be mistyped.
+./config.sh --url https://github.com/mandalarigabriele/ledgernest --labels ledgernest --name dockerdmz-ledgernest --unattended --token <TOKEN>
 exit
 
 # 4. Install and start it as a service that runs as github-runner
-cd /home/github-runner/actions-runner
+cd /home/github-runner/actions-runner-ledgernest
 ./svc.sh install github-runner
 ./svc.sh start
 ./svc.sh status                                     # expected: "active (running)"
 ```
 
-If the Intake runner already lives on the same container, register this one in a separate folder (e.g. `actions-runner-ledgernest`) with its own name.
+The runner appears as **Idle** under Settings → Actions → Runners, with the `ledgernest` label.
 
-### Nginx reverse proxy (optional)
-
-```nginx
-server {
-    listen 80;
-    server_name yourdomain.com;
-
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
 
 ---
 

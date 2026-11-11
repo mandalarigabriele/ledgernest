@@ -1,6 +1,6 @@
 name: Deploy
 
-# Runs on the self-hosted runner inside the LedgerNest LXC container (label "ledgernest"), only
+# Runs on the self-hosted runner on the shared Docker host dockerdmz (label "ledgernest"), only
 # after CI passed on a push to main. The runner user may run exactly <DEPLOY_DIR>/deploy.sh as
 # root through a sudoers rule; see README, "Automatic deploy (GitHub Actions)".
 # DEPLOY_DIR defaults to /opt/ledgernest; override it with the repository variable DEPLOY_DIR.
