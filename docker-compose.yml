@@ -18,6 +18,8 @@ services:
     image: curlimages/curl:8.11.1
     container_name: ledgernest-snapshot
     restart: unless-stopped
+    # Same uid as the app's "node" user, which owns .env.local (see deploy.sh)
+    user: "1000:1000"
     depends_on:
       ledgernest:
         condition: service_healthy

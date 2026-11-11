@@ -36,7 +36,6 @@ main() {
       log "$ENV_FILE already exists, leaving it untouched."
     else
       cp .env.example "$ENV_FILE"
-      chmod 600 "$ENV_FILE"
       # -i.bak works with both GNU and BSD sed
       sed -i.bak \
         -e "s|^NEXTAUTH_SECRET=.*|NEXTAUTH_SECRET=$(random_secret)|" \
@@ -45,6 +44,7 @@ main() {
       rm -f "$ENV_FILE.bak"
       log "Created $ENV_FILE with generated NEXTAUTH_SECRET and CRON_SECRET."
     fi
+    secure_env_file
     echo ""
     echo "Next steps:"
     echo "  1. Edit $ENV_FILE: NEXTAUTH_URL (https://your-hostname), GOOGLE_CLIENT_ID,"
@@ -59,7 +59,7 @@ main() {
   check_docker
 
   [[ -f "$ENV_FILE" ]] || fail "$ENV_FILE not found. Run: bash deploy.sh --init"
-  chmod 600 "$ENV_FILE"
+  secure_env_file
   for var in "${REQUIRED_VARS[@]}"; do
     [[ -n "$(env_value "$var")" ]] || fail "$var is empty in $ENV_FILE"
   done
@@ -139,6 +139,13 @@ fail() {
 # Value of KEY in .env.local (quotes stripped), empty when missing
 env_value() {
   grep -E "^$1=" "$ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'" || true
+}
+
+# The containers run as uid 1000 (the image's "node" user, and the snapshot service), so they
+# must own the mounted .env.local: root-owned with mode 600 it would be unreadable inside them.
+secure_env_file() {
+  chown 1000:1000 "$ENV_FILE"
+  chmod 600 "$ENV_FILE"
 }
 
 random_secret() {

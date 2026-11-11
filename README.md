@@ -4,7 +4,7 @@
 
 **Personal finance dashboard — portfolio, budget, net worth and cashflow in one place.**
 
-![Version](https://img.shields.io/badge/version-0.5.53-blue)
+![Version](https://img.shields.io/badge/version-0.5.54-blue)
 ![Next.js](https://img.shields.io/badge/Next.js-14-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.5-blue)
 ![License](https://img.shields.io/badge/license-private-lightgrey)
@@ -331,7 +331,7 @@ The tunnel points at an IP address, so the host must keep a static IP. If the ap
 
 | Service | What it does |
 |---|---|
-| `ledgernest` | The Next.js app (`node server.js`). The SQLite database lives in the `ledgernest-data` volume (`/data`). `.env.local` is mounted read-only and read by Next.js at startup. |
+| `ledgernest` | The Next.js app (`node server.js`). The SQLite database lives in the `ledgernest-data` volume (`/data`). `.env.local` is mounted read-only and read by Next.js at startup; both containers run as uid 1000, so `deploy.sh` keeps the file owned by `1000:1000` with mode 600. |
 | `snapshot` | Calls `POST /api/cron/snapshot` every `SNAPSHOT_INTERVAL` minutes (default 10) with `CRON_SECRET`, replacing the old PM2 cron. |
 
 > **Prerequisites:** Docker with the compose plugin (`curl -fsSL https://get.docker.com | sh`). In a Proxmox LXC enable **Options → Features → nesting=1, keyctl=1**. Host port **3001** is used because 3000 belongs to Intake on the same host; override it with `HOST_PORT=<port>` in a `.env` file next to `docker-compose.yml`.
@@ -386,7 +386,7 @@ docker compose start ledgernest
 
 The steps used to move LedgerNest from its old dedicated LXC (PM2) to the Docker host. Downtime is a few minutes, between steps 3 and 5.
 
-1. **New host**: `git clone` into `/opt/ledgernest` and copy `.env.local` from the old host (`scp`), then `chmod 600 .env.local`.
+1. **New host**: `git clone` into `/opt/ledgernest` and copy `.env.local` from the old host, then `chown 1000:1000 .env.local && chmod 600 .env.local` (the containers run as uid 1000).
 2. **New host**, still no downtime: `docker compose build && docker compose up --no-start` (builds the image and creates the `ledgernest_ledgernest-data` volume).
 3. **Old host**: stop the app and its cron so the database is quiet: `pm2 stop ledgernest ledgernest-snapshot`, then copy `ledgernest.db` together with `ledgernest.db-wal` and `ledgernest.db-shm` if present to the new host.
 4. **New host**: import into the volume and start:
