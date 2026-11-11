@@ -13,6 +13,7 @@ import MerchantInput from '@/components/shared/MerchantInput'
 import EditTradeModal from '@/components/shared/modals/EditTradeModal'
 import type { Transaction, Trade } from '@/types'
 import { ModalPortal } from '@/components/shared/ModalPortal'
+import { counterpartyKey, UNCATEGORIZED } from '@/lib/utils/classify'
 
 // ── shared helpers ────────────────────────────────────────────
 
@@ -51,7 +52,7 @@ function DeleteConfirmModal({ message, onConfirm, onCancel, title, cancelLabel, 
 
 function EditMovementModal({ tx, onClose }: { tx: Transaction; onClose: () => void }) {
   const tl = useTranslations('movimenti')
-  const { updateTransaction, accounts, goals } = useFinanceStore()
+  const { updateTransaction, accounts, goals, transactions, setCategoryRule } = useFinanceStore()
   const [date, setDate] = useState(tx.date)
   const [description, setDescription] = useState(tx.description)
   const [amount, setAmount] = useState(String(tx.amount))
@@ -62,6 +63,15 @@ function EditMovementModal({ tx, onClose }: { tx: Transaction; onClose: () => vo
   const [note, setNote] = useState(tx.note ?? '')
   const [goalAllocations, setGoalAllocations] = useState<{ goalId: string; amount: number }[]>(tx.goalAllocations ?? [])
   const modalRef = useRef<HTMLDivElement>(null)
+  // Category rule: remember the new category for this counterparty and apply it to its movements
+  const [applyToAll, setApplyToAll] = useState(true)
+  const ruleName = merchant.trim() || description.trim()
+  const ruleKey = counterpartyKey({ merchant: merchant.trim() || undefined, description: description.trim() })
+  const sameCounterparty = useMemo(
+    () => transactions.filter((t) => t.id !== tx.id && counterpartyKey(t) === ruleKey).length,
+    [transactions, ruleKey, tx.id],
+  )
+  const categoryChanged = !!category && (category !== tx.category || type !== tx.type)
 
   const txAmount = parseFloat(amount) || 0
   const allocatedTotal = goalAllocations.reduce((s, a) => s + a.amount, 0)
@@ -86,6 +96,7 @@ function EditMovementModal({ tx, onClose }: { tx: Transaction; onClose: () => vo
       note: note.trim() || undefined,
       goalAllocations: goalAllocations.length > 0 ? goalAllocations : undefined,
     })
+    if (categoryChanged && applyToAll && ruleKey) setCategoryRule(ruleKey, { category, type }, true)
     onClose()
   }
 
@@ -153,6 +164,16 @@ function EditMovementModal({ tx, onClose }: { tx: Transaction; onClose: () => vo
             typeFilter={type === 'transfer' ? 'all' : type}
             containerRef={modalRef}
           />
+          {categoryChanged && ruleKey && (
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 10, cursor: 'pointer', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+              <input type="checkbox" checked={applyToAll} onChange={(e) => setApplyToAll(e.target.checked)} style={{ marginTop: 1, accentColor: 'var(--accent)' }} />
+              <span>
+                {sameCounterparty > 0
+                  ? tl('ruleApplyAll', { name: ruleName, count: sameCounterparty })
+                  : tl('ruleApplyFuture', { name: ruleName })}
+              </span>
+            </label>
+          )}
         </div>
 
         {/* Account */}
@@ -651,9 +672,15 @@ export default function MovimentiPage() {
     return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k]) => k.toLowerCase())
   }, [txs28])
 
+  // Movements still waiting for a category (bank sync / CSV found no rule for them)
+  const uncat28 = useMemo(
+    () => txs28.filter((tx) => tx.type !== 'transfer' && tx.category === UNCATEGORIZED).reduce((s, tx) => s + tx.amount, 0),
+    [txs28],
+  )
+
   const topCat = useMemo(() => {
     const map: Record<string, number> = {}
-    for (const tx of txs28) if (tx.type === 'expense') map[tx.category] = (map[tx.category] ?? 0) + tx.amount
+    for (const tx of txs28) if (tx.type === 'expense' && tx.category !== UNCATEGORIZED) map[tx.category] = (map[tx.category] ?? 0) + tx.amount
     const entries = Object.entries(map).sort((a, b) => b[1] - a[1])
     if (!entries.length) return null
     const [name, val] = entries[0]
@@ -749,6 +776,11 @@ export default function MovimentiPage() {
             <span style={{ fontWeight: 600, color: 'var(--danger)' }}>{expCount} {tl('kpiMovements')}</span>
             <span style={{ color: 'var(--text-secondary)' }}> · {tl('kpiInclInvest')}</span>
           </div>
+          {uncat28 > 0 && (
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#f59e0b' }}>
+              ⚠ {tl('kpiUncategorized', { amount: fmt(uncat28) })}
+            </div>
+          )}
         </div>
 
         <div className="ledgernest-card" style={{ padding: '18px 20px', gap: 5 }}>

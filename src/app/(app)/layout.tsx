@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
 import { useFinanceStore } from '@/stores/financeStore'
@@ -29,6 +30,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   usePriceAlerts()
 
   useEffect(() => { setMounted(true) }, [])
+
+  // The account name identifies the user's own accounts as counterparty (self transfers in bank
+  // sync and CSV import). Default it to the Google display name until the user sets one.
+  const { data: session } = useSession()
+  useEffect(() => {
+    const name = session?.user?.name
+    if (name && !settings.selfName) updateSettings({ selfName: name })
+  }, [session?.user?.name, settings.selfName, updateSettings])
 
   // Scroll the page container to top on every route change
   useEffect(() => { mainRef.current?.scrollTo(0, 0) }, [pathname])

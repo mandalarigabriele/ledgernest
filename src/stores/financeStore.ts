@@ -3,6 +3,8 @@ import { persist } from 'zustand/middleware'
 import type { Account, Transaction, BudgetCategory, BudgetGroup, RecurringItem, Goal, Liability, Property, NetWorthSnapshot } from '@/types'
 import { nanoid } from './utils'
 import { applyAutoResidui } from '@/lib/utils/amortization'
+import { classifyImported, applyRule, counterpartyKey, isSelfCounterparty, UNCATEGORIZED, TRANSFER_CATEGORY, type CategoryRule } from '@/lib/utils/classify'
+import { useSettingsStore } from './settingsStore'
 
 interface BudgetMonthPlan {
   income: number
@@ -42,6 +44,10 @@ interface FinanceStore {
   updateTransaction: (id: string, patch: Partial<Transaction>) => void
   deleteTransaction: (id: string) => void
   clearAccountOBTransactions: (accountId: string) => void
+  /** Remembers `rule` for a counterparty; with applyToExisting also recategorises its movements. Returns how many changed. */
+  setCategoryRule: (key: string, rule: CategoryRule, applyToExisting: boolean) => number
+  /** One-off pass over existing movements: self transfers and the old "Spese personali" fallback. */
+  runClassifierMigration: (selfName: string | undefined) => void
 
   // Budget
   addBudgetCategory: (cat: Omit<BudgetCategory, 'id'>) => void
@@ -94,13 +100,15 @@ interface FinanceStore {
   // Merchant aliases (merge rules) + logos
   merchantAliases: Record<string, string>   // alias.toLowerCase() → canonical name
   merchantLogos:   Record<string, string>   // merchant name → emoji or URL
+  categoryRules:   Record<string, CategoryRule> // counterpartyKey → category chosen by the user
+  classifierVersion: number                  // last runClassifierMigration applied
   mergeMerchants: (aliases: string[], canonical: string) => void
   deleteMerchantAlias: (alias: string) => void
   setMerchantLogo: (merchant: string, logo: string) => void
   normalizeMerchants: (normalizer: (m: string) => string) => void
 
   resetAll: () => void
-  hydrate: (data: Partial<Pick<FinanceStore, 'accounts' | 'transactions' | 'budgetCategories' | 'budgetGroups' | 'recurringItems' | 'goals' | 'liabilities' | 'netWorthSnapshots' | 'budgetPlans' | 'merchantAliases' | 'merchantLogos' | 'featuredGoalId' | 'properties'>>) => void
+  hydrate: (data: Partial<Pick<FinanceStore, 'accounts' | 'transactions' | 'budgetCategories' | 'budgetGroups' | 'recurringItems' | 'goals' | 'liabilities' | 'netWorthSnapshots' | 'budgetPlans' | 'merchantAliases' | 'merchantLogos' | 'featuredGoalId' | 'properties' | 'categoryRules' | 'classifierVersion'>>) => void
 }
 
 const defaultBudgetGroups: BudgetGroup[] = [
@@ -111,6 +119,11 @@ const defaultBudgetGroups: BudgetGroup[] = [
   { id: 'investments', label: 'Investimenti',  emoji: '🔵', color: '#5bc8d0', order: 4, desc: 'PAC mensile, crypto' },
   { id: 'transfers',   label: 'Trasferimenti', emoji: '⚪', color: '#94a3b8', order: 5 },
 ]
+
+// Bank movements no rule recognises land here (no type: it fits both income and expense)
+const UNCATEGORIZED_CATEGORY: BudgetCategory = {
+  id: 'cat-uncat', name: UNCATEGORIZED, emoji: '❓', color: '#f59e0b', monthlyBudget: 0, group: 'lifestyle', parentId: 'sub-pers',
+}
 
 const defaultCategories: BudgetCategory[] = [
   // ── ENTRATE — categorie ──────────────────────────────────────
@@ -162,6 +175,7 @@ const defaultCategories: BudgetCategory[] = [
   { id: 'cat-curap',  name: 'Cura personale',    emoji: '💆', color: '#fb7185', monthlyBudget: 0, group: 'lifestyle', type: 'expense', parentId: 'sub-pers' },
   { id: 'cat-anim',   name: 'Animali domestici', emoji: '🐾', color: '#78716c', monthlyBudget: 0, group: 'lifestyle', type: 'expense', parentId: 'sub-pers' },
   { id: 'cat-spesep', name: 'Spese personali',   emoji: '💸', color: '#a78bfa', monthlyBudget: 0, group: 'lifestyle', type: 'expense', parentId: 'sub-pers' },
+  UNCATEGORIZED_CATEGORY,
   // ── FINANZE — categoria ──────────────────────────────────────
   { id: 'sub-finanza',  name: 'Spese finanziarie', emoji: '💳', color: '#7c6df7', monthlyBudget: 0, group: 'finance', type: 'expense' },
   // ── FINANZE — Spese finanziarie ──────────────────────────────
@@ -188,6 +202,8 @@ const defaultCategories: BudgetCategory[] = [
 ]
 
 const initialFinanceState = {
+  categoryRules: {} as Record<string, CategoryRule>,
+  classifierVersion: 0,
   accounts: [] as Account[],
   transactions: [] as Transaction[],
   budgetCategories: defaultCategories,
@@ -232,7 +248,12 @@ export const useFinanceStore = create<FinanceStore>()(
         transactions: s.transactions.filter((t) => !(t.accountId === accountId && !!t.ebId)),
       })),
 
-      addTransaction: (tx) => {
+      addTransaction: (input) => {
+        // Bank-synced movements follow the user's rules and self-transfer detection;
+        // movements entered by hand keep exactly what the user chose.
+        const tx = input.ebId
+          ? classifyImported(input, get().categoryRules, useSettingsStore.getState().settings.selfName)
+          : input
         const id = nanoid()
         const now = new Date().toISOString()
         set((s) => ({ transactions: [{ ...tx, id, createdAt: now }, ...s.transactions] }))
@@ -249,6 +270,42 @@ export const useFinanceStore = create<FinanceStore>()(
         }
         return id
       },
+      setCategoryRule: (key, rule, applyToExisting) => {
+        if (!key) return 0
+        let changed = 0
+        set((s) => ({
+          categoryRules: { ...s.categoryRules, [key]: rule },
+          transactions: applyToExisting
+            ? s.transactions.map((t) => {
+                if (counterpartyKey(t) !== key) return t
+                const next = applyRule(t, rule)
+                if (next.category === t.category && next.type === t.type) return t
+                changed++
+                return next
+              })
+            : s.transactions,
+        }))
+        return changed
+      },
+
+      runClassifierMigration: (selfName) => {
+        const s = get()
+        if (s.classifierVersion >= 1 || !selfName?.trim()) return
+        const cashWithdrawal = /prelievo|bancomat|\batm\b/i
+        const transactions = s.transactions.map((t) => {
+          let next = t
+          // Until now the keyword fallback for unrecognised bank movements was "Spese personali"
+          if (next.ebId && next.category === 'Spese personali' && !cashWithdrawal.test(`${next.description} ${next.merchant ?? ''}`)) {
+            next = { ...next, category: UNCATEGORIZED }
+          }
+          if (next.type !== 'transfer' && isSelfCounterparty(next.merchant || next.description, selfName)) {
+            next = { ...next, type: 'transfer', category: TRANSFER_CATEGORY }
+          }
+          return next
+        })
+        set({ transactions, classifierVersion: 1 })
+      },
+
       updateTransaction: (id, patch) => {
         set((s) => ({ transactions: s.transactions.map((t) => (t.id === id ? { ...t, ...patch } : t)) }))
       },
@@ -469,12 +526,20 @@ export const useFinanceStore = create<FinanceStore>()(
 
       resetAll: () => set({ ...initialFinanceState }),
 
-      hydrate: (data) => set(data),
+      hydrate: (data) => {
+        // Server copies saved before v7 lack the "Da categorizzare" category
+        const cats = data.budgetCategories
+        if (cats && !cats.some((c) => c.id === UNCATEGORIZED_CATEGORY.id || c.name === UNCATEGORIZED)) {
+          set({ ...data, budgetCategories: [...cats, UNCATEGORIZED_CATEGORY] })
+        } else {
+          set(data)
+        }
+      },
     }),
     {
       name: 'ledgernest-finance',
       skipHydration: true,
-      version: 6,
+      version: 7,
       migrate: (persisted: unknown, version: number) => {
         const state = persisted as Partial<typeof initialFinanceState>
 
@@ -534,6 +599,14 @@ export const useFinanceStore = create<FinanceStore>()(
             if (renditeLeaves.has(c.id) && !c.parentId) return { ...c, parentId: 'sub-rendite' }
             return c
           })
+        }
+
+        // v6 → v7: "Da categorizzare" category for unrecognised bank movements
+        if (version < 7) {
+          const cats = state.budgetCategories ?? []
+          if (!cats.some((c) => c.id === UNCATEGORIZED_CATEGORY.id || c.name === UNCATEGORIZED)) {
+            state.budgetCategories = [...cats, UNCATEGORIZED_CATEGORY]
+          }
         }
 
         return state

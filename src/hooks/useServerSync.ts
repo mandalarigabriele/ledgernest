@@ -48,8 +48,8 @@ export function useServerSync() {
           if (data) {
             useFinanceStore.getState().hydrate(data)
           } else {
-            const { accounts, transactions, budgetCategories, budgetGroups, recurringItems, goals, budgetPlans, liabilities, netWorthSnapshots, merchantAliases, merchantLogos, featuredGoalId } = useFinanceStore.getState()
-            syncPut('finance', { accounts, transactions, budgetCategories, budgetGroups, recurringItems, goals, budgetPlans, liabilities, netWorthSnapshots, merchantAliases, merchantLogos, featuredGoalId })
+            const { accounts, transactions, budgetCategories, budgetGroups, recurringItems, goals, budgetPlans, liabilities, netWorthSnapshots, merchantAliases, merchantLogos, featuredGoalId, categoryRules, classifierVersion } = useFinanceStore.getState()
+            syncPut('finance', { accounts, transactions, budgetCategories, budgetGroups, recurringItems, goals, budgetPlans, liabilities, netWorthSnapshots, merchantAliases, merchantLogos, featuredGoalId, categoryRules, classifierVersion })
           }
         }
 
@@ -103,6 +103,10 @@ export function useServerSync() {
       } finally {
         hydratedRef.current = true
 
+        // One-off reclassification of existing movements, on the server copy just loaded
+        // (self transfers, old "Spese personali" fallback → "Da categorizzare").
+        useFinanceStore.getState().runClassifierMigration(useSettingsStore.getState().settings.selfName)
+
         // Silently keep the cookie in sync with the store locale.
         // No reload here — avoids the blink/bounce caused by reloading right
         // after the user already did a hard reload for a locale switch.
@@ -126,8 +130,8 @@ export function useServerSync() {
       if (!hydratedRef.current) return
       clearTimeout(timeout)
       timeout = setTimeout(() => {
-        const { accounts, transactions, budgetCategories, budgetGroups, recurringItems, goals, budgetPlans, liabilities, netWorthSnapshots, merchantAliases, merchantLogos, featuredGoalId, properties } = state
-        syncPut('finance', { accounts, transactions, budgetCategories, budgetGroups, recurringItems, goals, budgetPlans, liabilities, netWorthSnapshots, merchantAliases, merchantLogos, featuredGoalId, properties })
+        const { accounts, transactions, budgetCategories, budgetGroups, recurringItems, goals, budgetPlans, liabilities, netWorthSnapshots, merchantAliases, merchantLogos, featuredGoalId, properties, categoryRules, classifierVersion } = state
+        syncPut('finance', { accounts, transactions, budgetCategories, budgetGroups, recurringItems, goals, budgetPlans, liabilities, netWorthSnapshots, merchantAliases, merchantLogos, featuredGoalId, properties, categoryRules, classifierVersion })
       }, 1500)
     })
     return () => { unsub(); clearTimeout(timeout) }

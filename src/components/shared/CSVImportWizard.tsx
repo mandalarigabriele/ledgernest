@@ -11,6 +11,7 @@ import { useSettingsStore } from '@/stores/settingsStore'
 import { useFormatters } from '@/hooks/useFormatters'
 import { usePrices } from '@/hooks/usePrices'
 import { CategoryPicker } from '@/components/shared/CategoryPicker'
+import { applyRule, counterpartyKey, isSelfCounterparty, TRANSFER_CATEGORY } from '@/lib/utils/classify'
 import MerchantInput from '@/components/shared/MerchantInput'
 
 // ── helpers ───────────────────────────────────────────────────
@@ -370,13 +371,19 @@ export default function CSVImportWizard({ onClose }: Props) {
         if (match && match !== row.merchant) return { ...row, merchant: match, description: match } as ParsedRow
         return row
       })
-      // Self-name detection: merchant matches user → giroconto
-      const selfNameNorm = useSettingsStore.getState().settings.selfName?.trim().toLowerCase()
+      // The user's category rules win; otherwise a counterparty with the user's own name
+      // (in any word order) is a transfer between own accounts
+      const { categoryRules } = useFinanceStore.getState()
+      const selfName = useSettingsStore.getState().settings.selfName
       const withSelfCheck: ParsedRow[] = normalized.map((row) => {
-        if (row.kind !== 'transaction' || !selfNameNorm) return row
-        const hay = (row.merchant ?? row.description ?? '').toLowerCase()
-        if (hay.includes(selfNameNorm)) {
-          return { ...row, type: 'transfer' as const, suggestedCategory: 'Trasferimenti', include: false } as ParsedRow
+        if (row.kind !== 'transaction') return row
+        const rule = categoryRules[counterpartyKey(row)]
+        if (rule) {
+          const ruled = applyRule({ type: row.type, category: row.suggestedCategory }, rule)
+          return { ...row, type: ruled.type, suggestedCategory: ruled.category } as ParsedRow
+        }
+        if (isSelfCounterparty(row.merchant || row.description, selfName)) {
+          return { ...row, type: 'transfer' as const, suggestedCategory: TRANSFER_CATEGORY, include: false } as ParsedRow
         }
         return row
       })

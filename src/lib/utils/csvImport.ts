@@ -1,3 +1,4 @@
+import { UNCATEGORIZED } from './classify'
 // Pure CSV parsing logic — no React deps
 
 export type DetectedFormat = 'traderepublic' | 'creditagricole' | 'unknown'
@@ -408,7 +409,8 @@ export function guessCategory(
     }
   }
 
-  return { cat: 'Spese personali', type: 'expense' }
+  // Nothing recognised it: leave it visibly uncategorised instead of hiding it in a real category
+  return { cat: UNCATEGORIZED, type: 'expense' }
 }
 
 // ── Trade Republic parser ────────────────────────────────────
@@ -450,7 +452,7 @@ function parseTR(text: string, existingNotes: string[]): ParsedRow[] {
         merchant: name || undefined,
         originalDescription, amount,
         type: 'income',
-        suggestedCategory: cat === 'Spese personali' ? 'Stipendio' : cat,
+        suggestedCategory: cat === UNCATEGORIZED ? 'Stipendio' : cat,
         include: !isDuplicate, isDuplicate,
       })
     } else if (type === 'TRANSFER_OUTBOUND' || type === 'TRANSFER_INSTANT_OUTBOUND') {
