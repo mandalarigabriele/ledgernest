@@ -4,7 +4,7 @@
 
 **Personal finance dashboard — portfolio, budget, net worth and cashflow in one place.**
 
-![Version](https://img.shields.io/badge/version-0.5.38-blue)
+![Version](https://img.shields.io/badge/version-0.5.46-blue)
 ![Next.js](https://img.shields.io/badge/Next.js-14-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.5-blue)
 ![License](https://img.shields.io/badge/license-private-lightgrey)
@@ -366,6 +366,46 @@ The script exits immediately on any error (`set -euo pipefail`) and prints the s
 # Enable PM2 auto-start on server reboot (run once after first deploy)
 pm2 startup
 ```
+
+### Automatic deploy (GitHub Actions)
+
+Every push to `main` deploys by itself:
+
+1. **CI** (`.github/workflows/ci.yml`, GitHub-hosted) runs `npm ci` + `npm run build` on every pull request and every push to `main`.
+2. **Deploy** (`.github/workflows/deploy.yml`) starts when CI succeeds on a push to `main` and runs on a **self-hosted runner inside the LXC container**. It calls `sudo -n /usr/bin/bash /opt/ledgernest/deploy.sh`, so the deploy is exactly the manual one (pull, install, migrate, build, PM2 restart, health check). It can also be started by hand from the Actions tab (*Run workflow*).
+
+If the app is not in `/opt/ledgernest`, set the repository variable `DEPLOY_DIR` (Settings → Secrets and variables → Actions → Variables) and use the same path in the sudoers rule below. The script runs as root, so PM2 must be the root PM2 instance that already runs the app.
+
+The runner only makes outbound connections to GitHub: no port is opened. **This repository is public**: in Settings → Actions → General → *Approval for running fork pull request workflows from contributors*, choose **Require approval for all external contributors**, so no fork pull request can run code on the runner without your approval.
+
+#### Runner setup (once, on the container, as root)
+
+```sh
+# 1. A dedicated user without a password, allowed to run only deploy.sh as root
+useradd --create-home --shell /bin/bash github-runner
+echo 'github-runner ALL=(root) NOPASSWD: /usr/bin/bash /opt/ledgernest/deploy.sh' > /etc/sudoers.d/ledgernest-deploy
+chmod 440 /etc/sudoers.d/ledgernest-deploy
+visudo -cf /etc/sudoers.d/ledgernest-deploy        # expected: "parsed OK"
+
+# 2. Download the runner (take the current version from the GitHub page in step 3)
+su - github-runner
+mkdir actions-runner && cd actions-runner
+curl -fsSLo runner.tar.gz https://github.com/actions/runner/releases/download/v<VERSION>/actions-runner-linux-x64-<VERSION>.tar.gz
+tar xzf runner.tar.gz
+
+# 3. Register it: GitHub → repository → Settings → Actions → Runners → New self-hosted runner (Linux x64)
+#    shows a one-time token. Paste it only here, on the server.
+./config.sh --url https://github.com/mandalarigabriele/ledgernest --labels ledgernest --name ledgernest-lxc --unattended --token <TOKEN>
+exit
+
+# 4. Install and start it as a service that runs as github-runner
+cd /home/github-runner/actions-runner
+./svc.sh install github-runner
+./svc.sh start
+./svc.sh status                                     # expected: "active (running)"
+```
+
+If the Intake runner already lives on the same container, register this one in a separate folder (e.g. `actions-runner-ledgernest`) with its own name.
 
 ### Nginx reverse proxy (optional)
 

@@ -1,0 +1,30 @@
+name: Deploy
+
+# Runs on the self-hosted runner inside the LedgerNest LXC container (label "ledgernest"), only
+# after CI passed on a push to main. The runner user may run exactly <DEPLOY_DIR>/deploy.sh as
+# root through a sudoers rule; see README, "Automatic deploy (GitHub Actions)".
+# DEPLOY_DIR defaults to /opt/ledgernest; override it with the repository variable DEPLOY_DIR.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: [self-hosted, ledgernest]
+    timeout-minutes: 20
+    steps:
+      - name: Deploy with deploy.sh
+        run: sudo -n /usr/bin/bash "${DEPLOY_DIR}/deploy.sh"
+        env:
+          DEPLOY_DIR: ${{ vars.DEPLOY_DIR || '/opt/ledgernest' }}
