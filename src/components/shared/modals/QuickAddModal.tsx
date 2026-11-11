@@ -87,6 +87,7 @@ export default function QuickAddModal() {
   return (
     <ModalPortal>
     <div
+      onClick={closeModal}
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
         background: 'rgba(0,0,0,0.55)',
@@ -103,6 +104,10 @@ export default function QuickAddModal() {
           paddingTop: 20,
           paddingBottom: 10,
           width: 360,
+          maxWidth: 'calc(100vw - 32px)',
+          maxHeight: '90dvh',
+          overflowY: 'auto',
+          boxSizing: 'border-box',
           boxShadow: '0 32px 80px rgba(0,0,0,0.6)',
         }}
       >
