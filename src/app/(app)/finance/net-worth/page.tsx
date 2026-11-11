@@ -11,6 +11,8 @@ import Icon from '@/components/shared/Icon'
 import { useTranslations } from 'next-intl'
 import type { Liability, Property } from '@/types'
 import { ModalPortal } from '@/components/shared/ModalPortal'
+import { CategoryPicker } from '@/components/shared/CategoryPicker'
+import { computeAutoResiduo, isAutoLiability } from '@/lib/utils/amortization'
 
 // ── SVG net-worth chart ────────────────────────────────────────────────────
 
@@ -62,6 +64,9 @@ function NetWorthChart({
   )
 }
 
+const fmtDate = (d: string) =>
+  new Date(d + 'T12:00:00').toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
+
 // ── Add liability modal ────────────────────────────────────────────────────
 
 const LiabilityTypes: { key: Liability['type']; labelKey: string }[] = [
@@ -81,14 +86,29 @@ function AddLiabilityModal({ onClose, onAdd, initial }: { onClose: () => void; o
   const [endYear, setEndYear] = useState(String(initial?.endYear ?? new Date().getFullYear() + 10))
   const [originalAmount, setOriginalAmount] = useState(String(initial?.originalAmount ?? ''))
   const [startYear, setStartYear] = useState(String(initial?.startYear ?? new Date().getFullYear()))
+  const today = new Date().toISOString().slice(0, 10)
+  const [auto, setAuto] = useState(initial ? !!initial.autoCategory : true)
+  const [autoCategory, setAutoCategory] = useState(initial?.autoCategory ?? 'Mutuo')
+  const [baselineDate, setBaselineDate] = useState(initial?.baselineDate ?? today)
 
   function handleSave() {
     if (!name.trim() || !residuo) return
+    const residuoNum = parseFloat(residuo) || 0
+    // The residual field shows the current (derived) residual. Leaving it and its date untouched
+    // keeps the original starting point; changing either re-anchors the calculation there.
+    const keepBaseline =
+      !!initial && isAutoLiability(initial) && residuoNum === initial.residuo && baselineDate === initial.baselineDate
+    const autoFields: Pick<Liability, 'autoCategory' | 'baselineResiduo' | 'baselineDate'> = auto && autoCategory
+      ? keepBaseline
+        ? { autoCategory, baselineResiduo: initial!.baselineResiduo, baselineDate: initial!.baselineDate }
+        : { autoCategory, baselineResiduo: residuoNum, baselineDate: baselineDate || today }
+      : { autoCategory: undefined, baselineResiduo: undefined, baselineDate: undefined }
     onAdd({
+      ...autoFields,
       name: name.trim(),
       note: note.trim() || undefined,
       type,
-      residuo: parseFloat(residuo) || 0,
+      residuo: residuoNum,
       monthlyPayment: parseFloat(monthly) || 0,
       interestRate: parseFloat(rate) || 0,
       endYear: parseInt(endYear) || new Date().getFullYear() + 10,
@@ -119,7 +139,7 @@ function AddLiabilityModal({ onClose, onAdd, initial }: { onClose: () => void; o
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, width: 460, boxShadow: '0 32px 80px rgba(0,0,0,0.6)' }}
+        style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, width: 460, maxWidth: 'calc(100vw - 32px)', maxHeight: '90dvh', overflowY: 'auto', overflowX: 'hidden', boxSizing: 'border-box', boxShadow: '0 32px 80px rgba(0,0,0,0.6)' }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 22px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
           <div style={{ fontWeight: 700, fontSize: 16 }}>{tl('liabilityTitle')}</div>
@@ -177,6 +197,27 @@ function AddLiabilityModal({ onClose, onAdd, initial }: { onClose: () => void; o
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 6 }}>{tl('liabilityStartYear')}</div>
               <input className="ledgernest-input" style={inputStyle} type="number" placeholder={String(new Date().getFullYear())} value={startYear} onChange={(e) => setStartYear(e.target.value)} />
+            </div>
+            <div style={{ gridColumn: '1/-1', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+                <input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} style={{ marginTop: 2, accentColor: 'var(--accent)' }} />
+                <span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{tl('liabilityAuto')}</span>
+                  <span style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{tl('liabilityAutoHint')}</span>
+                </span>
+              </label>
+              {auto && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 6 }}>{tl('liabilityAutoCategory')}</div>
+                    <CategoryPicker value={autoCategory} onChange={setAutoCategory} typeFilter="expense" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 6 }}>{tl('liabilityBaselineDate')}</div>
+                    <input className="ledgernest-input" style={inputStyle} type="date" value={baselineDate} max={today} onChange={(e) => setBaselineDate(e.target.value)} />
+                  </div>
+                </div>
+              )}
             </div>
             <div style={{ gridColumn: '1/-1' }}>
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--text-tertiary)', marginBottom: 6 }}>{tl('liabilityNote')}</div>
@@ -890,6 +931,20 @@ export default function PatrimonioPage() {
                           <span style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 4, padding: '1px 6px', fontWeight: 600 }}>{liabTypeLabel[l.type]}</span>
                           {l.startYear && <span>· {tl('liabilitySince', { year: l.startYear })}</span>}
                         </div>
+                        {(() => {
+                          const auto = computeAutoResiduo(l, transactions)
+                          if (!auto) return null
+                          const last = auto.payments[auto.payments.length - 1]
+                          return (
+                            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4, lineHeight: 1.4 }}>
+                              <span style={{ color: 'var(--accent)', fontWeight: 600 }}>⟳ {tl('liabilityAutoBadge', { category: l.autoCategory! })}</span>
+                              {' · '}
+                              {last
+                                ? tl('liabilityAutoLast', { date: fmtDate(last.date), principal: fmt(last.principal), interest: fmt(last.interest) })
+                                : tl('liabilityAutoWaiting', { date: fmtDate(l.baselineDate!) })}
+                            </div>
+                          )
+                        })()}
                       </td>
                       <td style={{ padding: '12px 16px', minWidth: 200 }}>
                         {repaidPct !== null ? (

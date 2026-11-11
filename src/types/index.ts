@@ -102,6 +102,11 @@ export interface Liability {
   endYear: number
   originalAmount?: number  // initial debt — used for repayment progress bar
   startYear?: number       // year the liability started
+  // Automatic pay-down: movements in this category dated after baselineDate reduce the
+  // residual by their principal share (see lib/utils/amortization.ts). residuo is then derived.
+  autoCategory?: string    // category name, e.g. "Mutuo"
+  baselineResiduo?: number // residual valid on baselineDate
+  baselineDate?: string    // YYYY-MM-DD
   createdAt: string
 }
 

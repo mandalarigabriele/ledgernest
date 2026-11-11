@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Account, Transaction, BudgetCategory, BudgetGroup, RecurringItem, Goal, Liability, Property, NetWorthSnapshot } from '@/types'
 import { nanoid } from './utils'
+import { applyAutoResidui } from '@/lib/utils/amortization'
 
 interface BudgetMonthPlan {
   income: number
@@ -540,3 +541,13 @@ export const useFinanceStore = create<FinanceStore>()(
     }
   )
 )
+
+// Keep auto-linked liabilities (e.g. a mortgage paid down by "Mutuo" movements) in sync with the
+// movements. Writing the derived residuo back into the store keeps every reader — net worth
+// totals, snapshots, property equity, server sync — correct without each one recomputing it.
+// applyAutoResidui returns the same array when nothing changed, which ends the update loop.
+useFinanceStore.subscribe((state, prev) => {
+  if (state.transactions === prev.transactions && state.liabilities === prev.liabilities) return
+  const next = applyAutoResidui(state.liabilities, state.transactions)
+  if (next !== state.liabilities) useFinanceStore.setState({ liabilities: next })
+})
