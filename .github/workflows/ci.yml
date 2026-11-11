@@ -21,7 +21,35 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run build
+
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t ledgernest:ci .
+      - name: Start the container with a dummy configuration
+        run: |
+          cat > .env.local <<'EOF'
+          NEXTAUTH_URL=http://localhost:3000
+          NEXTAUTH_SECRET=ci-only-secret
+          GOOGLE_CLIENT_ID=ci
+          GOOGLE_CLIENT_SECRET=ci
+          ALLOWED_EMAILS=ci@example.com
+          CRON_SECRET=ci-only-secret
+          EOF
+          docker run -d --name ledgernest -p 3000:3000 -v "$PWD/.env.local:/app/.env.local:ro" ledgernest:ci
+      - name: Wait for /api/health
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:3000/api/health; then echo; exit 0; fi
+            sleep 2
+          done
+          docker logs ledgernest
+          exit 1

@@ -1,7 +1,8 @@
 import Database from 'better-sqlite3'
 import path from 'path'
 
-const DB_PATH = path.join(process.cwd(), 'ledgernest.db')
+// DATA_DIR is set in the Docker image (/data volume); local development keeps the repo root
+const DB_PATH = path.join(process.env.DATA_DIR || process.cwd(), 'ledgernest.db')
 
 let db: Database.Database | null = null
 

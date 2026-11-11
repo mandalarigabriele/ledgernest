@@ -1,0 +1,32 @@
+services:
+  ledgernest:
+    build: .
+    image: ledgernest:latest
+    container_name: ledgernest
+    restart: unless-stopped
+    ports:
+      # Host port 3000 belongs to Intake on the shared Docker host. Override with HOST_PORT in .env.
+      - "${HOST_PORT:-3001}:3000"
+    volumes:
+      - ledgernest-data:/data
+      # Next.js reads .env.local itself at startup, so multi-line values (Enable Banking PEM key)
+      # are parsed exactly as in local development.
+      - ./.env.local:/app/.env.local:ro
+
+  # Calls POST /api/cron/snapshot every SNAPSHOT_INTERVAL minutes (default 10), replacing the PM2 cron.
+  snapshot:
+    image: curlimages/curl:8.11.1
+    container_name: ledgernest-snapshot
+    restart: unless-stopped
+    depends_on:
+      ledgernest:
+        condition: service_healthy
+    environment:
+      APP_URL: http://ledgernest:3000
+    volumes:
+      - ./.env.local:/config/.env.local:ro
+      - ./scripts/snapshot-loop.sh:/snapshot-loop.sh:ro
+    entrypoint: ["/bin/sh", "/snapshot-loop.sh"]
+
+volumes:
+  ledgernest-data:
