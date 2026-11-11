@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { useFinanceStore } from '@/stores/financeStore'
 import { useUIStore } from '@/stores/uiStore'
 import Icon from '@/components/shared/Icon'
+import { ModalPortal } from '@/components/shared/ModalPortal'
 
 const CAT_COLORS = [
   '#5bc8d0', '#7c6df7', '#f77c3a', '#3fb950', '#f85149', '#d29922',
@@ -83,6 +84,7 @@ export default function CategoryManagerModal() {
   }
 
   return (
+    <ModalPortal>
     <div
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
@@ -318,5 +320,6 @@ export default function CategoryManagerModal() {
         </div>
       </div>
     </div>
+    </ModalPortal>
   )
 }

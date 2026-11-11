@@ -12,6 +12,7 @@ import { CategoryPicker } from '@/components/shared/CategoryPicker'
 import MerchantInput from '@/components/shared/MerchantInput'
 import EditTradeModal from '@/components/shared/modals/EditTradeModal'
 import type { Transaction, Trade } from '@/types'
+import { ModalPortal } from '@/components/shared/ModalPortal'
 
 // ── shared helpers ────────────────────────────────────────────
 
@@ -27,6 +28,7 @@ const labelStyle: React.CSSProperties = {
 
 function DeleteConfirmModal({ message, onConfirm, onCancel, title, cancelLabel, deleteLabel }: { message: string; onConfirm: () => void; onCancel: () => void; title: string; cancelLabel: string; deleteLabel: string }) {
   return (
+    <ModalPortal>
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
       <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: '28px 32px', width: 380, maxWidth: 'calc(100vw - 32px)', maxHeight: '90dvh', overflowY: 'auto', overflowX: 'hidden', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
         <div style={{ fontSize: 15, fontWeight: 700 }}>{title}</div>
@@ -43,6 +45,7 @@ function DeleteConfirmModal({ message, onConfirm, onCancel, title, cancelLabel, 
         </div>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 
@@ -87,6 +90,7 @@ function EditMovementModal({ tx, onClose }: { tx: Transaction; onClose: () => vo
   }
 
   return (
+    <ModalPortal>
     <div
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}
     >
@@ -237,6 +241,7 @@ function EditMovementModal({ tx, onClose }: { tx: Transaction; onClose: () => vo
         </button>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 
@@ -298,6 +303,7 @@ function AddAsRecurringModal({ tx, onClose }: { tx: TxSnap; onClose: () => void 
   }
 
   return (
+    <ModalPortal>
     <div className="ledgernest-modal-overlay">
       <div className="ledgernest-modal" onClick={(e) => e.stopPropagation()}>
         <div className="ledgernest-modal-header">
@@ -339,6 +345,7 @@ function AddAsRecurringModal({ tx, onClose }: { tx: TxSnap; onClose: () => void 
         </form>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 
@@ -401,6 +408,7 @@ function MarkAsSharedModal({ tx, onClose, onShared }: { tx: Transaction; onClose
   }
 
   return (
+    <ModalPortal>
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
       <div ref={modalRef} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, padding: 'clamp(20px, 5vw, 28px) clamp(18px, 5vw, 32px)', width: 420, maxWidth: 'calc(100vw - 32px)', maxHeight: '90dvh', overflowY: 'auto', overflowX: 'hidden', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 18, boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -455,6 +463,7 @@ function MarkAsSharedModal({ tx, onClose, onShared }: { tx: Transaction; onClose
         </div>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 

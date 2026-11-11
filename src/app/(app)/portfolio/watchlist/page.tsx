@@ -10,6 +10,7 @@ import Sparkline from '@/components/charts/Sparkline'
 import Icon from '@/components/shared/Icon'
 import { useSettingsStore } from '@/stores/settingsStore'
 import type { Quote } from '@/types'
+import { ModalPortal } from '@/components/shared/ModalPortal'
 
 function fmtPct(n: number) {
   return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`
@@ -200,6 +201,7 @@ export function AddItemModal({ lists, onClose, prefill }: {
   }
 
   return (
+    <ModalPortal>
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
       <div style={{ background: 'var(--bg-elevated)', borderRadius: 14, padding: 24, width: 380, boxShadow: 'var(--shadow-lg)' }} onClick={(e) => e.stopPropagation()}>
         <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 18 }}>{tl('addTitle')}</div>
@@ -291,6 +293,7 @@ export function AddItemModal({ lists, onClose, prefill }: {
         </div>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 

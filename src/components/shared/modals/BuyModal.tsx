@@ -9,6 +9,7 @@ import { usePricesStore } from '@/stores/pricesStore'
 import { usePrices } from '@/hooks/usePrices'
 import type { AssetType } from '@/types'
 import Icon from '../Icon'
+import { ModalPortal } from '@/components/shared/ModalPortal'
 
 const ACC_TICKERS = new Set(['VWCE', 'IWDA', 'CSPX', 'EUNL', 'SWRD', 'IUSQ', 'SPYL', 'LCUW'])
 
@@ -233,6 +234,7 @@ export default function BuyModal() {
   const canSubmit = !!ticker && !!quantity && !!price && !!accountId
 
   return (
+    <ModalPortal>
     <div className="ledgernest-modal-overlay">
       <div className="ledgernest-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
 
@@ -476,5 +478,6 @@ export default function BuyModal() {
         </form>
       </div>
     </div>
+    </ModalPortal>
   )
 }

@@ -6,6 +6,7 @@ import { useUIStore } from '@/stores/uiStore'
 import { useFinanceStore } from '@/stores/financeStore'
 import Icon from '../Icon'
 import EmojiPicker from '../EmojiPicker'
+import { ModalPortal } from '@/components/shared/ModalPortal'
 
 const COLORS = ['#5bc8d0', '#7c6df7', '#f77c3a', '#3fb950', '#f85149', '#d29922', '#58a6ff', '#e879a8']
 
@@ -39,6 +40,7 @@ export default function GoalModal() {
   }
 
   return (
+    <ModalPortal>
     <div className="ledgernest-modal-overlay">
       <div className="ledgernest-modal" onClick={(e) => e.stopPropagation()}>
         <div className="ledgernest-modal-header">
@@ -151,5 +153,6 @@ export default function GoalModal() {
         </form>
       </div>
     </div>
+    </ModalPortal>
   )
 }

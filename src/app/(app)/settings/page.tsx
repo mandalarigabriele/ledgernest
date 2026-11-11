@@ -13,6 +13,7 @@ import EmojiPicker from '@/components/shared/EmojiPicker'
 import CSVImportWizard from '@/components/shared/CSVImportWizard'
 import { BRAND_FAVICON_DOMAINS, normalizeMerchantName } from '@/lib/utils/csvImport'
 import type { BudgetCategory, BudgetGroup, Currency, Theme, Locale } from '@/types'
+import { ModalPortal } from '@/components/shared/ModalPortal'
 
 // ── constants ────────────────────────────────────────────────
 
@@ -144,6 +145,7 @@ function MerchantLogoModal({ merchant, current, onClose, onSave }: {
   const applyUrl    = () => { if (customUrl.trim()) { setPreview(customUrl.trim()); setImgError(false) } }
 
   return (
+    <ModalPortal>
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, width: 440, boxShadow: '0 32px 80px rgba(0,0,0,.6)', overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
 
@@ -244,6 +246,7 @@ function MerchantLogoModal({ merchant, current, onClose, onSave }: {
         </div>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 
@@ -262,6 +265,7 @@ function ItemModal({ title, subtitle, initialName = '', initialEmoji = '📋', i
   const [color, setColor] = useState(initialColor)
 
   return (
+    <ModalPortal>
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, width: 420, boxShadow: '0 32px 80px rgba(0,0,0,.6)', overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '20px 22px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
@@ -299,12 +303,14 @@ function ItemModal({ title, subtitle, initialName = '', initialEmoji = '📋', i
         </div>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 
 function ConfirmDeleteModal({ msg, onClose, onConfirm }: { msg: string; onClose: () => void; onConfirm: () => void }) {
   const tc = useTranslations('common')
   return (
+    <ModalPortal>
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 16, width: 360, padding: '24px 24px 18px', boxShadow: '0 32px 80px rgba(0,0,0,.6)' }} onClick={(e) => e.stopPropagation()}>
         <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 18 }}>{msg}</div>
@@ -314,6 +320,7 @@ function ConfirmDeleteModal({ msg, onClose, onConfirm }: { msg: string; onClose:
         </div>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 
@@ -339,6 +346,7 @@ function NuovaCategoriaModal({ onClose, onSave, initialType = 'expense' }: {
   const [color,   setColor]   = useState('#5bc8d0')
 
   return (
+    <ModalPortal>
     <div
       style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
     >
@@ -446,6 +454,7 @@ function NuovaCategoriaModal({ onClose, onSave, initialType = 'expense' }: {
         </div>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 
@@ -465,6 +474,7 @@ function EditCategoriaModal({ cat, onClose, onSave, onDelete }: {
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   return (
+    <ModalPortal>
     <div
       style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
     >
@@ -543,6 +553,7 @@ function EditCategoriaModal({ cat, onClose, onSave, onDelete }: {
         </div>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 
@@ -562,6 +573,7 @@ function MergeModal({ merchants, counts, onClose, onMerge }: {
   const canonical = useCustom ? custom.trim() : choice
 
   return (
+    <ModalPortal>
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, width: 420, boxShadow: '0 32px 80px rgba(0,0,0,.6)', overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
         <div style={{ padding: '20px 22px 16px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -608,6 +620,7 @@ function MergeModal({ merchants, counts, onClose, onMerge }: {
         </div>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 

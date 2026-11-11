@@ -7,6 +7,7 @@ import { useFormatters } from '@/hooks/useFormatters'
 import Icon from '@/components/shared/Icon'
 import { CategoryPicker } from '@/components/shared/CategoryPicker'
 import type { RecurringItem } from '@/types'
+import { ModalPortal } from '@/components/shared/ModalPortal'
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -176,6 +177,7 @@ function AddModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
+    <ModalPortal>
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div ref={modalRef} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, padding: 28, width: 480, maxWidth: 'calc(100vw - 32px)', boxSizing: 'border-box', maxHeight: '90dvh', overflowY: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -248,6 +250,7 @@ function AddModal({ onClose }: { onClose: () => void }) {
         </button>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 
@@ -256,6 +259,7 @@ function AddModal({ onClose }: { onClose: () => void }) {
 function DeleteConfirmModal({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void }) {
   const tl = useTranslations('ricorrenti')
   return (
+    <ModalPortal>
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
       <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: '28px 32px', width: 380, maxWidth: 'calc(100vw - 32px)', maxHeight: '90dvh', overflowY: 'auto', overflowX: 'hidden', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
         <div style={{ fontSize: 15, fontWeight: 700 }}>{tl('deleteTitle')}</div>
@@ -272,6 +276,7 @@ function DeleteConfirmModal({ message, onConfirm, onCancel }: { message: string;
         </div>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 
@@ -308,6 +313,7 @@ function EditRecurringModal({ item, onClose }: { item: RecurringItem; onClose: (
   }
 
   return (
+    <ModalPortal>
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div ref={modalRef} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, padding: 28, width: 480, maxWidth: 'calc(100vw - 32px)', boxSizing: 'border-box', maxHeight: '90dvh', overflowY: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -380,6 +386,7 @@ function EditRecurringModal({ item, onClose }: { item: RecurringItem; onClose: (
         </button>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 

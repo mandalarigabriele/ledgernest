@@ -39,6 +39,7 @@ function makeSpark(seed: number, positive: boolean, n = 22): number[] {
 }
 
 import type { PortfolioPosition, Quote } from '@/types'
+import { ModalPortal } from '@/components/shared/ModalPortal'
 
 function PositionRowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
   const tl = useTranslations('azioni')
@@ -781,6 +782,7 @@ export default function AzioniPage() {
       {deletingPositionId && (() => {
         const pos = stocks.find((p) => p.id === deletingPositionId)
         return (
+          <ModalPortal>
           <div className="ledgernest-modal-overlay" onClick={() => setDeletingPositionId(null)}>
             <div className="ledgernest-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
               <div className="ledgernest-modal-header">
@@ -800,6 +802,7 @@ export default function AzioniPage() {
               </div>
             </div>
           </div>
+          </ModalPortal>
         )
       })()}
     </div>

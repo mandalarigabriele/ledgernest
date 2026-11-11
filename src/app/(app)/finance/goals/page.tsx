@@ -8,6 +8,7 @@ import CircularProgress from '@/components/charts/CircularProgress'
 import Icon from '@/components/shared/Icon'
 import { useTranslations } from 'next-intl'
 import type { Goal } from '@/types'
+import { ModalPortal } from '@/components/shared/ModalPortal'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -75,6 +76,7 @@ function EditGoalModal({ goal, onClose }: { goal: Goal; onClose: () => void }) {
   }
 
   return (
+    <ModalPortal>
     <div className="ledgernest-modal-overlay" onClick={onClose}>
       <div className="ledgernest-modal" onClick={(e) => e.stopPropagation()}>
         <div className="ledgernest-modal-header">
@@ -135,6 +137,7 @@ function EditGoalModal({ goal, onClose }: { goal: Goal; onClose: () => void }) {
         </form>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 
@@ -278,6 +281,7 @@ function GoalCard({
 function DeleteConfirm({ goal, onConfirm, onCancel }: { goal: Goal; onConfirm: () => void; onCancel: () => void }) {
   const tl = useTranslations('obiettivi')
   return (
+    <ModalPortal>
     <div className="ledgernest-modal-overlay" onClick={onCancel}>
       <div className="ledgernest-modal" style={{ maxWidth: 380 }} onClick={(e) => e.stopPropagation()}>
         <div className="ledgernest-modal-header">
@@ -295,6 +299,7 @@ function DeleteConfirm({ goal, onConfirm, onCancel }: { goal: Goal; onConfirm: (
         </div>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 

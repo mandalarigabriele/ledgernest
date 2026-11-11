@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import Icon from '../Icon'
 import type { Trade } from '@/types'
+import { ModalPortal } from '@/components/shared/ModalPortal'
 
 interface Props {
   trade: Trade
@@ -33,6 +34,7 @@ export default function EditTradeModal({ trade, onClose }: Props) {
   const total = (parseFloat(price) || 0) * (parseFloat(quantity) || 0) + (parseFloat(commission) || 0)
 
   return (
+    <ModalPortal>
     <div
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       onClick={onClose}
@@ -119,5 +121,6 @@ export default function EditTradeModal({ trade, onClose }: Props) {
         </form>
       </div>
     </div>
+    </ModalPortal>
   )
 }

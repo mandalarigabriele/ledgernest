@@ -14,6 +14,7 @@ import { useUIStore } from '@/stores/uiStore'
 import { useTranslations } from 'next-intl'
 import PortfolioPerformanceChart from '@/components/charts/PortfolioPerformanceChart'
 import type { PortfolioPosition, Quote } from '@/types'
+import { ModalPortal } from '@/components/shared/ModalPortal'
 
 // ── commodity categories ──────────────────────────────────────
 
@@ -350,6 +351,7 @@ export default function CommodityPage() {
       {deletingId && (() => {
         const r = rows.find((x) => x.id === deletingId)!
         return (
+          <ModalPortal>
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9998, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div style={{ background: 'var(--bg-surface)', borderRadius: 14, padding: 24, maxWidth: 380, width: '90%', border: '1px solid var(--border-subtle)' }}>
               <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 8 }}>{tl('deleteTitle', { ticker: r.ticker })}</div>
@@ -364,6 +366,7 @@ export default function CommodityPage() {
               </div>
             </div>
           </div>
+          </ModalPortal>
         )
       })()}
 

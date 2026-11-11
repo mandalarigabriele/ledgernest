@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl'
 import { useUIStore } from '@/stores/uiStore'
 import Icon from '@/components/shared/Icon'
 import type { ModalType } from '@/types'
+import { ModalPortal } from '@/components/shared/ModalPortal'
 
 export default function QuickAddModal() {
   const t = useTranslations('quickAdd')
@@ -84,6 +85,7 @@ export default function QuickAddModal() {
   }
 
   return (
+    <ModalPortal>
     <div
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
@@ -149,5 +151,6 @@ export default function QuickAddModal() {
         ))}
       </div>
     </div>
+    </ModalPortal>
   )
 }

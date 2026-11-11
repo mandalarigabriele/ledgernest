@@ -8,6 +8,7 @@ import { useUIStore } from '@/stores/uiStore'
 import type { AssetType, PortfolioPosition, Trade } from '@/types'
 import Icon from '../Icon'
 import EditTradeModal from './EditTradeModal'
+import { ModalPortal } from '@/components/shared/ModalPortal'
 
 export default function EditPositionModal() {
   const t = useTranslations('modals')
@@ -61,6 +62,7 @@ export default function EditPositionModal() {
   const totalCost = qty * price
 
   return (
+    <ModalPortal>
     <div className="ledgernest-modal-overlay">
       <div className="ledgernest-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 500 }}>
 
@@ -341,5 +343,6 @@ export default function EditPositionModal() {
       )}
     </div>
   </div>
+    </ModalPortal>
   )
 }

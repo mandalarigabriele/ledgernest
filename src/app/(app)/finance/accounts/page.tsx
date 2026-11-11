@@ -12,6 +12,7 @@ import { effectivePriceEur } from '@/lib/utils/price'
 import Icon from '@/components/shared/Icon'
 import EnableBankingPanel from '@/components/shared/EnableBankingPanel'  // invisible auto-import handler
 import type { Account } from '@/types'
+import { ModalPortal } from '@/components/shared/ModalPortal'
 
 const inputStyle: React.CSSProperties = {
   padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border-subtle)',
@@ -25,6 +26,7 @@ const labelStyle: React.CSSProperties = {
 
 function DeleteConfirmModal({ message, onConfirm, onCancel, title, cancelLabel, deleteLabel }: { message: string; onConfirm: () => void; onCancel: () => void; title: string; cancelLabel: string; deleteLabel: string }) {
   return (
+    <ModalPortal>
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
       <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: '28px 32px', width: 380, display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
         <div style={{ fontSize: 15, fontWeight: 700 }}>{title}</div>
@@ -41,6 +43,7 @@ function DeleteConfirmModal({ message, onConfirm, onCancel, title, cancelLabel, 
         </div>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 
@@ -87,6 +90,7 @@ function EditAccountModal({ account, onClose }: { account: Account; onClose: () 
   }
 
   return (
+    <ModalPortal>
     <div
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
@@ -178,6 +182,7 @@ function EditAccountModal({ account, onClose }: { account: Account; onClose: () 
         </button>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 

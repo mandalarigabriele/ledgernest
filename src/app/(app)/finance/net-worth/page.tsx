@@ -10,6 +10,7 @@ import { useFormatters } from '@/hooks/useFormatters'
 import Icon from '@/components/shared/Icon'
 import { useTranslations } from 'next-intl'
 import type { Liability, Property } from '@/types'
+import { ModalPortal } from '@/components/shared/ModalPortal'
 
 // ── SVG net-worth chart ────────────────────────────────────────────────────
 
@@ -111,6 +112,7 @@ function AddLiabilityModal({ onClose, onAdd, initial }: { onClose: () => void; o
   }
 
   return (
+    <ModalPortal>
     <div
       style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}
       onClick={onClose}
@@ -191,6 +193,7 @@ function AddLiabilityModal({ onClose, onAdd, initial }: { onClose: () => void; o
         </div>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 
@@ -234,6 +237,7 @@ function PropertyModal({ initial, onClose, onSave }: {
   }
 
   return (
+    <ModalPortal>
     <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, width: 480, boxShadow: '0 32px 80px rgba(0,0,0,0.6)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 22px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
@@ -289,6 +293,7 @@ function PropertyModal({ initial, onClose, onSave }: {
         </div>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 

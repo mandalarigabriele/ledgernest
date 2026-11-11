@@ -15,6 +15,7 @@ import Icon from '@/components/shared/Icon'
 import { useUIStore } from '@/stores/uiStore'
 import { useTranslations } from 'next-intl'
 import type { PortfolioPosition, Quote } from '@/types'
+import { ModalPortal } from '@/components/shared/ModalPortal'
 
 // ── palette ──────────────────────────────────────────────────
 
@@ -609,6 +610,7 @@ export default function CryptoPage() {
       {deletingPositionId && (() => {
         const pos = cryptos.find((p) => p.id === deletingPositionId)
         return (
+          <ModalPortal>
           <div className="ledgernest-modal-overlay" onClick={() => setDeletingPositionId(null)}>
             <div className="ledgernest-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
               <div className="ledgernest-modal-header">
@@ -628,6 +630,7 @@ export default function CryptoPage() {
               </div>
             </div>
           </div>
+          </ModalPortal>
         )
       })()}
 

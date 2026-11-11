@@ -7,6 +7,7 @@ import { useFinanceStore } from '@/stores/financeStore'
 import Icon from '../Icon'
 import MerchantInput from '../MerchantInput'
 import { CategoryPicker } from '../CategoryPicker'
+import { ModalPortal } from '@/components/shared/ModalPortal'
 
 // ─────────────────────────────────────────────────────────────
 
@@ -98,6 +99,7 @@ export default function MovementModal() {
   }
 
   return (
+    <ModalPortal>
     <div className="ledgernest-modal-overlay">
       <div className="ledgernest-modal" ref={modalRef} onClick={(e) => e.stopPropagation()}>
         <div className="ledgernest-modal-header">
@@ -260,5 +262,6 @@ export default function MovementModal() {
         </form>
       </div>
     </div>
+    </ModalPortal>
   )
 }

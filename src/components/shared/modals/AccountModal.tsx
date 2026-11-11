@@ -6,6 +6,7 @@ import { useUIStore } from '@/stores/uiStore'
 import { useFinanceStore } from '@/stores/financeStore'
 import type { Account } from '@/types'
 import Icon from '../Icon'
+import { ModalPortal } from '@/components/shared/ModalPortal'
 
 const CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF'] as const
 
@@ -104,6 +105,7 @@ export default function AccountModal() {
                         t('accountInstitution')
 
   return (
+    <ModalPortal>
     <div className="ledgernest-modal-overlay">
       <div className="ledgernest-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
 
@@ -331,5 +333,6 @@ export default function AccountModal() {
         </div>
       </div>
     </div>
+    </ModalPortal>
   )
 }

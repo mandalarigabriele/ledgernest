@@ -8,6 +8,7 @@ import { useSettingsStore } from '@/stores/settingsStore'
 import Icon from '@/components/shared/Icon'
 import MerchantInput from '@/components/shared/MerchantInput'
 import { CategoryPicker } from '@/components/shared/CategoryPicker'
+import { ModalPortal } from '@/components/shared/ModalPortal'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -152,6 +153,7 @@ function AddExpenseModal({
   }
 
   return (
+    <ModalPortal>
     <div className="ledgernest-modal-overlay">
       <div className="ledgernest-modal" ref={modalRef} onClick={(e) => e.stopPropagation()}>
         <div className="ledgernest-modal-header">
@@ -280,6 +282,7 @@ function AddExpenseModal({
           </div>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 
@@ -350,6 +353,7 @@ function SettleUpModal({
   }
 
   return (
+    <ModalPortal>
     <div className="ledgernest-modal-overlay">
       <div className="ledgernest-modal" onClick={(e) => e.stopPropagation()}>
         <div className="ledgernest-modal-header">
@@ -425,6 +429,7 @@ function SettleUpModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 
@@ -903,6 +908,7 @@ export default function SharedPage() {
       )}
 
       {deleteConfirm && (
+        <ModalPortal>
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
           <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: '28px 32px', width: 360, maxWidth: 'calc(100vw - 32px)', display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
             <div style={{ fontSize: 15, fontWeight: 700 }}>{t('deleteTitle')}</div>
@@ -919,6 +925,7 @@ export default function SharedPage() {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
     </div>
   )
