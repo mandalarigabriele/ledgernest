@@ -178,7 +178,7 @@ function AddModal({ onClose }: { onClose: () => void }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={modalRef} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, padding: 28, width: 480, maxWidth: 'calc(100vw - 32px)', boxSizing: 'border-box', maxHeight: '90dvh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <div ref={modalRef} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, padding: 28, width: 480, maxWidth: 'calc(100vw - 32px)', boxSizing: 'border-box', maxHeight: '90dvh', overflowY: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column', gap: 18 }}>
 
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -208,7 +208,7 @@ function AddModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Amount + frequency */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 12 }}>
           <div>
             <div style={labelStyle}>{tl('addAmount')}</div>
             <input value={amount} onChange={(e) => setAmount(e.target.value)} type="number" placeholder="0,00" style={inputStyle} />
@@ -222,7 +222,7 @@ function AddModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Next date + account */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 12 }}>
           <div>
             <div style={labelStyle}>{tl('addFirstDate')}</div>
             <input value={nextDate} onChange={(e) => setNextDate(e.target.value)} type="date" style={inputStyle} />
@@ -257,7 +257,7 @@ function DeleteConfirmModal({ message, onConfirm, onCancel }: { message: string;
   const tl = useTranslations('ricorrenti')
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: '28px 32px', width: 380, maxWidth: 'calc(100vw - 32px)', maxHeight: '90dvh', overflowY: 'auto', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: '28px 32px', width: 380, maxWidth: 'calc(100vw - 32px)', maxHeight: '90dvh', overflowY: 'auto', overflowX: 'hidden', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
         <div style={{ fontSize: 15, fontWeight: 700 }}>{tl('deleteTitle')}</div>
         <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{message}</div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -310,7 +310,7 @@ function EditRecurringModal({ item, onClose }: { item: RecurringItem; onClose: (
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={modalRef} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, padding: 28, width: 480, maxWidth: 'calc(100vw - 32px)', boxSizing: 'border-box', maxHeight: '90dvh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <div ref={modalRef} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, padding: 28, width: 480, maxWidth: 'calc(100vw - 32px)', boxSizing: 'border-box', maxHeight: '90dvh', overflowY: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column', gap: 18 }}>
 
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -340,7 +340,7 @@ function EditRecurringModal({ item, onClose }: { item: RecurringItem; onClose: (
         </div>
 
         {/* Amount + frequency */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 12 }}>
           <div>
             <div style={labelStyle}>{tl('addAmount')}</div>
             <input value={amount} onChange={(e) => setAmount(e.target.value)} type="number" style={inputStyle} />
@@ -354,7 +354,7 @@ function EditRecurringModal({ item, onClose }: { item: RecurringItem; onClose: (
         </div>
 
         {/* Next date + account */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 12 }}>
           <div>
             <div style={labelStyle}>{tl('editNextDate')}</div>
             <input value={nextDate} onChange={(e) => setNextDate(e.target.value)} type="date" style={inputStyle} />

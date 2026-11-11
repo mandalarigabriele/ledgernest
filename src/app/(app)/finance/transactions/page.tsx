@@ -28,7 +28,7 @@ const labelStyle: React.CSSProperties = {
 function DeleteConfirmModal({ message, onConfirm, onCancel, title, cancelLabel, deleteLabel }: { message: string; onConfirm: () => void; onCancel: () => void; title: string; cancelLabel: string; deleteLabel: string }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: '28px 32px', width: 380, maxWidth: 'calc(100vw - 32px)', maxHeight: '90dvh', overflowY: 'auto', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: '28px 32px', width: 380, maxWidth: 'calc(100vw - 32px)', maxHeight: '90dvh', overflowY: 'auto', overflowX: 'hidden', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
         <div style={{ fontSize: 15, fontWeight: 700 }}>{title}</div>
         <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{message}</div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -90,7 +90,7 @@ function EditMovementModal({ tx, onClose }: { tx: Transaction; onClose: () => vo
     <div
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}
     >
-      <div ref={modalRef} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, padding: 28, width: 480, maxWidth: 'calc(100vw - 32px)', boxSizing: 'border-box', maxHeight: '90dvh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <div ref={modalRef} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, padding: 28, width: 480, maxWidth: 'calc(100vw - 32px)', boxSizing: 'border-box', maxHeight: '90dvh', overflowY: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column', gap: 18 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontWeight: 700, fontSize: 16 }}>{tl('editTitle')}</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', fontSize: 20, lineHeight: 1 }}>×</button>
@@ -129,7 +129,7 @@ function EditMovementModal({ tx, onClose }: { tx: Transaction; onClose: () => vo
         </div>
 
         {/* Amount + Date */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 12 }}>
           <div>
             <div style={labelStyle}>{tl('editAmount')}</div>
             <input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} style={inputStyle} />
@@ -312,7 +312,7 @@ function AddAsRecurringModal({ tx, onClose }: { tx: TxSnap; onClose: () => void 
               <label className="ledgernest-label">{tl('recurringName')}</label>
               <input className="ledgernest-input" type="text" value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 12 }}>
               <div className="ledgernest-field">
                 <label className="ledgernest-label">{tl('recurringAmount')}</label>
                 <input className="ledgernest-input ledgernest-mono" type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} required />
@@ -402,7 +402,7 @@ function MarkAsSharedModal({ tx, onClose, onShared }: { tx: Transaction; onClose
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
-      <div ref={modalRef} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, padding: 'clamp(20px, 5vw, 28px) clamp(18px, 5vw, 32px)', width: 420, maxWidth: 'calc(100vw - 32px)', maxHeight: '90dvh', overflowY: 'auto', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 18, boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
+      <div ref={modalRef} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 18, padding: 'clamp(20px, 5vw, 28px) clamp(18px, 5vw, 32px)', width: 420, maxWidth: 'calc(100vw - 32px)', maxHeight: '90dvh', overflowY: 'auto', overflowX: 'hidden', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 18, boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontSize: 16, fontWeight: 700 }}>{tl('markSharedTitle')}</div>
           <button className="ledgernest-icon-btn" onClick={onClose}><Icon name="close" size={16} /></button>
