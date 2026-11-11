@@ -748,7 +748,7 @@ export default function MovimentiPage() {
     <div className="ledgernest-gap-5">
 
       {/* KPI strip */}
-      <div className="ledgernest-fin-kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+      <div className="ledgernest-fin-kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12 }}>
 
         <div className="ledgernest-kpi is-hl" style={{ padding: '18px 20px', gap: 5 }}>
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>
@@ -803,8 +803,17 @@ export default function MovimentiPage() {
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>
             {tl('kpiTopCat')}
           </div>
-          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em' }}>
-            {topCat?.name ?? '—'}
+          {/* Category names can be long ("Spese straordinarie/impreviste"): smaller type, at most
+              two lines, breaking at the slash, full name on hover */}
+          <div
+            title={topCat?.name}
+            style={{
+              fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.2,
+              minHeight: 31, overflowWrap: 'anywhere',
+              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+            }}
+          >
+            {topCat?.name.replace(/\//g, '/\u200b') ?? '—'}
           </div>
           {topCat ? (
             <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>

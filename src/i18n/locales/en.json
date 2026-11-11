@@ -627,7 +627,7 @@
     "kpiInclInvest": "incl. investments",
     "kpiSavings": "savings",
     "kpiLastDays": "last {window} days",
-    "kpiPctExpenses": "% of expenses",
+    "kpiPctExpenses": "of expenses",
     "kpiNoExpense": "no expenses",
     "chartTitle": "Monthly flow · 6 months",
     "chartSubtitle": "Income vs expenses",
