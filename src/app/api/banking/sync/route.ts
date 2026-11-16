@@ -5,10 +5,11 @@ import { getDb } from '@/lib/db/schema'
 import {
   getTransactions, getBalances, getClosingBalance,
   resolveTransactionAmount, resolveTransactionDate, resolveTransactionId,
-  resolveCreditor, resolveDebtor, resolveRemittance,
+  resolveCreditor, resolveDebtor, resolveRemittance, resolveKindHints,
   type EBTransaction,
 } from '@/lib/services/enableBanking'
 import { cleanMerchant, guessCategory } from '@/lib/utils/csvImport'
+import { CASH_CATEGORY, UNCATEGORIZED, isCashWithdrawal } from '@/lib/utils/classify'
 import type { Transaction } from '@/types'
 import crypto from 'crypto'
 
@@ -39,7 +40,17 @@ function mapTransaction(
   const description = merchant || remittance || rawCounterparty || 'Transazione'
 
   // Category + type from keyword rules (same as CSV import)
-  const { cat, type: guessedType } = guessCategory(description)
+  const guess = guessCategory(description)
+  let cat = guess.cat
+  let guessedType = guess.type
+  // Cash withdrawals: also look at the remittance, the bank's transaction code and the MCC,
+  // which the merchant name alone often lacks.
+  if (amount < 0 && isCashWithdrawal([description, rawCounterparty, remittance, ...resolveKindHints(eb)], rawCounterparty, eb.merchant_category_code)) {
+    cat = CASH_CATEGORY
+    guessedType = 'expense'
+  } else if (amount > 0 && cat === CASH_CATEGORY) {
+    cat = UNCATEGORIZED // money coming in is never a withdrawal
+  }
   const type: 'income' | 'expense' | 'transfer' =
     guessedType === 'transfer' ? 'transfer' : amount < 0 ? 'expense' : 'income'
 

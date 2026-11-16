@@ -4,6 +4,8 @@ import type { Transaction } from '@/types'
 export const UNCATEGORIZED = 'Da categorizzare'
 /** Category used for transfers between the user's own accounts. */
 export const TRANSFER_CATEGORY = 'Trasferimenti'
+/** Category for cash taken out at an ATM: counted as spent when withdrawn. */
+export const CASH_CATEGORY = 'Contanti'
 
 export type TxType = Transaction['type']
 
@@ -67,4 +69,29 @@ export function classifyImported<T extends Pick<Transaction, 'type' | 'category'
     return { ...tx, type: 'transfer', category: TRANSFER_CATEGORY }
   }
   return tx
+}
+
+/** Merchant codes for cash withdrawals (6011 = ATM, 6010 = cash at a bank counter). */
+const CASH_MCC = new Set(['6010', '6011'])
+
+// Withdrawal wording used by banks (Italian, English, German, French, Spanish).
+// A plain "bancomat" also names the Italian debit network, so card payments ("pagamento POS
+// bancomat") must not count.
+const CASH_WORDS = /\b(prelievo|prelevamento|prelievi|atm|cash withdrawal|withdrawal|geldautomat|bargeldauszahlung|bargeld|retrait|cajero)\b|\bbancomat\b/
+const CARD_PAYMENT_WORDS = /\b(pagamento|pagam|pos|acquisto)\b/
+
+// Some banks (Trade Republic) name an ATM withdrawal only after the ATM's street address,
+// e.g. "Via San Pancrazio 6". A shop never has just an address as its name.
+const STREET_ADDRESS = /^(via|viale|v le|piazza|p za|piazzale|corso|c so|largo|vicolo|strada|contrada|lungomare|lungotevere|borgo|calle|rue|avenue|street|strasse)\s+[a-z ]+\s\d+[a-z]?$/
+
+/**
+ * True when a movement is a cash withdrawal. `texts` are every description the bank gave
+ * (counterparty, remittance, transaction code); `merchant` is the counterparty name alone.
+ */
+export function isCashWithdrawal(texts: Array<string | undefined>, merchant?: string, mcc?: string): boolean {
+  if (mcc && CASH_MCC.has(mcc.trim())) return true
+  if (merchant && STREET_ADDRESS.test(normalize(merchant))) return true
+  const text = normalize(texts.filter(Boolean).join(' '))
+  if (!CASH_WORDS.test(text)) return false
+  return !CARD_PAYMENT_WORDS.test(text) || /\b(prelievo|prelevamento|atm|withdrawal)\b/.test(text)
 }

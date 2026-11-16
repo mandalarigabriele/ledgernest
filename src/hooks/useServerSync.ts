@@ -104,7 +104,7 @@ export function useServerSync() {
         hydratedRef.current = true
 
         // One-off reclassification of existing movements, on the server copy just loaded
-        // (self transfers, old "Spese personali" fallback → "Da categorizzare").
+        // (self transfers, old "Spese personali" fallback → "Da categorizzare", cash withdrawals → "Contanti").
         useFinanceStore.getState().runClassifierMigration(useSettingsStore.getState().settings.selfName)
 
         // Silently keep the cookie in sync with the store locale.

@@ -1,4 +1,4 @@
-import { UNCATEGORIZED } from './classify'
+import { UNCATEGORIZED, CASH_CATEGORY, isCashWithdrawal } from './classify'
 // Pure CSV parsing logic — no React deps
 
 export type DetectedFormat = 'traderepublic' | 'creditagricole' | 'unknown'
@@ -116,7 +116,6 @@ const KEYWORD_RULES: KeywordRule[] = [
   { kw: ['dividendo', 'dividend'], cat: 'Dividendi', type: 'income' },
   { kw: ['ristorante', 'pizza ', 'sushi', 'trattoria', 'osteria', 'bar ', 'caffè', 'caffe ', 'gelateria', 'kebab'], cat: 'Ristoranti', type: 'expense' },
   { kw: ['hotel', 'airbnb', 'booking.com', 'expedia', 'ryanair', 'easyjet', 'trenitalia', 'italo', 'flixbus'], cat: 'Viaggi', type: 'expense' },
-  { kw: ['prelievo', 'bancomat', 'atm prelievo'], cat: 'Spese personali', type: 'expense' },
   { kw: ['telefon', 'internet', 'tim ', 'vodafone', 'windtre', 'fastweb', 'enel ', 'a2a ', 'hera ', 'iren '], cat: 'Utenze', type: 'expense' },
   { kw: ['elettricità', 'gas', 'acqua '], cat: 'Utenze', type: 'expense' },
 ]
@@ -388,6 +387,11 @@ export function guessCategory(
   causale?: string
 ): { cat: string; type: 'income' | 'expense' | 'transfer' } {
   const desc = description.toLowerCase()
+
+  // 0. Cash withdrawals (ATM wording, ATM merchant code, or an ATM named by its street address)
+  if (isCashWithdrawal([description, causale], description, mcc)) {
+    return { cat: CASH_CATEGORY, type: 'expense' }
+  }
 
   // 1. Keyword rules (highest priority)
   for (const rule of KEYWORD_RULES) {

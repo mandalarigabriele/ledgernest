@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware'
 import type { Account, Transaction, BudgetCategory, BudgetGroup, RecurringItem, Goal, Liability, Property, NetWorthSnapshot } from '@/types'
 import { nanoid } from './utils'
 import { applyAutoResidui } from '@/lib/utils/amortization'
-import { classifyImported, applyRule, counterpartyKey, isSelfCounterparty, UNCATEGORIZED, TRANSFER_CATEGORY, type CategoryRule } from '@/lib/utils/classify'
+import { classifyImported, applyRule, counterpartyKey, isSelfCounterparty, isCashWithdrawal, UNCATEGORIZED, TRANSFER_CATEGORY, CASH_CATEGORY, type CategoryRule } from '@/lib/utils/classify'
 import { useSettingsStore } from './settingsStore'
 
 interface BudgetMonthPlan {
@@ -46,7 +46,7 @@ interface FinanceStore {
   clearAccountOBTransactions: (accountId: string) => void
   /** Remembers `rule` for a counterparty; with applyToExisting also recategorises its movements. Returns how many changed. */
   setCategoryRule: (key: string, rule: CategoryRule, applyToExisting: boolean) => number
-  /** One-off pass over existing movements: self transfers and the old "Spese personali" fallback. */
+  /** One-off pass over existing movements: self transfers, the old "Spese personali" fallback, cash withdrawals. */
   runClassifierMigration: (selfName: string | undefined) => void
 
   // Budget
@@ -125,6 +125,18 @@ const UNCATEGORIZED_CATEGORY: BudgetCategory = {
   id: 'cat-uncat', name: UNCATEGORIZED, emoji: '❓', color: '#f59e0b', monthlyBudget: 0, group: 'lifestyle', parentId: 'sub-pers',
 }
 
+// ATM withdrawals: counted as spent when the cash is taken out
+const CASH_CATEGORY_DEF: BudgetCategory = {
+  id: 'cat-contanti', name: CASH_CATEGORY, emoji: '💶', color: '#10b981', monthlyBudget: 0, group: 'lifestyle', type: 'expense', parentId: 'sub-pers',
+}
+
+// Categories added after release: appended to saved category lists that lack them
+const ENSURED_CATEGORIES = [UNCATEGORIZED_CATEGORY, CASH_CATEGORY_DEF]
+function withEnsuredCategories(cats: BudgetCategory[]): BudgetCategory[] {
+  const missing = ENSURED_CATEGORIES.filter((e) => !cats.some((c) => c.id === e.id || c.name === e.name))
+  return missing.length ? [...cats, ...missing] : cats
+}
+
 const defaultCategories: BudgetCategory[] = [
   // ── ENTRATE — categorie ──────────────────────────────────────
   { id: 'sub-lavoro',  name: 'Lavoro',   emoji: '💼', color: '#4ade80', monthlyBudget: 0, group: 'income', type: 'income' },
@@ -175,6 +187,7 @@ const defaultCategories: BudgetCategory[] = [
   { id: 'cat-curap',  name: 'Cura personale',    emoji: '💆', color: '#fb7185', monthlyBudget: 0, group: 'lifestyle', type: 'expense', parentId: 'sub-pers' },
   { id: 'cat-anim',   name: 'Animali domestici', emoji: '🐾', color: '#78716c', monthlyBudget: 0, group: 'lifestyle', type: 'expense', parentId: 'sub-pers' },
   { id: 'cat-spesep', name: 'Spese personali',   emoji: '💸', color: '#a78bfa', monthlyBudget: 0, group: 'lifestyle', type: 'expense', parentId: 'sub-pers' },
+  CASH_CATEGORY_DEF,
   UNCATEGORIZED_CATEGORY,
   // ── FINANZE — categoria ──────────────────────────────────────
   { id: 'sub-finanza',  name: 'Spese finanziarie', emoji: '💳', color: '#7c6df7', monthlyBudget: 0, group: 'finance', type: 'expense' },
@@ -290,20 +303,38 @@ export const useFinanceStore = create<FinanceStore>()(
 
       runClassifierMigration: (selfName) => {
         const s = get()
-        if (s.classifierVersion >= 1 || !selfName?.trim()) return
-        const cashWithdrawal = /prelievo|bancomat|\batm\b/i
+        if (s.classifierVersion >= 2) return
+        // v1 needs the user's name to spot self transfers; until it is set, v1 waits and the
+        // (idempotent) v2 pass runs again on each load.
+        const runV1 = s.classifierVersion < 1 && !!selfName?.trim()
+        const isCash = (t: Transaction) => isCashWithdrawal([t.description, t.merchant], t.merchant || t.description)
+        let changed = false
         const transactions = s.transactions.map((t) => {
           let next = t
-          // Until now the keyword fallback for unrecognised bank movements was "Spese personali"
-          if (next.ebId && next.category === 'Spese personali' && !cashWithdrawal.test(`${next.description} ${next.merchant ?? ''}`)) {
-            next = { ...next, category: UNCATEGORIZED }
+          if (runV1) {
+            // Until v1 the keyword fallback for unrecognised bank movements was "Spese personali"
+            if (next.ebId && next.category === 'Spese personali' && !isCash(next)) {
+              next = { ...next, category: UNCATEGORIZED }
+            }
+            if (next.type !== 'transfer' && isSelfCounterparty(next.merchant || next.description, selfName)) {
+              next = { ...next, type: 'transfer', category: TRANSFER_CATEGORY }
+            }
           }
-          if (next.type !== 'transfer' && isSelfCounterparty(next.merchant || next.description, selfName)) {
-            next = { ...next, type: 'transfer', category: TRANSFER_CATEGORY }
+          // v2: bank withdrawals so far landed in "Spese personali" or "Da categorizzare";
+          // a category the user chose for that counterparty wins.
+          if (
+            next.ebId && next.type === 'expense' && isCash(next) && !s.categoryRules[counterpartyKey(next)] &&
+            (next.category === 'Spese personali' || next.category === UNCATEGORIZED)
+          ) {
+            next = { ...next, category: CASH_CATEGORY }
           }
+          if (next !== t) changed = true
           return next
         })
-        set({ transactions, classifierVersion: 1 })
+        const classifierVersion = runV1 || s.classifierVersion >= 1 ? 2 : s.classifierVersion
+        if (changed || classifierVersion !== s.classifierVersion) {
+          set({ transactions, classifierVersion, budgetCategories: withEnsuredCategories(s.budgetCategories) })
+        }
       },
 
       updateTransaction: (id, patch) => {
@@ -527,19 +558,15 @@ export const useFinanceStore = create<FinanceStore>()(
       resetAll: () => set({ ...initialFinanceState }),
 
       hydrate: (data) => {
-        // Server copies saved before v7 lack the "Da categorizzare" category
+        // Older server copies lack the categories added later ("Da categorizzare", "Contanti")
         const cats = data.budgetCategories
-        if (cats && !cats.some((c) => c.id === UNCATEGORIZED_CATEGORY.id || c.name === UNCATEGORIZED)) {
-          set({ ...data, budgetCategories: [...cats, UNCATEGORIZED_CATEGORY] })
-        } else {
-          set(data)
-        }
+        set(cats ? { ...data, budgetCategories: withEnsuredCategories(cats) } : data)
       },
     }),
     {
       name: 'ledgernest-finance',
       skipHydration: true,
-      version: 7,
+      version: 8,
       migrate: (persisted: unknown, version: number) => {
         const state = persisted as Partial<typeof initialFinanceState>
 
@@ -607,6 +634,11 @@ export const useFinanceStore = create<FinanceStore>()(
           if (!cats.some((c) => c.id === UNCATEGORIZED_CATEGORY.id || c.name === UNCATEGORIZED)) {
             state.budgetCategories = [...cats, UNCATEGORIZED_CATEGORY]
           }
+        }
+
+        // v7 → v8: "Contanti" category for ATM withdrawals
+        if (version < 8) {
+          state.budgetCategories = withEnsuredCategories(state.budgetCategories ?? [])
         }
 
         return state

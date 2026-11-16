@@ -158,6 +158,9 @@ export interface EBTransaction {
   debtor_name?: string
   debtor?: { name?: string } | string
   remittance_information?: string | string[] | { unstructured?: string | string[]; structured?: string } | Array<{ unstructured?: string; structured?: string } | string>
+  merchant_category_code?: string
+  bank_transaction_code?: { description?: string; code?: string; sub_code?: string } | string
+  note?: string
 }
 
 export async function getTransactions(
@@ -250,4 +253,11 @@ export function resolveRemittance(tx: EBTransaction): string {
     if (typeof obj.structured === 'string') return obj.structured.trim()
   }
   return ''
+}
+
+/** Every free-text hint the bank gives about the kind of movement (transaction code, note). */
+export function resolveKindHints(tx: EBTransaction): string[] {
+  const btc = tx.bank_transaction_code
+  const hints = typeof btc === 'string' ? [btc] : btc ? [btc.description, btc.code, btc.sub_code] : []
+  return [...hints, tx.note].filter((h): h is string => typeof h === 'string' && h.trim() !== '')
 }
