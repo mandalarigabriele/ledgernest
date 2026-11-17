@@ -1,5 +1,6 @@
 import { buildSharedExpenseEmailHtml, buildSharedExpenseRemovalEmailHtml } from '@/lib/email'
 import { NextRequest, NextResponse } from 'next/server'
+import { isDevRoutesEnabled } from '@/lib/security'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,6 +20,9 @@ const MOCK_EXPENSE = {
 }
 
 export async function GET(req: NextRequest) {
+  // Development tool: not served by production builds.
+  if (!isDevRoutesEnabled()) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
   const type = req.nextUrl.searchParams.get('type') ?? 'expense'
   const recipient = req.nextUrl.searchParams.get('recipient') ?? 'me'
   const recipientEmail = recipient === 'partner' ? MOCK_EXPENSE.partnerEmail : MOCK_EXPENSE.myEmail

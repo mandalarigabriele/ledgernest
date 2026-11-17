@@ -12,10 +12,19 @@ function LoginContent() {
   const error = searchParams.get('error')
   const [loading, setLoading] = useState(false)
   const [demoLoading, setDemoLoading] = useState(false)
+  // The demo is offered only when the server runs with DEMO_MODE=1 (reported by /api/health).
+  const [demoEnabled, setDemoEnabled] = useState(false)
 
   useEffect(() => {
     if (status === 'authenticated') router.replace('/dashboard')
   }, [status, router])
+
+  useEffect(() => {
+    fetch('/api/health')
+      .then((r) => r.json())
+      .then((d: { demo?: boolean }) => setDemoEnabled(d.demo === true))
+      .catch(() => setDemoEnabled(false))
+  }, [])
 
   async function handleGoogleSignIn() {
     setLoading(true)
@@ -129,6 +138,7 @@ function LoginContent() {
           {loading ? 'Signing in…' : 'Sign in with Google'}
         </button>
 
+        {demoEnabled && (<>
         {/* Divider */}
         <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: 12 }}>
           <div style={{ flex: 1, height: '1px', background: '#30363d' }} />
@@ -174,6 +184,7 @@ function LoginContent() {
         <div style={{ color: '#586069', fontSize: '11px', textAlign: 'center', lineHeight: 1.5 }}>
           Demo uses pre-loaded fictional data. No account required.
         </div>
+        </>)}
       </div>
     </div>
   )
