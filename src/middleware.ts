@@ -3,8 +3,11 @@ import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 
 export async function middleware(req: NextRequest) {
-  // Demo mode: skip authentication entirely
-  if (req.cookies.has('ledgernest-demo')) {
+  // Demo mode: skip authentication, but only on instances started with DEMO_MODE=1.
+  // Without that variable the cookie is ignored, so nobody can bypass the login by setting it.
+  // (Inlined instead of imported from lib/security: the middleware runs in the Edge runtime,
+  // which cannot load next-auth's server session code.)
+  if (process.env.DEMO_MODE === '1' && req.cookies.has('ledgernest-demo')) {
     return NextResponse.next()
   }
 

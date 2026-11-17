@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db/schema'
+import { requireSession } from '@/lib/security'
 
 function nanoid() {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
 }
 
 export async function GET(req: NextRequest) {
+  const auth = await requireSession()
+  if (auth.response) return auth.response
+
   const type = req.nextUrl.searchParams.get('type') ?? 'portfolio'
   const limit = parseInt(req.nextUrl.searchParams.get('limit') ?? '365')
 
@@ -25,6 +29,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireSession()
+  if (auth.response) return auth.response
+
   const body = await req.json() as Record<string, unknown>
   const type = body.type as string ?? 'portfolio'
   const db = getDb()

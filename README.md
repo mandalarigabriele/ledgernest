@@ -4,7 +4,7 @@
 
 **Personal finance dashboard — portfolio, budget, net worth and cashflow in one place.**
 
-![Version](https://img.shields.io/badge/version-0.5.55-blue)
+![Version](https://img.shields.io/badge/version-0.5.56-blue)
 ![Next.js](https://img.shields.io/badge/Next.js-14-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.5-blue)
 ![License](https://img.shields.io/badge/license-private-lightgrey)
@@ -71,7 +71,7 @@
 ### 🔒 Authentication
 - Google OAuth via NextAuth v4
 - Configurable email whitelist (only authorised addresses can log in)
-- **Demo mode** — one-click demo login on the login page; loads a read-only sample dataset so anyone can explore the UI without credentials
+- **Demo mode** — one-click demo login on the login page; loads a read-only sample dataset so anyone can explore the UI without credentials. Off unless the server runs with `DEMO_MODE=1`
 
 ### 📱 Mobile-first
 - Fully responsive layout
@@ -182,6 +182,7 @@ Copy `.env.example` → `.env.local` and fill in:
 | `RESEND_API_KEY` | ➖ | API key from [resend.com](https://resend.com) — enables email delivery for price alert notifications |
 | `ENABLEBANKING_APP_ID` | ➖ | Enable Banking application ID (Open Banking only) |
 | `ENABLEBANKING_PRIVATE_KEY` | ➖ | RSA/EC private key in PEM format for Enable Banking JWT signing |
+| `DEMO_MODE` | ➖ | `1` turns on the demo login (button on the login page, cookie that skips authentication). Off by default — only for a public demo instance, never with real data |
 
 ### Configuring Google OAuth
 
