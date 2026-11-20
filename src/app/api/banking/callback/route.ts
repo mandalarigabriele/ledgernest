@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db/schema'
 import { createSessionFromCode, getBalances, getClosingBalance, resolveAccountId, resolveIban } from '@/lib/services/enableBanking'
+import { storeSessionAccounts, type SessionAccountInput } from '@/lib/services/bankingLinks'
 
 // Enable Banking redirects here after PSU authenticates.
 // Query params: ?code=<code>&state=<oauth_state>
@@ -34,7 +35,8 @@ export async function GET(req: NextRequest) {
       UPDATE banking_sessions SET status = 'active', eb_session_id = ?, updated_at = datetime('now') WHERE id = ?
     `).run(ebSessionId, row.id)
 
-    // Store accounts with balances
+    // Store accounts with balances, keeping (or inheriting) their links to local accounts
+    const accounts: SessionAccountInput[] = []
     for (const acct of sessionResult.accounts ?? []) {
       const accountId = resolveAccountId(acct)
       if (!accountId) continue
@@ -45,14 +47,12 @@ export async function GET(req: NextRequest) {
         balance = getClosingBalance(balances)
       } catch { /* balance will be 0 */ }
 
-      const iban = resolveIban(acct)
-
-      db.prepare(`
-        INSERT OR REPLACE INTO banking_accounts
-          (uid, session_id, user_email, iban, name, product, currency, balance, last_synced_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-      `).run(accountId, row.id, row.user_email, iban, acct.name ?? null, acct.product ?? null, acct.currency, balance)
+      accounts.push({
+        uid: accountId, iban: resolveIban(acct), name: acct.name ?? null,
+        product: acct.product ?? null, currency: acct.currency, balance,
+      })
     }
+    storeSessionAccounts(db, row.id, row.user_email, accounts)
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'session error'
     return NextResponse.redirect(`${baseUrl}/finance/accounts?banking_error=${encodeURIComponent(msg)}`)

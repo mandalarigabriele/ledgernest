@@ -11,6 +11,7 @@ import { useFormatters } from '@/hooks/useFormatters'
 import { effectivePriceEur } from '@/lib/utils/price'
 import Icon from '@/components/shared/Icon'
 import EnableBankingPanel from '@/components/shared/EnableBankingPanel'  // invisible auto-import handler
+import DuplicateAccountsBanner, { mergeAccountsEverywhere } from '@/components/shared/DuplicateAccountsBanner'
 import type { Account } from '@/types'
 import { ModalPortal } from '@/components/shared/ModalPortal'
 
@@ -49,7 +50,11 @@ function DeleteConfirmModal({ message, onConfirm, onCancel, title, cancelLabel, 
 
 function EditAccountModal({ account, onClose }: { account: Account; onClose: () => void }) {
   const t = useTranslations('conti')
-  const { updateAccount } = useFinanceStore()
+  const { updateAccount, accounts, transactions } = useFinanceStore()
+  const [mergeInto, setMergeInto] = useState('')
+  const [confirmMerge, setConfirmMerge] = useState(false)
+  const mergeTargets = accounts.filter((a) => a.id !== account.id)
+  const ownTxCount = transactions.filter((tx) => tx.accountId === account.id).length
   const [name, setName] = useState(account.name)
   const [type, setType] = useState<Account['type']>(account.type)
   const [balance, setBalance] = useState(String(account.balance))
@@ -180,6 +185,38 @@ function EditAccountModal({ account, onClose }: { account: Account; onClose: () 
         >
           {t('editSave')}
         </button>
+
+        {/* Merge into another account — fixes duplicates without losing movements */}
+        {mergeTargets.length > 0 && (
+          <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={labelStyle}>Unisci in un altro conto</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+              I {ownTxCount} movimenti di questo conto passano al conto scelto, poi questo conto viene rimosso.
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <select
+                value={mergeInto}
+                onChange={(e) => { setMergeInto(e.target.value); setConfirmMerge(false) }}
+                style={{ ...inputStyle, flex: 1 }}
+              >
+                <option value="">Scegli il conto…</option>
+                {mergeTargets.map((a) => <option key={a.id} value={a.id}>{a.name}{a.broker && a.broker !== a.name ? ` · ${a.broker}` : ''}</option>)}
+              </select>
+              <button
+                className="ledgernest-btn ledgernest-btn-sm"
+                style={{ whiteSpace: 'nowrap', background: confirmMerge ? '#d29922' : 'var(--bg-elevated)', color: confirmMerge ? '#111' : 'var(--text-primary)', border: '1px solid var(--border-subtle)', fontWeight: 700 }}
+                disabled={!mergeInto}
+                onClick={async () => {
+                  if (!confirmMerge) { setConfirmMerge(true); return }
+                  await mergeAccountsEverywhere(account.id, mergeInto)
+                  onClose()
+                }}
+              >
+                {confirmMerge ? 'Conferma unione' : 'Unisci'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
     </ModalPortal>
@@ -796,6 +833,7 @@ export default function ContiPage() {
 
       {/* invisible — handles banking_ok auto-import and sync state */}
       <EnableBankingPanel />
+      <DuplicateAccountsBanner />
 
       {/* Header + filters */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>

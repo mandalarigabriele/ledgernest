@@ -18,6 +18,7 @@ interface BankingAccountRow {
   session_id: string
   finance_account_id: string | null
   currency: string
+  superseded_by: string | null
 }
 
 function mapTransaction(
@@ -100,10 +101,13 @@ export async function POST(req: NextRequest) {
 
     const db = getDb()
     const acctRow = db.prepare(
-      `SELECT uid, session_id, finance_account_id, currency FROM banking_accounts WHERE uid = ? AND user_email = ?`
+      `SELECT uid, session_id, finance_account_id, currency, superseded_by FROM banking_accounts WHERE uid = ? AND user_email = ?`
     ).get(accountUid, session.user.email) as BankingAccountRow | undefined
 
     if (!acctRow) return NextResponse.json({ error: 'Conto bancario non trovato' }, { status: 404 })
+    if (acctRow.superseded_by) {
+      return NextResponse.json({ error: 'Questo collegamento è stato sostituito quando hai ricollegato la banca. Ricarica la pagina.' }, { status: 409 })
+    }
 
     // Allow caller to override finance_account_id (e.g. after re-link)
     const financeAccountId = body.financeAccountId ?? acctRow.finance_account_id
@@ -172,21 +176,25 @@ export async function POST(req: NextRequest) {
     })
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Sync error'
-    const isRateLimit = msg.includes('429') || msg.includes('RATE_LIMIT') || msg.includes('multiplicity') || msg.includes('rate limit')
-    const isSessionExpired = msg.includes('401') || msg.includes('403') || msg.includes('SESSION_EXPIRED') || msg.includes('invalid_grant') || msg.includes('session')
-    
+    const ebStatus = Number(msg.match(/Enable Banking API (\d{3})/)?.[1] ?? 0)
+    const isRateLimit = ebStatus === 429 || msg.includes('RATE_LIMIT') || msg.includes('multiplicity') || msg.includes('rate limit')
+    // 401/403: session expired or revoked; 404/422: the account belongs to another session or
+    // Enable Banking application (e.g. after switching account) — both need a reconnection.
+    const isSessionExpired = [401, 403, 404, 422].includes(ebStatus) || msg.includes('SESSION_EXPIRED') || msg.includes('invalid_grant')
+    console.error('[banking/sync]', msg)
+
     let userMsg = msg
     if (isRateLimit) {
       userMsg = 'Limite giornaliero raggiunto: la banca consente massimo 4 sync al giorno (PSD2). Riprova domani.'
     } else if (isSessionExpired) {
       userMsg = 'La sessione con la banca è scaduta o non valida. Ricollega il conto nelle Impostazioni Open Banking.'
     } else if (msg.includes('non-JSON') || msg.includes('<!DOCTYPE')) {
-      userMsg = 'La banca (Credit Agricole) o il servizio Open Banking ha restituito una risposta non valida. Riprova più tardi.'
+      userMsg = 'La banca o il servizio Open Banking ha restituito una risposta non valida. Riprova più tardi.'
     }
 
     return NextResponse.json(
       { error: userMsg },
-      { status: isRateLimit ? 429 : 502 }
+      { status: isRateLimit ? 429 : isSessionExpired ? 409 : 502 }
     )
   }
 }

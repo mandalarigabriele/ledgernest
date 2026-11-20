@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getDb } from '@/lib/db/schema'
 import { getBalances, getClosingBalance } from '@/lib/services/enableBanking'
+import { reconcileBankingAccounts } from '@/lib/services/bankingLinks'
 
 interface BankingSessionRow {
   id: string
@@ -23,6 +24,7 @@ interface BankingAccountRow {
   currency: string
   balance: number | null
   last_synced_at: string | null
+  superseded_by: string | null
 }
 
 // GET — list active sessions + linked accounts
@@ -31,13 +33,15 @@ export async function GET(_req: NextRequest) {
   if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const db = getDb()
+  // Also repairs links left behind by earlier reauthorisations
+  reconcileBankingAccounts(db, session.user.email)
   const sessions = db.prepare(
     `SELECT id, bank_name, country, status, eb_session_id, valid_until
      FROM banking_sessions WHERE user_email = ? ORDER BY rowid DESC`
   ).all(session.user.email) as BankingSessionRow[]
 
   const accounts = db.prepare(
-    `SELECT uid, session_id, finance_account_id, iban, name, product, currency, balance, last_synced_at
+    `SELECT uid, session_id, finance_account_id, iban, name, product, currency, balance, last_synced_at, superseded_by
      FROM banking_accounts WHERE user_email = ?`
   ).all(session.user.email) as BankingAccountRow[]
 
@@ -60,7 +64,7 @@ export async function POST(req: NextRequest) {
   if (!row) return NextResponse.json({ error: 'Session not found or not active' }, { status: 404 })
 
   const accounts = db.prepare(
-    `SELECT uid FROM banking_accounts WHERE session_id = ?`
+    `SELECT uid FROM banking_accounts WHERE session_id = ? AND superseded_by IS NULL`
   ).all(sessionId) as { uid: string }[]
 
   for (const acct of accounts) {
@@ -74,22 +78,31 @@ export async function POST(req: NextRequest) {
   }
 
   const updated = db.prepare(
-    `SELECT uid, session_id, finance_account_id, iban, name, product, currency, balance, last_synced_at
+    `SELECT uid, session_id, finance_account_id, iban, name, product, currency, balance, last_synced_at, superseded_by
      FROM banking_accounts WHERE session_id = ?`
   ).all(sessionId) as BankingAccountRow[]
 
   return NextResponse.json({ accounts: updated })
 }
 
-// PATCH — link a banking account to a local finance account
+// PATCH — link a banking account to a local finance account,
+// or { mergeFrom, mergeInto }: move every link of one local account to another (accounts merged)
 export async function PATCH(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { uid, financeAccountId } = await req.json() as { uid: string; financeAccountId: string | null }
+  const body = await req.json() as { uid?: string; financeAccountId?: string | null; mergeFrom?: string; mergeInto?: string }
+  const db = getDb()
+  if (body.mergeFrom && body.mergeInto) {
+    db.prepare(
+      `UPDATE banking_accounts SET finance_account_id = ? WHERE finance_account_id = ? AND user_email = ?`
+    ).run(body.mergeInto, body.mergeFrom, session.user.email)
+    return NextResponse.json({ ok: true })
+  }
+
+  const { uid, financeAccountId } = body
   if (!uid) return NextResponse.json({ error: 'Missing uid' }, { status: 400 })
 
-  const db = getDb()
   db.prepare(
     `UPDATE banking_accounts SET finance_account_id = ? WHERE uid = ? AND user_email = ?`
   ).run(financeAccountId ?? null, uid, session.user.email)

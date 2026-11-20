@@ -38,6 +38,8 @@ interface FinanceStore {
   updateAccount: (id: string, patch: Partial<Account>) => void
   deleteAccount: (id: string) => void
   clearAccountTransactions: (id: string) => void
+  /** Moves everything of account `fromId` (movements, recurring items, goals) into `intoId`, then removes `fromId`. */
+  mergeAccounts: (fromId: string, intoId: string) => void
 
   // Transactions
   addTransaction: (tx: Omit<Transaction, 'id' | 'createdAt'>) => string
@@ -252,6 +254,32 @@ export const useFinanceStore = create<FinanceStore>()(
         accounts: s.accounts.filter((a) => a.id !== id),
         transactions: s.transactions.filter((t) => t.accountId !== id),
       })),
+      mergeAccounts: (fromId, intoId) => set((s) => {
+        const from = s.accounts.find((a) => a.id === fromId)
+        const into = s.accounts.find((a) => a.id === intoId)
+        if (!from || !into || fromId === intoId) return {}
+        // The same bank movement may already be on both accounts: keep the copy on `into`
+        const intoEbIds = new Set(s.transactions.filter((t) => t.accountId === intoId && t.ebId).map((t) => t.ebId))
+        const transactions = s.transactions
+          .filter((t) => !(t.accountId === fromId && t.ebId && intoEbIds.has(t.ebId)))
+          .map((t) => (t.accountId === fromId ? { ...t, accountId: intoId } : t))
+        const now = new Date().toISOString()
+        const accounts = s.accounts
+          .filter((a) => a.id !== fromId)
+          .map((a) => {
+            if (a.id !== intoId) return a
+            // A synced `from` carries the live bank link and the fresh balance
+            return from.bankingUid
+              ? { ...a, bankingUid: from.bankingUid, balance: from.balance, iban: a.iban ?? from.iban, updatedAt: now }
+              : { ...a, iban: a.iban ?? from.iban, updatedAt: now }
+          })
+        return {
+          accounts,
+          transactions,
+          recurringItems: s.recurringItems.map((r) => (r.accountId === fromId ? { ...r, accountId: intoId } : r)),
+          goals: s.goals.map((g) => (g.accountId === fromId ? { ...g, accountId: intoId } : g)),
+        }
+      }),
       clearAccountTransactions: (id) => set((s) => ({
         transactions: s.transactions.filter((t) => t.accountId !== id),
       })),

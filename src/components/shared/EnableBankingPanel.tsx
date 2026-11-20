@@ -16,6 +16,7 @@ interface EBAccount {
   currency: string
   balance: number | null
   last_synced_at: string | null
+  superseded_by: string | null
 }
 
 interface SyncResult {
@@ -46,9 +47,10 @@ export default function EnableBankingPanel() {
     setSessions(data.sessions ?? [])
     setEbAccounts(data.accounts ?? [])
 
-    // Sync bankingUid on local accounts if it changed or was missing
+    // Sync bankingUid on local accounts if it changed or was missing.
+    // Rows replaced by a later reconnection are history only: never point an account at them.
     for (const acct of data.accounts ?? []) {
-      if (!acct.finance_account_id || !acct.uid) continue
+      if (!acct.finance_account_id || !acct.uid || acct.superseded_by) continue
       const local = useFinanceStore.getState().accounts.find((a) => a.id === acct.finance_account_id)
       if (local && local.bankingUid !== acct.uid) {
         useFinanceStore.getState().updateAccount(acct.finance_account_id, { bankingUid: acct.uid })
@@ -70,7 +72,7 @@ export default function EnableBankingPanel() {
       const res = await fetch('/api/banking/accounts')
       if (!res.ok) return
       const data = await res.json() as { sessions: EBSession[]; accounts: EBAccount[] }
-      const unlinked = (data.accounts ?? []).filter((a) => !a.finance_account_id)
+      const unlinked = (data.accounts ?? []).filter((a) => !a.finance_account_id && !a.superseded_by)
       const session  = (data.sessions ?? []).find((s) => s.status === 'active')
 
       let created = 0
@@ -211,7 +213,7 @@ export default function EnableBankingPanel() {
       if (!res.ok) return
       const data = await res.json() as { accounts: EBAccount[] }
       for (const acct of data.accounts ?? []) {
-        if (acct.finance_account_id) await handleSync(acct, 'delta')
+        if (acct.finance_account_id && !acct.superseded_by) await handleSync(acct, 'delta')
       }
     }, obSyncInterval * 1000)
     return () => clearInterval(id)
@@ -222,7 +224,7 @@ export default function EnableBankingPanel() {
   useEffect(() => {
     const handler = (e: Event) => {
       const { uid, mode } = (e as CustomEvent<{ uid: string; mode?: 'delta' | 'force' | 'hard-reset' }>).detail
-      const acct = ebAccounts.find((a) => a.uid === uid)
+      const acct = ebAccounts.find((a) => a.uid === uid && !a.superseded_by)
       if (acct) handleSync(acct, mode ?? 'delta')
     }
     window.addEventListener('ob:sync', handler)
