@@ -79,7 +79,7 @@ export default function EnableBankingPanel() {
       const toSync: EBAccount[] = []
 
       for (const acct of unlinked) {
-        const name = acct.name ?? acct.iban ?? session?.bank_name ?? 'Conto'
+        const name = acct.name || acct.iban || session?.bank_name || 'Conto'
 
         // Skip if a local account with same IBAN or name already exists
         const existing = useFinanceStore.getState().accounts.find(

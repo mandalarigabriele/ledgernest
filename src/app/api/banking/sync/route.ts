@@ -13,6 +13,9 @@ import { CASH_CATEGORY, UNCATEGORIZED, isCashWithdrawal } from '@/lib/utils/clas
 import type { Transaction } from '@/types'
 import crypto from 'crypto'
 
+const DAY = 24 * 60 * 60 * 1000
+const daysAgo = (n: number) => new Date(Date.now() - n * DAY).toISOString().slice(0, 10)
+
 interface BankingAccountRow {
   uid: string
   session_id: string
@@ -97,7 +100,6 @@ export async function POST(req: NextRequest) {
     if (!accountUid) return NextResponse.json({ error: 'Missing accountUid' }, { status: 400 })
 
     const dateTo   = body.dateTo   ?? new Date().toISOString().slice(0, 10)
-    const dateFrom = body.dateFrom ?? new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
     const db = getDb()
     const acctRow = db.prepare(
@@ -139,8 +141,33 @@ export async function POST(req: NextRequest) {
     }
     // delta: no clearing — dedup table is authoritative
 
-    // Fetch & import transactions
-    const ebTxs = await getTransactions(accountUid, dateFrom, dateTo)
+    // Look-back period. Banks refuse (422 WRONG_TRANSACTIONS_PERIOD) long periods outside the first
+    // minutes after authorisation, so a delta sync only asks from the last movement we know.
+    let dateFrom = body.dateFrom
+    if (!dateFrom) {
+      if (mode === 'delta') {
+        const last = db.prepare(
+          `SELECT MAX(booking_date) AS d FROM banking_transactions WHERE account_uid = ? AND user_email = ?`
+        ).get(accountUid, session.user.email) as { d: string | null } | undefined
+        const fromLast = last?.d ? new Date(new Date(last.d).getTime() - 10 * DAY).toISOString().slice(0, 10) : null
+        dateFrom = fromLast && fromLast > daysAgo(85) ? fromLast : daysAgo(last?.d ? 85 : 30)
+      } else {
+        dateFrom = daysAgo(90)
+      }
+    }
+
+    // Fetch & import transactions (a long default period is retried once with a shorter one)
+    let ebTxs: EBTransaction[]
+    try {
+      ebTxs = await getTransactions(accountUid, dateFrom, dateTo)
+    } catch (err) {
+      const m = err instanceof Error ? err.message : String(err)
+      if (!body.dateFrom && m.includes('WRONG_TRANSACTIONS_PERIOD') && dateFrom < daysAgo(30)) {
+        ebTxs = await getTransactions(accountUid, daysAgo(30), dateTo)
+      } else {
+        throw err
+      }
+    }
     const newTransactions: (Omit<Transaction, 'createdAt'> & { eb_id: string })[] = []
 
     for (const eb of ebTxs) {
@@ -180,12 +207,16 @@ export async function POST(req: NextRequest) {
     const isRateLimit = ebStatus === 429 || msg.includes('RATE_LIMIT') || msg.includes('multiplicity') || msg.includes('rate limit')
     // 401/403: session expired or revoked; 404/422: the account belongs to another session or
     // Enable Banking application (e.g. after switching account) — both need a reconnection.
-    const isSessionExpired = [401, 403, 404, 422].includes(ebStatus) || msg.includes('SESSION_EXPIRED') || msg.includes('invalid_grant')
+    // 422 WRONG_TRANSACTIONS_PERIOD is about the requested period, not the consent (balances still work)
+    const wrongPeriod = msg.includes('WRONG_TRANSACTIONS_PERIOD')
+    const isSessionExpired = !wrongPeriod && [401, 403, 404, 422].includes(ebStatus) || msg.includes('SESSION_EXPIRED') || msg.includes('invalid_grant')
     console.error('[banking/sync]', msg)
 
     let userMsg = msg
     if (isRateLimit) {
       userMsg = 'Limite giornaliero raggiunto: la banca consente massimo 4 sync al giorno (PSD2). Riprova domani.'
+    } else if (wrongPeriod) {
+      userMsg = 'La banca ha rifiutato il periodo richiesto per i movimenti. Riprova tra poco: se si ripete, scrivimi il messaggio del server.'
     } else if (isSessionExpired) {
       userMsg = 'La sessione con la banca è scaduta o non valida. Ricollega il conto nelle Impostazioni Open Banking.'
     } else if (msg.includes('non-JSON') || msg.includes('<!DOCTYPE')) {

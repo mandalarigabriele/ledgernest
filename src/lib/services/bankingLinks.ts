@@ -78,6 +78,9 @@ export function reconcileBankingAccounts(db: Database.Database, email: string): 
   db.transaction(() => {
     for (const group of Array.from(groups.values())) {
       if (group.length < 2) continue
+      // A name (often the holder's) can be shared by several real accounts: only treat the rows as
+      // one account when no single session holds two of them.
+      if (new Set(group.map((r) => r.session_id)).size < group.length) continue
       const live = group.reduce((a, b) => (b.session_order > a.session_order ? b : a))
       for (const old of group) {
         if (old.uid === live.uid || old.session_order === live.session_order) continue
