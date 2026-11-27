@@ -44,6 +44,7 @@ interface Balance {
   iOwePartner: number
   received: number
   paid: number
+  youPaidTotal: number
   totalShared: number
   currency: string
   partnerEmail: string
@@ -320,9 +321,20 @@ function SettleUpModal({
 
   const receiving = fromEmail !== myEmail
 
+  // Who currently owes: a payment in the debtor's direction reduces the debt (partial settlement);
+  // paying the other way increases it. Preview the balance that remains after this payment.
+  const debtorEmail = balance >= 0 ? partnerEmail : myEmail
+  const parsedAmount = parseFloat(amount)
+  const hasAmount = !isNaN(parsedAmount) && parsedAmount > 0
+  const overpays = hasAmount && fromEmail === debtorEmail && parsedAmount > absBalance + 0.005
+  const remaining = hasAmount
+    ? Math.round((balance + (fromEmail === partnerEmail ? -parsedAmount : parsedAmount)) * 100) / 100
+    : balance
+
   async function handleSave() {
     const amt = parseFloat(amount)
     if (isNaN(amt) || amt <= 0) { setError(t('errorAmount')); return }
+    if (overpays) { setError(t('errorOverBalance', { amount: fmt(absBalance) })); return }
     setSaving(true); setError('')
 
     const res = await fetch('/api/settlements', {
@@ -390,12 +402,42 @@ function SettleUpModal({
             <div>
               <div style={labelStyle}>{t('fieldAmount')}</div>
               <input style={inputStyle} type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+              {absBalance >= 0.01 && (
+                <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                  {[
+                    { label: t('quickHalf'), value: absBalance / 2 },
+                    { label: t('quickFull'), value: absBalance },
+                  ].map((q) => (
+                    <button
+                      key={q.label}
+                      type="button"
+                      onClick={() => setAmount(q.value.toFixed(2))}
+                      className="ledgernest-btn ledgernest-btn-ghost"
+                      style={{ padding: '4px 10px', fontSize: 12 }}
+                    >
+                      {q.label} · {fmt(q.value)}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div>
               <div style={labelStyle}>{t('fieldDate')}</div>
               <input style={inputStyle} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
           </div>
+
+          {hasAmount && (
+            <div style={{ fontSize: 13, color: overpays ? 'var(--danger)' : 'var(--text-secondary)', marginTop: -4 }}>
+              {overpays
+                ? t('errorOverBalance', { amount: fmt(absBalance) })
+                : Math.abs(remaining) < 0.01
+                  ? t('previewSettled')
+                  : remaining > 0
+                    ? t('previewPartnerOwes', { partner: partnerName, amount: fmt(remaining) })
+                    : t('previewYouOwe', { partner: partnerName, amount: fmt(Math.abs(remaining)) })}
+            </div>
+          )}
 
           <div>
             <div style={labelStyle}>{t('fieldNotes')}</div>
@@ -423,7 +465,7 @@ function SettleUpModal({
 
         <div className="ledgernest-modal-footer">
           <button className="ledgernest-btn ledgernest-btn-ghost" onClick={onClose}>{t('cancel')}</button>
-          <button className="ledgernest-btn ledgernest-btn-primary" onClick={handleSave} disabled={saving}>
+          <button className="ledgernest-btn ledgernest-btn-primary" onClick={handleSave} disabled={saving || overpays}>
             {saving ? t('saving') : t('recordSettlement')}
           </button>
         </div>
@@ -503,7 +545,7 @@ function BalanceCard({
           </div>
           <div>
             <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('youPaid')}</div>
-            <div style={{ fontSize: 15, fontWeight: 700, marginTop: 2 }}>{fmt(balance.partnerOwesMe / 0.5)}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, marginTop: 2 }}>{fmt(balance.youPaidTotal ?? 0)}</div>
           </div>
           <div>
             <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('settlementsReceived')}</div>

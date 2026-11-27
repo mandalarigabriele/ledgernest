@@ -15,7 +15,7 @@ export async function GET() {
   `).get(myEmail, myEmail) as { id: string; member1_email: string; member2_email: string } | undefined
 
   if (!group) {
-    return NextResponse.json({ balance: 0, partnerOwesMe: 0, iOwePartner: 0, totalShared: 0, currency: 'EUR' })
+    return NextResponse.json({ balance: 0, partnerOwesMe: 0, iOwePartner: 0, youPaidTotal: 0, totalShared: 0, currency: 'EUR' })
   }
 
   const partnerEmail = group.member1_email === myEmail ? group.member2_email : group.member1_email
@@ -48,6 +48,13 @@ export async function GET() {
     WHERE group_id = ? AND from_email = ?
   `).get(group.id, myEmail) as { paid: number }
 
+  // Total of the expenses I paid (gross, before the partner's share)
+  const { youPaidTotal } = db.prepare(`
+    SELECT COALESCE(SUM(amount), 0) AS youPaidTotal
+    FROM shared_expenses
+    WHERE group_id = ? AND payer_email = ?
+  `).get(group.id, myEmail) as { youPaidTotal: number }
+
   // Total shared amount (both sides)
   const { totalShared } = db.prepare(`
     SELECT COALESCE(SUM(amount), 0) AS totalShared FROM shared_expenses WHERE group_id = ?
@@ -64,6 +71,7 @@ export async function GET() {
     iOwePartner: Math.round(iOwePartner * 100) / 100,
     received: Math.round(received * 100) / 100,
     paid: Math.round(paid * 100) / 100,
+    youPaidTotal: Math.round(youPaidTotal * 100) / 100,
     totalShared: Math.round(totalShared * 100) / 100,
     currency: 'EUR',
     partnerEmail,
